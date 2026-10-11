@@ -1,0 +1,10 @@
+* text=auto
+*.py text eol=lf
+*.sh text eol=lf
+*.sbatch text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.svg text eol=lf
+*.md text eol=lf
+docs/figures/* linguist-generated=true
+docs/experiments/**/*.jsonl linguist-generated=true

@@ -1,0 +1,146 @@
+{
+  "run_id": "baseline-6189457",
+  "date": "2026-10-11",
+  "model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "model_revision": "66285546d2b821cf421d4f5eb2576359d3770cd3",
+  "config": {
+    "model_id": "Qwen/Qwen2.5-VL-3B-Instruct",
+    "model_revision": "66285546d2b821cf421d4f5eb2576359d3770cd3",
+    "seed": 42,
+    "epochs_per_stage": 10,
+    "microbatch": 1,
+    "gradient_accumulation": 8,
+    "learning_rate": 1e-05,
+    "weight_decay": 0.01,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "epsilon": 1e-08,
+    "warmup_ratio": 0.05,
+    "max_grad_norm": 1.0,
+    "precision": "bf16-mixed-fp32-parameters",
+    "attention_backend": "sdpa",
+    "gradient_checkpointing": true,
+    "generation": {
+      "do_sample": true,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "max_new_tokens": 1024
+    }
+  },
+  "slurm_state": "COMPLETED",
+  "elapsed_gpu_seconds": 5664,
+  "approved_gpu_seconds": 14400,
+  "pilot_gpu_seconds": 818,
+  "hardware": "NVIDIA H200",
+  "cuda": "12.4",
+  "python": "3.11.9",
+  "torch": "2.6.0+cu124",
+  "evaluator": {
+    "task_sha256": "52cc1aab0d017fc0be9d7190f6f707330e2af7bb9e1c84f9055fb4d61b1c3771",
+    "mathruler": "0.1.0",
+    "extractor_sha256": "f57266c22a1faba0c02fcabd41ece9dad85c0d628dae77fb87f9e16cadafb2ac"
+  },
+  "data": {
+    "mirage_commit": "53f26de2682025e146781c5b198ec93bdfe4c4d6",
+    "reference_sha256": "52cc1aab0d017fc0be9d7190f6f707330e2af7bb9e1c84f9055fb4d61b1c3771",
+    "shared_layouts": 7,
+    "test_rows_with_train_layout": 8
+  },
+  "data_splits": {
+    "train": {
+      "count": 1000,
+      "archive_sha256": "df07b7f215d1a461dc1efc27c626caff11e22d5ea8ac694e2ba7be6a0487193c",
+      "jsonl_sha256": "1ba1613a07219dafca7d8eb5b7b722247c76d37a7661fcc2b2b144502e684a8c",
+      "per_grid": {
+        "3": 100,
+        "4": 200,
+        "5": 300,
+        "6": 400
+      }
+    },
+    "test": {
+      "count": 400,
+      "archive_sha256": "0272164f29dbed8b191977f7fa71cff8964b701bb84af293bf7525ada8394956",
+      "jsonl_sha256": "3a0868f2731edba7eada1f2895a8509ade4f1ce3d5d984376124d6e60ae02971",
+      "per_grid": {
+        "3": 100,
+        "4": 100,
+        "5": 100,
+        "6": 100
+      }
+    }
+  },
+  "effective_generation": {
+    "do_sample": true,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "top_k": 50,
+    "repetition_penalty": 1.05,
+    "max_new_tokens": 1024,
+    "num_return_sequences": 1,
+    "num_beams": 1,
+    "eos_token_id": [
+      151645,
+      151643
+    ]
+  },
+  "trainable_parameters": 3085938688,
+  "frozen_parameters": 668684288,
+  "reference_score": {
+    "accuracy": 0.66,
+    "source": "https://arxiv.org/html/2512.21218v2#S4.SS2",
+    "label": "Published LIVR 3B; authors protocol not fully recovered"
+  },
+  "completed_checks": {
+    "stage1": {
+      "epochs": 10,
+      "updates": 1250,
+      "finite_loss_and_gradients": true
+    },
+    "stage2": {
+      "epochs": 10,
+      "updates": 1250,
+      "finite_loss_and_gradients": true
+    },
+    "all_400_rescored": true,
+    "recipe_and_source_match": true,
+    "slurm_state": "COMPLETED",
+    "elapsed_gpu_seconds": 5664,
+    "budget_gpu_seconds": 14400
+  },
+  "source_sha256": {
+    "src/spara/__init__.py": "bb37b3fdded7c81ee28c5aac058c07a763221e70aa7c21e7de3eeb6acc01dea7",
+    "src/spara/cli.py": "28dc003a88bf7b75dbae3bca172566c5b1b79dbd48b424316572beec57b50182",
+    "src/spara/data.py": "0412195c9ba023bc782ddd10cdadf9d48d6bde935b83558076c9a13930524017",
+    "src/spara/evaluation.py": "93b9a513b1d91d8c3d9c06306077443f5fa69697c17ffee22e8ca2e26e17865e",
+    "src/spara/fetch.py": "fb4d0695ab439146f7637b5e94d14a5e785886e53fb714f8e42b5b6cfb84a6ed",
+    "src/spara/model.py": "d54651336b627ac559da63b6b3a49020da047451507bd3aee92207f5fb92b9cf",
+    "src/spara/pilot.py": "7f32124366783be77a2748064ba59866c02b96edc8c60681dd73fae1415bb294",
+    "src/spara/runtime.py": "8862b17d2bce74bb956f9d0bc357d587faf5ec20b5eb81c118547416adc3e622",
+    "src/spara/serialization.py": "938a9882895a9bb5ba057483fab3e150d5ae3a2e809f7c509b66851a3d810347",
+    "src/spara/training.py": "bfc954b7667492313668d53e3dababc4d7ead4fdd6dae4fea226d64ac35ffb60",
+    "src/spara/validation.py": "0b5bcef3c047548d389755f30699b69c3fc60ac59f8a182ef84503ef9c6d95a8",
+    "src/spara.egg-info/PKG-INFO": "7a51f4980ddc4b407e9d058571dbe99df1ee252d182ca9fbc45f9ab14a9d81eb",
+    "src/spara.egg-info/SOURCES.txt": "73a4330d25b4671446ed2fc479b8ee1163ee4a72954ec2128b8fc8d7c7d68872",
+    "src/spara.egg-info/dependency_links.txt": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "src/spara.egg-info/entry_points.txt": "eead9c3f067b5c216494900a5cd3c925884b2f940d171a9e3b0e711db50f35a7",
+    "src/spara.egg-info/requires.txt": "608ed4ea31e9a86c30df7640e39bf75c9a50a8963f2ebfa8047ada02aa5c3a22",
+    "src/spara.egg-info/top_level.txt": "30ec0a151304632fd5d70ba49b441a39365a0a2a0c64a8a1a927ae43a28fa25d",
+    "configs/livr.json": "1bac2d9dd3c74cfe5938a8786fd259907fa09f81127e0f8e2cd410c428540d50",
+    "scripts/pace/baseline.sbatch": "29ff1c3fbbcfce9c14f2cc67c38d2f5ff0b54f273d149756dd937c85e2f7c74b",
+    "scripts/pace/check_cache.py": "501a28d5d97cac57a68cdff4d528689507dfd48ab59836fdf9800f1ddc9375b4",
+    "scripts/pace/pilot.sbatch": "40c6e702a7fb4e80e6f12afbfdc8e17ff62ed5a1163004b5fa9034107a5de031",
+    "scripts/pace/setup.sh": "a3e83db366efe39d9e26c047e6aea28c3cc3d1977f73f3bdadda811c1e6eb963",
+    "scripts/pace/submit-pilot.sh": "ac3c6a4cddb15bb487662ed76b9ffaf02ab217fd1a640594ab5c7b25083fdb67",
+    "scripts/pace/sync.py": "342e55b5168ef0b9da429a92bb1b7652d7c87215fba723244af960287394bb2f"
+  },
+  "artifact_sha256": {
+    "discrepancy-audit.json": "188adbd6accfb1536cf51864ccaa4079eebd758afc5f42f55325d4143066e269",
+    "evaluation-summary.json": "7c199b6980f66bef88ac70214a1b25b18c65583d6d3f0c02daa3c6d57e500eaa",
+    "stage1-steps.jsonl": "c2f5a40c6b4ad2b8ab4e12ecbdc3f1a042dcc12988fccc99143bd87243369aea",
+    "stage2-steps.jsonl": "8b204a44948418dc43beb51257e5e0a78f6d722d216f68430c5fb7d2db08f3fc",
+    "evaluation-outcomes.jsonl": "935ffdacc39aa98bf2336c978ef6220b679e9c02622077591ed9b790cac1f2fc"
+  }
+}

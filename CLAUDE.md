@@ -13,3 +13,25 @@ Preserve existing entries. Do not claim pre-existing changes as your own
 or invent human authorship, review, or approval.
 
 If the skill is unavailable, follow these logging requirements directly.
+
+## Agent skills
+
+### Issue tracker
+
+Track work in GitHub Issues for Shadibuchanan/SPARA. Before creating, reading,
+or updating issues, specs, or wayfinder maps, read docs/agents/issue-tracker.md.
+
+### Triage labels
+
+Use the five default triage labels. Before triaging or changing issue status,
+read docs/agents/triage-labels.md.
+
+### Domain docs
+
+Use a single root glossary and docs/adr/. Before exploring project concepts
+or making design decisions, read docs/agents/domain.md.
+
+### PACE-ICE execution
+
+Before connecting to PACE-ICE, preparing jobs, or handling remote artifacts,
+read docs/agents/pace-ice.md for access, storage, and the pilot resource ceiling.
