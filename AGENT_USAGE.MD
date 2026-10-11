@@ -737,11 +737,11 @@ None.
 
 **Agent/tool:** Codex; model identifier not provided.
 **User request:** Create a pull request into SPARA main for the accumulated changes and record the results in documentation with charts.
-**AI contribution:** Prepared the accumulated baseline implementation and planning/audit documentation for a PR on feat/livr-baseline-results. Added a portable evidence bundle, a reproducible Matplotlib reporting script and visually checked evaluation/training-loss figures, then integrated them into the README and results report and refreshed the project next steps. Added explicit line-ending rules for executable scripts and hashed evidence, and kept model weights, environments and large runtime artifacts outside Git.
+**AI contribution:** Prepared the accumulated baseline implementation and planning/audit documentation for a PR on feat/livr-baseline-results. Added a portable evidence bundle, a reproducible Matplotlib reporting script and visually checked evaluation/training-loss figures, then integrated them into the README and results report and refreshed the project next steps. Added explicit line-ending rules for executable scripts and hashed evidence, and kept model weights, environments and large runtime artifacts outside Git. Committed and pushed the branch, then opened PR #5 against main using the requested PR workflow.
 **Contribution type:** Generation, editing and review.
 **Initial state:** Local main and origin/main were both at 4c7563f with no open PRs. AGENT_USAGE.MD, CLAUDE.md, README.md and docs/SPARA_PROJECT_PLAN.md were already modified; .gitignore, GLOSSARY.md, configs/, docs/LIVR_BASELINE_RESULTS.md, docs/LIVR_IMPLEMENTATION_SPEC.md, docs/LIVR_PILOT_REPORT.md, docs/LIVR_REPRODUCTION_AUDIT.md, docs/adr/, docs/agents/, docs/research/, pyproject.toml, requirements/, scripts/, src/ and tests/ were already untracked from prior tasks. Those earlier contributions are being packaged, not attributed as newly implemented in this task. The full training/evaluation had completed; Stage 2 optimizer-state backup remained in progress.
-**Checks performed:** Fetched the remote and confirmed the base branch was current; worked around an existing Windows credential-cache warning using a command-scoped authenticated Git helper without changing global credentials. All 21 existing tests passed, pip check reported no broken requirements, and Python compilation succeeded. The chart script validated evidence hashes, all 400 outcome rows, per-grid totals and both 1,250-update stage logs; both PNG figures were visually inspected and regenerated. Relative documentation links and whitespace checks passed, and a targeted secret-pattern scan found no matches. No new GPU experiment was run.
-**Unfinished work:** At this preparation entry, committing/pushing and opening/verifying the requested PR remain pending; this entry will be supplemented with the actual publication result. Stage 2 optimizer-state backup is still transferring, and exact equivalence to LIVR's unpublished settings remains unverified. The PR targets main and is not an instruction to merge it.
+**Checks performed:** Fetched the remote and confirmed the base branch was current; worked around an existing Windows credential-cache warning using a command-scoped authenticated Git helper without changing global credentials. All 21 existing tests passed, pip check reported no broken requirements, and Python compilation succeeded. The chart script validated evidence hashes, all 400 outcome rows, per-grid totals and both 1,250-update stage logs; both PNG figures were visually inspected and regenerated. Relative documentation links and whitespace checks passed, and a targeted secret-pattern scan found no matches. The staged evidence regenerated all four PNG/SVG figures byte-for-byte in a temporary directory; all 400 compact exported outcomes were rescored locally with matching results. Initial staged checks found generated SVG trailing whitespace and a CRLF audit-file normalization issue; the renderer/data bundle were normalized and the staged checks then passed. Verified 57 staged files with no weights/runtime directories. GitHub confirmed PR #5 is OPEN, non-draft and targets main with a clean merge state. No new GPU experiment was run.
+**Unfinished work:** PR #5 is open for review against main and has not been merged. GitHub reports a clean merge state; no automated CI checks are configured/reported, so the recorded test evidence is local execution. Stage 2 optimizer-state backup is still transferring, and exact equivalence to LIVR's unpublished settings remains unverified.
 
 ### Human input and contributions
 
@@ -770,10 +770,15 @@ None.
 | docs/LIVR_BASELINE_RESULTS.md | modified | Embedded figures and linked committed evidence and reproduction commands |
 | docs/SPARA_PROJECT_PLAN.md | modified | Replaced completed setup tasks with review, artifact preservation and future RL planning steps |
 | README.md | modified | Embedded evaluation figure and linked training curves and evidence |
+| results/pr-livr-baseline/PR_BODY.md | created | Exact PR description submitted through the GitHub CLI; ignored local artifact |
 
 Earlier implementation, configuration, documentation and log changes are included in the PR scope under their existing contribution entries. Matplotlib and its dependencies were installed only in the existing ignored local virtual environment; the pinned PACE training environment was unchanged.
+
+External artifact: https://github.com/Shadibuchanan/SPARA/pull/5. Implementation/results commit 94fe01409f1636f3efd3b00b08be5f006e5a1e74 was pushed to feat/livr-baseline-results; main was not changed. The publication outcome is recorded in a follow-up documentation commit on the same PR branch.
 
 ### Folders created
 
 - docs/figures/ - publication-ready PNG/SVG charts.
 - docs/experiments/ and docs/experiments/livr-6189457/ - compact committed evidence bundle.
+
+- results/pr-livr-baseline/ - ignored local PR-description artifact. Temporary chart-verification files were created and removed under a system temporary spara-pr-charts-* directory.
