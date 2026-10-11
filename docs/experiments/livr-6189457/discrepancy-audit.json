@@ -1,0 +1,105 @@
+{
+  "rows": 400,
+  "reference_summary": {
+    "overall": {
+      "count": 400,
+      "successes": 323,
+      "accuracy": 0.8075
+    },
+    "per_grid": {
+      "3": {
+        "count": 100,
+        "successes": 92,
+        "accuracy": 0.92
+      },
+      "4": {
+        "count": 100,
+        "successes": 91,
+        "accuracy": 0.91
+      },
+      "5": {
+        "count": 100,
+        "successes": 81,
+        "accuracy": 0.81
+      },
+      "6": {
+        "count": 100,
+        "successes": 59,
+        "accuracy": 0.59
+      }
+    }
+  },
+  "independent_grid_walk_successes": 323,
+  "nonstandard_route_format_rows": [],
+  "actual_input_prefixes_matched": 400,
+  "metadata_answer_helper_poison_checks_passed": 400,
+  "data_and_images_match_original_archives_and_run_manifests": true,
+  "test_records_contain_no_answer_field": true,
+  "one_returned_sequence_per_example": true,
+  "overlap": {
+    "overall": {
+      "count": 8,
+      "successes": 8,
+      "accuracy": 1.0
+    },
+    "per_grid": {
+      "3": {
+        "count": 7,
+        "successes": 7,
+        "accuracy": 1.0
+      },
+      "4": {
+        "count": 1,
+        "successes": 1,
+        "accuracy": 1.0
+      }
+    }
+  },
+  "overlap_excluded_diagnostic": {
+    "overall": {
+      "count": 392,
+      "successes": 315,
+      "accuracy": 0.8035714285714286
+    },
+    "per_grid": {
+      "3": {
+        "count": 93,
+        "successes": 85,
+        "accuracy": 0.9139784946236559
+      },
+      "4": {
+        "count": 99,
+        "successes": 90,
+        "accuracy": 0.9090909090909091
+      },
+      "5": {
+        "count": 100,
+        "successes": 81,
+        "accuracy": 0.81
+      },
+      "6": {
+        "count": 100,
+        "successes": 59,
+        "accuracy": 0.59
+      }
+    }
+  },
+  "successful_routes_with_off_grid_moves": [
+    0,
+    385
+  ],
+  "successful_nonshortest_routes": [
+    0,
+    385
+  ],
+  "effective_generation": {
+    "do_sample": true,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "top_k": 50,
+    "repetition_penalty": 1.05,
+    "max_new_tokens": 1024,
+    "num_return_sequences": 1
+  },
+  "interpretation": "No production metric or data changed. These checks cannot establish equivalence to unpublished LIVR code or identify the cause of the paper-score gap."
+}

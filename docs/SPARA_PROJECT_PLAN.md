@@ -3,6 +3,12 @@
 **Team:** Akash Singirkonda, Raymond Zeng, Aarya Singh, Shadi Buchanan, Pranav Somu  
 **Updated:** October 11, 2026
 
+**Implementation status:** The LIVR code and bounded PACE pilot are complete;
+21 tests pass. PACE job `6189457` completed 10+10 epochs and reference evaluation,
+scoring 323/400 (80.75%) in 1 hour 34 minutes. All saved responses were rescored
+locally with matching outcomes; final Stage 2 checkpoint backup remains in progress.
+See [the pilot report](LIVR_PILOT_REPORT.md) and [full-run record](LIVR_BASELINE_RESULTS.md).
+
 ## What we are trying to do
 
 We want a vision-language model to look at a map and produce a safe path to the goal, without extra helper images during training or testing.
@@ -23,22 +29,56 @@ We will use a deterministic FrozenLake-style environment: a grid with a start, a
 | Item | Plan |
 | --- | --- |
 | Input | An unsolved map image and route-planning instruction |
-| Output | A complete sequence of `UP`, `DOWN`, `LEFT`, and `RIGHT` actions |
-| Success | Reach the goal without entering a hole; any valid route counts |
+| Output | Route answers in the released benchmark's format, preserving its prompt and answer conventions |
+| Success | The released reference evaluator accepts the route: avoid holes and end at the goal |
 | Supervised training | Learn from correct action sequences |
 | RL training | Execute generated routes and reward success |
-| Training maps | Begin with 3×3–6×6 grids |
-| Evaluation | New layouts, plus 8×8 grids to test transfer |
+| Training maps | The released Mirage VSP planning training set used as the source for LIVR's comparison |
+| Evaluation | The released benchmark test set and reference evaluator, shared across LIVR and later SPARA comparisons |
+
+The first phase reproduces LIVR's published planning baseline as closely as the
+available evidence permits. Preserve the released split and disclose its observed
+train/test overlap rather than changing the benchmark. Custom maps, additional
+direct-SFT experiments, and alternative scoring are outside this first phase.
+See [the reproduction-scope decision](adr/0002-reproduce-livr-reference-protocol.md)
+and [the data/evaluator audit](research/LIVR_DATASET_COMPARABILITY.md).
 
 The original map is always available. SPARA excludes solved-route overlays, heatmaps, and other helper-image targets, while still using action labels and simulator rewards.
 
-Start with **Qwen2.5-VL-3B-Instruct**, LoRA adapters, a frozen vision encoder/projector, and four latent tokens. We have **PACE ICE access** and will measure GPU memory and runtime before scaling. LoRA for this planning task is an adaptation of the papers' setups.
+Use **Qwen2.5-VL-3B-Instruct**, full language-backbone fine-tuning, a frozen vision
+encoder/projector, and four latent tokens. Follow the published planning recipe:
+10 epochs of Stage 1 and 10 of Stage 2, AdamW learning rate 1e-5, effective batch
+size 8, and separate 5% warmup/cosine schedules for each stage. We have **PACE ICE
+access** and will profile memory and runtime before the full run. If resources
+force a LoRA fallback, document it as a deviation; it is not the reproduction target.
+
+The agent can operate through the current user's configured `ssh pace-ice` alias.
+Use remote `$HOME/scratch/SPARA` for working files and outputs, with connection,
+Slurm account, and path settings configurable for teammates. The initial profiling
+budget is one GPU for at most one hour after setup; select compatible available
+hardware rather than requiring a particular model. See the [execution context](agents/pace-ice.md)
+and [implementation handoff for review](LIVR_IMPLEMENTATION_SPEC.md).
 
 ## Implementation plan
 
 ### 1. Prepare the environment
 
-Create or load maps, separate training/validation/test layouts, and implement a route scorer. Fix action parsing, boundary behavior, and maximum route length. Run a small supervised baseline to check the pipeline.
+Pin the released data, model revision, preprocessing, dependencies, and reference
+evaluator. Use the original input images and route answers, excluding helper-image
+targets and simulator-only map metadata from model inputs. Check the LIVR pipeline
+on a tiny subset before a full training run.
+
+Use the released reference evaluator for both the baseline and later SPARA
+comparisons. Its parser retains `U,D,R,L` characters; off-grid moves stay in place,
+holes fail, and success is checked after the complete route. Preserve its behavior
+and generation limits; add no custom action-count cap or stop-on-first-goal rule.
+The released Mirage evaluator is the verified reference available to us; LIVR's
+exact evaluation manifest, decoder, and checkpoint-selection practice remain
+unverified and must be documented as such. For unspecified settings, use the pinned
+Mirage implementation where applicable and record the assumption; explicit LIVR
+settings take precedence. This applies to experimental details, not Mirage's
+different latent architecture or helper-image supervision. Any remaining gap
+without a relevant source must be identified before implementation.
 
 ### 2. Train the LIVR baseline
 
@@ -46,7 +86,17 @@ First, use a bottleneck attention mask: latent tokens can read the image, while 
 
 Then restore normal attention and continue supervised training. Save this checkpoint as the common starting point for evaluation.
 
-As checked on October 11, the official LIVR page still lists code/data as forthcoming. Plan to implement token insertion and attention masking unless an official release becomes available.
+Following the approved Mirage fallback policy, use the final Stage 1 weights to
+start Stage 2 with fresh optimizer state, and report the final Stage 2 checkpoint.
+Keep the released training set intact rather than adding a validation holdout for
+checkpoint selection. These are documented assumptions about LIVR, supported by
+the [pinned reference-configuration research](https://github.com/Shadibuchanan/SPARA/blob/9386caaa181b0905476a630b4fa434ae8309df5f/docs/research/LIVR_REFERENCE_SETTINGS.md).
+
+As checked on October 11, the official LIVR page still lists its code/data as
+forthcoming, but Mirage's VSP data and evaluator are public. Implement LIVR's token
+insertion and attention masking from the paper unless its official implementation
+becomes available. The published 3B planning accuracy is 66%; it is a comparison
+reference, not sufficient by itself to establish implementation correctness.
 
 ### 3. Add latent reinforcement learning
 
@@ -56,6 +106,10 @@ The main integration challenge is making these adjustments affect answer generat
 
 ### 4. Run controlled comparisons
 
+First evaluate the reproduced LIVR checkpoint with the reference protocol. The
+additional direct-SFT experiment proposed earlier is superseded by the narrower
+baseline scope. Then use the same reference evaluator for the planned RL comparisons.
+
 | Condition | Training after the same LIVR checkpoint |
 | --- | --- |
 | A. LIVR | None |
@@ -64,7 +118,11 @@ The main integration challenge is making these adjustments affect answer generat
 
 **The main comparison is C versus B.** This tests whether latent exploration adds value beyond ordinary RL.
 
-Match maps, rewards, rollout counts, and generation limits. Measure held-out route success, performance by grid size, failure types, GPU-hours, and peak memory. Repeat with multiple seeds if resources permit. Use validation for training choices and reserve the test set for evaluation.
+Match maps, rewards, rollout counts, and generation limits. Measure reference-evaluator
+accuracy, performance by grid size, failure types, GPU-hours, and peak memory.
+Repeat with multiple seeds if resources permit. Reserve test data for reporting.
+The initial baseline uses the documented final-checkpoint fallback above; any
+validation policy for later RL experiments belongs to that later planning phase.
 
 A matched helper-supervised reference and larger maps are stretch goals. Preserve the text-only RL control if compute becomes limited.
 
@@ -74,13 +132,13 @@ These are planned milestones and course deadlines, not a record of completed wor
 
 | Dates in 2026 | Planned work / milestone |
 | --- | --- |
-| Sep 18–Oct 14 | Prepare maps/scorer, profile PACE resources, train LIVR, check the latent interface |
+| Sep 18â€“Oct 14 | Prepare maps/scorer, profile PACE resources, train LIVR, check the latent interface |
 | Oct 12 | Prepare midterm slides for the course's Monday submission rule |
 | Oct 15 | Midterm: demonstrate completed components, report blockers, and show pilot results if available |
-| Oct 16–Nov 16 | Run matched RL experiments, evaluate transfer, analyze failures and uncertainty |
+| Oct 16â€“Nov 16 | Run matched RL experiments, evaluate transfer, analyze failures and uncertainty |
 | Nov 17 | Submit code and audit packet with reproducible configurations and agent-usage documentation |
-| Nov 20–24 | Investigate the returned audit and submit the rebuttal by Nov 24 at 11:59 PM ET |
-| Nov 30–Dec 4 | TA project/code interviews |
+| Nov 20â€“24 | Investigate the returned audit and submit the rebuttal by Nov 24 at 11:59 PM ET |
+| Nov 30â€“Dec 4 | TA project/code interviews |
 | Dec 1, 3, or 8 | Final presentation on the team's assigned date |
 | Canvas deadline | Final report |
 
@@ -92,11 +150,14 @@ These are planned milestones and course deadlines, not a record of completed wor
 
 ## Immediate next steps
 
-- Confirm actual progress against the midterm targets and assign owners for remaining tasks.
-- Verify PACE GPU memory and run a small end-to-end training job.
-- Finish the LIVR baseline before scaling latent RL.
-- Use measured pilot cost to set the full experiment budget.
-- Save configurations, checkpoints, and per-map outputs so results are reproducible.
+- Review the completed LIVR implementation, [results and charts](LIVR_BASELINE_RESULTS.md),
+  and [reproduction audit](LIVR_REPRODUCTION_AUDIT.md) before merging the baseline PR.
+- Finish the verified Stage 2 checkpoint backup and keep the trained baseline fixed.
+- Assign owners and prepare a separate specification for the latent-RL phase.
+- Reuse the same benchmark and reference evaluator for the LIVR, text-only RL
+  and SPARA comparisons; report the published LIVR score separately.
+- Verify the zero-adjustment latent interface and agree on a new compute budget
+  before launching additional experiments.
 
 ## Supporting papers
 
