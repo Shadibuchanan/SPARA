@@ -20,7 +20,7 @@ def to_device(batch, device):
     return {key: value.to(device) for key, value in batch.items()}
 
 
-def train_stage(model, processor, data_root, output, config, stage, resume=None):
+def train_stage(model, processor, data_root, output, config, stage, resume=None, final_weights_only=False):
     rows = records(data_root, "train")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
@@ -73,6 +73,6 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None)
                 if every and progress["optimizer_steps"] % every == 0:
                     save_checkpoint(output / f"step-{progress['optimizer_steps']}", model, processor, optimizer, scheduler, progress)
             progress.update(epoch=epoch + 1, next_row=0)
-    save_checkpoint(output / "final", model, processor, optimizer, scheduler, progress)
+    save_checkpoint(output / "final", model, processor, optimizer, scheduler, progress, not final_weights_only)
     json_write(output / "summary.json", progress)
     return output / "final"

@@ -782,3 +782,82 @@ External artifact: https://github.com/Shadibuchanan/SPARA/pull/5. Implementation
 - docs/experiments/ and docs/experiments/livr-6189457/ - compact committed evidence bundle.
 
 - results/pr-livr-baseline/ - ignored local PR-description artifact. Temporary chart-verification files were created and removed under a system temporary spara-pr-charts-* directory.
+
+## 2026-10-13 — Implement text-only RL (condition B)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Create a `text-only` branch and implement the text-only RL addition, reporting any issues.
+**AI contribution:** Implemented GRPO on route text from the final Stage 2 LIVR checkpoint, without latent perturbation, following the text term and stated hyperparameters of Scaffolding Minds (Eq. 6, Appendix D.1): group size 8, clip 0.2, learning rate 1e-6 and KL 0.001 to the frozen starting checkpoint, with 0/1 reward from the pinned reference evaluator. Added a `train-rl` CLI command with resumable checkpoints and step/rollout logs, let `evaluate` accept completed RL checkpoints, and added a PACE job script that does not submit itself. Recorded unspecified settings (prompts per step, epochs, rollout temperature, single update per rollout batch, constant learning rate) as assumptions in a new specification. Flagged that memorized training maps may give mostly zero-advantage groups. Earlier in the session, the agent compared the baseline's effective batch size with the LIVR paper (matching) and noted an unrecorded per-example loss-weighting choice.
+**Contribution type:** Generation.
+**Initial state:** Fresh clone of main at b4ee22d with a clean working tree; new branch `text-only` created from it. Two existing tests (`test_gradients_tiny_learning_and_checkpoint`, `test_mid_epoch_resume_matches_uninterrupted_training`) already failed exact-equality checks on this macOS workstation before any changes.
+**Checks performed:** Not recorded here per the skill format.
+**Unfinished work:** No GPU pilot or full RL run; no resource budget agreed. Integration tests with the real processor/dataset and the 3B model were not run locally. Changes are uncommitted on `text-only`.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the repository to be cloned and explained | Cloned main and summarized the project |
+| 2 | User message | Asked about experiment results and whether the batch size differs from LIVR | Analyzed the evidence bundle and compared training settings to the paper |
+| 3 | User message | Requested a `text-only` branch implementing the text-only RL addition and a report of issues | Implemented condition B and documented open issues |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/text_rl.py | created | Rollouts, group advantages, clipped/KL text loss and resumable GRPO loop |
+| src/spara/runtime.py | modified | Completed-RL checkpoint check and checkpoint phase lookup |
+| src/spara/cli.py | modified | `train-rl` command and evaluation of RL checkpoints |
+| configs/text_rl.json | created | RL settings |
+| tests/test_text_rl.py | created | Masking/advantage, cached-rollout log-prob, loss/gradient, loop/frozen-vision/resume and completion-contract tests |
+| scripts/pace/text_rl.sbatch | created | PACE job for RL training and evaluation; not submitted |
+| docs/TEXT_RL_SPEC.md | created | Method, sourced settings, assumptions and open issues |
+| README.md | modified | Text-only RL section |
+| GLOSSARY.md | modified | Added "Text-only RL" |
+
+### Folders created
+
+- None. (A local ignored `.venv/` was created for testing.)
+
+## 2026-10-14 — Rerun LIVR baseline and run text-only RL on PACE-ICE
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Rerun Shadi's LIVR baseline with the same parameters on the user's PACE account, within a 4-GPU-hour cap, then run text-only RL on top of it.
+**AI contribution:** Inspected the user's PACE storage and reported per-folder usage; measured that compressing ARC checkpoints would save only about 7%; supplied deletion commands that the user ran. Deployed the code, ran setup, and submitted the unchanged baseline recipe (328/400), finding exact Stage 1 reproduction and nondeterministic Stage 2 backward passes. Added an option to omit final-checkpoint optimizer state, a step-limited RL pilot mode with peak-memory logging, and results-directory creation in job scripts. Ran a 10-step RL pilot and one full RL epoch (326/400), analyzed the weak reward signal and per-map changes, and wrote a results report with compact evidence.
+**Contribution type:** Generation and analysis.
+**Initial state:** Continued from the uncommitted `text-only` branch work in the previous entry. The user's PACE scratch had no SPARA directory.
+**Unfinished work:** Changes remain uncommitted. Condition C (SPARA latent RL) is not implemented. Single seed per condition.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Stated that PACE access was available | Inspected account, storage and checkpoint availability |
+| 2 | User message | Asked to recreate Shadi's baseline with the same parameters and asked about compressing ARC checkpoints | Measured compression; proposed alternatives |
+| 3 | User message | Asked for the main PACE folders, noted possible backups, and required check-in before deletion | Reported folders by date without deleting |
+| 4 | User message | Approved deleting the fall 2025 projects | Supplied commands; the user ran the deletion |
+| 5 | User message | Approved a 4-GPU-hour cap and asked to build text-only RL on the baseline; then said "Go for it" to the combined budget and pilot plan | Ran baseline, pilot and full RL within the cap |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/runtime.py | modified | Optional omission of training state when saving checkpoints; pilot checkpoints rejected as complete |
+| src/spara/training.py | modified | Final-weights-only option |
+| src/spara/text_rl.py | modified | Final-weights-only, step-limited pilot without checkpoint, peak-memory logging |
+| src/spara/cli.py | modified | `--final-weights-only` and `--max-steps` flags |
+| scripts/pace/baseline.sbatch | modified | Optional training flags; creates results directory |
+| scripts/pace/text_rl.sbatch | modified | Optional training flags, pilot mode, results directory |
+| tests/test_training_state.py | modified | Weights-only checkpoint test |
+| tests/test_text_rl.py | modified | Pilot-mode checks |
+| docs/TEXT_RL_RESULTS.md | created | Baseline rerun and text-only RL results |
+| docs/TEXT_RL_SPEC.md | modified | Status updated with results |
+| README.md | modified | Linked results |
+| docs/experiments/livr-6253300/ files | created | Step losses, per-map outcomes and summary of the baseline rerun |
+| docs/experiments/text-rl-6256423/ files | created | RL step log, rollout rewards, per-map outcomes and summary |
+
+### Folders created
+
+- docs/experiments/livr-6253300/ - compact baseline-rerun evidence.
+- docs/experiments/text-rl-6256423/ - compact text-only RL evidence.
+- On PACE (not in the repository): ~/scratch/SPARA/ with code, environment, data, model, logs and results.

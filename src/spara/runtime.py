@@ -45,6 +45,25 @@ def require_final_checkpoint(path, stage, config):
             raise ValueError(f"Checkpoint recipe mismatch: {key}")
 
 
+def require_final_rl_checkpoint(path, config, rl):
+    progress = json.loads((Path(path) / "complete.json").read_text())["progress"]
+    expected_steps = rl["epochs"] * ((1000 + rl["prompts_per_step"] - 1) // rl["prompts_per_step"])
+    if (progress.get("pilot") or progress.get("phase") != "text-rl" or progress.get("epoch") != rl["epochs"]
+            or progress.get("next_row") != 0 or progress.get("optimizer_steps") != expected_steps):
+        raise ValueError("Expected completed text-only RL, not an intermediate checkpoint")
+    for key, value in config.items():
+        if key not in {"local_model_path", "checkpoint_every_steps"} and progress["config"].get(key) != value:
+            raise ValueError(f"Checkpoint recipe mismatch: {key}")
+    for key, value in rl.items():
+        if key != "checkpoint_every_steps" and progress["rl"].get(key) != value:
+            raise ValueError(f"RL recipe mismatch: {key}")
+    return progress
+
+
+def checkpoint_phase(path):
+    return json.loads((Path(path) / "complete.json").read_text())["progress"].get("phase")
+
+
 def load_model(config, checkpoint=None, device="cpu"):
     source = str(checkpoint) if checkpoint else config.get("local_model_path", config["model_id"])
     if checkpoint and not (Path(source) / "complete.json").is_file():
@@ -114,7 +133,7 @@ def make_optimizer(model, config):
         fused=next(model.parameters()).device.type == "cuda")
 
 
-def save_checkpoint(path, model, processor, optimizer, scheduler, progress):
+def save_checkpoint(path, model, processor, optimizer, scheduler, progress, training_state=True):
     path = Path(path)
     path.mkdir(parents=True, exist_ok=False)
     started = time.perf_counter()
@@ -124,7 +143,9 @@ def save_checkpoint(path, model, processor, optimizer, scheduler, progress):
              "progress": progress, "torch_rng": torch.get_rng_state(),
              "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
              "python_rng": random.getstate(), "numpy_rng": np.random.get_state()}
-    torch.save(state, path / "training_state.pt")
+    # A completed stage needs only weights; omitting its optimizer state saves storage.
+    if training_state:
+        torch.save(state, path / "training_state.pt")
     json_write(path / "complete.json", {"progress": progress, "save_seconds": time.perf_counter() - started,
                                         "bytes": sum(p.stat().st_size for p in path.iterdir() if p.is_file())})
 

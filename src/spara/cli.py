@@ -13,7 +13,7 @@ def main():
     fetch.add_argument("--config", default="configs/livr.json")
     fetch.add_argument("--output", required=True)
     fetch.add_argument("--processor-only", action="store_true")
-    for command in ("pilot", "train", "evaluate"):
+    for command in ("pilot", "train", "train-rl", "evaluate"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -23,9 +23,16 @@ def main():
             cmd.add_argument("--continue-from", help="Prior pilot directory with a completed Stage 1 roundtrip")
         if command != "pilot":
             cmd.add_argument("--checkpoint")
+        if command in ("train-rl", "evaluate"):
+            cmd.add_argument("--rl-config", default="configs/text_rl.json")
         if command == "train":
             cmd.add_argument("--stage", type=int, choices=[1, 2], required=True)
+        if command in ("train", "train-rl"):
             cmd.add_argument("--resume", help="Trusted same-stage checkpoint including optimizer state")
+            if command == "train-rl":
+                cmd.add_argument("--max-steps", type=int, help="Pilot: stop after this many updates")
+            cmd.add_argument("--final-weights-only", action="store_true",
+                             help="Omit optimizer/RNG state from the final checkpoint to save storage")
     args = parser.parse_args()
     if args.command == "prepare-data":
         from .data import prepare
@@ -69,15 +76,45 @@ def main():
         output = Path(args.output)
         if output.exists(): parser.error("Output already exists; choose a new directory")
         json_write(output.with_name(output.name + "-manifest.json"), run_manifest)
-        train_stage(model, processor, args.data_root, output, config, args.stage, args.resume)
+        train_stage(model, processor, args.data_root, output, config, args.stage, args.resume,
+                    args.final_weights_only)
+    elif args.command == "train-rl":
+        from .text_rl import train_text_rl
+        rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
+        if not args.checkpoint:
+            parser.error("Text-only RL requires the final Stage 2 LIVR checkpoint (also its KL reference)")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        output = Path(args.output)
+        if output.exists(): parser.error("Output already exists; choose a new directory")
+        reference, _ = load_model(config, args.checkpoint, device="cuda")
+        model, processor = load_model(config, args.resume or args.checkpoint, device="cuda")
+        run_manifest = manifest(config, model, processor, args.data_root)
+        run_manifest["rl"] = rl
+        run_manifest["checkpoint_lineage"] = {"source": args.checkpoint, "resume": args.resume}
+        run_manifest["assumptions"] |= {
+            "rl_objective": "Scaffolding Minds Eq. 6 text term only: clipped ratio, k3 KL to the LIVR checkpoint, per-sequence token mean then mean over rollouts",
+            "rl_updates": "one optimizer step per rollout batch (old policy = current policy)",
+            "rl_logprobs": "logits divided by rollout temperature; top-p not applied",
+            "rl_schedule": "constant learning rate; fresh AdamW with LIVR betas/epsilon/weight decay",
+            "rl_reward": "1 if the reference evaluator reports success, else 0",
+        }
+        json_write(output.with_name(output.name + "-manifest.json"), run_manifest)
+        train_text_rl(model, reference, processor, args.data_root, output, config, rl,
+                      args.checkpoint, args.resume, final_weights_only=args.final_weights_only,
+                      max_steps=args.max_steps)
     else:
         from .data import records
         from .evaluation import ReferenceEvaluator, summarize
         from .serialization import encode
         from .training import amp, to_device
         if not args.checkpoint:
-            parser.error("Evaluation requires the final Stage 2 checkpoint")
-        require_final_checkpoint(args.checkpoint, 2, config)
+            parser.error("Evaluation requires a final Stage 2 or text-only RL checkpoint")
+        from .runtime import checkpoint_phase, require_final_rl_checkpoint
+        if checkpoint_phase(args.checkpoint) == "text-rl":
+            require_final_rl_checkpoint(args.checkpoint, config,
+                                        json.loads(Path(args.rl_config).read_text(encoding="utf-8")))
+        else:
+            require_final_checkpoint(args.checkpoint, 2, config)
         model, processor = load_model(config, args.checkpoint, device="cuda")
         if model.config.livr_stage != 2:
             parser.error("Benchmark evaluation requires Stage 2")
