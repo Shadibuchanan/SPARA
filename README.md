@@ -199,12 +199,13 @@ bash scripts/pace/run-all-scaffolding.sh --dry-run       # print the plan only
 ```
 
 Both phases share one allocation (`scripts/pace/scaffolding-all.sbatch`), so the
-baseline cannot lose the node to a second queue wait. Walltime is
-`SPARA_PILOT_MINUTES + SPARA_BASELINE_MINUTES`, 16 hours by default, unless
-`SPARA_MINUTES` overrides it;
-account and GPU variables are the same as `submit-scaffolding.sh`, and
-`SPARA_REMOTE_ROOT` defaults to `$HOME/scratch/spara` with `code/` linked to this
-checkout. A failing pilot stops the job before the baseline, but nobody sees the
+baseline cannot lose the node to a second queue wait. Settings live in
+[`scripts/pace/pace.conf`](scripts/pace/pace.conf): edit the GPU and walltime there
+and they persist. Anything set in the environment overrides the file, and
+`--config` points at a different one. The partition is always `ice-gpu`. Walltime is
+`PILOT_HOURS + BASELINE_HOURS` whole hours, 16 by default, unless `HOURS`
+overrides it. Account and QoS are left to your default Slurm
+association, and `ROOT` defaults to `$HOME/scratch/spara` with `code/` linked to this checkout. A failing pilot stops the job before the baseline, but nobody sees the
 pilot's numbers first, so the full-run budget review that
 [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md) asks for means running
 `--no-baseline`, then rerunning with `--continue` once the numbers check out.

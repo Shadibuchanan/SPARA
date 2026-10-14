@@ -15,17 +15,14 @@ usage() {
   cat <<'EOF'
 Usage: scripts/pace/run-all-scaffolding.sh [options]
 
-Resources (environment variables; account and QoS are auto-detected if unset):
-  SPARA_ACCOUNT            Slurm account                        (detected)
-  SPARA_QOS                Slurm QoS                            (detected)
-  SPARA_PARTITION          GPU partition                        (default: ice-gpu)
-  SPARA_GPU                One-GPU GRES, >= 80 GB               (default: gpu:h200:1)
-  SPARA_CONSTRAINT         Optional --constraint value          (default: none)
-  SPARA_PILOT_MINUTES      Minutes to budget for the pilot      (default: 60)
-  SPARA_BASELINE_MINUTES   Minutes to budget for the baseline   (default: 900)
-  SPARA_MINUTES            Total walltime, overriding their sum (default: their sum)
+Resources (environment variables):
+  GPU                One-GPU GRES, >= 80 GB               (default: gpu:h200:1)
+  CONSTRAINT         Optional --constraint value          (default: none)
+  PILOT_HOURS        Hours to budget for the pilot        (default: 1)
+  BASELINE_HOURS     Hours to budget for the baseline     (default: 15)
+  HOURS              Total walltime, overriding their sum (default: their sum)
   SPARA_REMOTE_ROOT        Run root holding code/ data/ models/ (default: $HOME/scratch/spara)
-  SPARA_REPO               Repository checkout to link as code/ (default: this checkout)
+  REPO               Repository checkout to link as code/ (default: this checkout)
 
 Options:
   --no-baseline   Stop the job after the pilot; do not run the full baseline
@@ -33,6 +30,9 @@ Options:
   --skip-setup    Assume the venv, data and model already exist under $ROOT
   --skip-tests    Do not run the CPU test suite before submitting
   --dry-run       Print what would happen; create nothing and submit nothing
+  --config F      Read persistent settings from F instead of the usual locations
+  -c N            CPU cores per task, overriding CPUS
+  --mem SIZE      Host memory for the job, e.g. 96G, overriding MEM
   -h, --help      Show this message
 EOF
 }
@@ -48,40 +48,68 @@ while [[ $# -gt 0 ]]; do
     --skip-setup) SKIP_SETUP=1; shift ;;
     --skip-tests) SKIP_TESTS=1; shift ;;
     --dry-run) DRY=1; shift ;;
+    --config) [[ $# -ge 2 ]] || die "--config needs a path"; CONFIG_FILE="$2"; shift 2 ;;
+    -c) [[ $# -ge 2 ]] || die "-c needs a core count"; CPUS="$2"; shift 2 ;;
+    --mem) [[ $# -ge 2 ]] || die "--mem needs a size, e.g. 96G"; MEM="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; die "unknown argument: $1" ;;
   esac
 done
 
-REPO="${SPARA_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-[[ -f "$REPO/configs/scaffolding.json" ]] || die "not a SPARA checkout: $REPO"
-ROOT="${SPARA_REMOTE_ROOT:-$HOME/scratch/spara}"
-
-# Account and QoS: use the first association Slurm reports unless overridden.
-if [[ -z "${SPARA_ACCOUNT:-}" || -z "${SPARA_QOS:-}" ]]; then
-  assoc="$(sacctmgr -nP show assoc user="$USER" format=Account,QOS 2>/dev/null | head -1 || true)"
-  [[ -n "$assoc" ]] && { SPARA_ACCOUNT="${SPARA_ACCOUNT:-${assoc%%|*}}"; SPARA_QOS="${SPARA_QOS:-${assoc##*|}}"; }
+# Persistent settings: scripts/pace/pace.conf, or --config, or ~/.spara.conf.
+# Variables already set in the environment win over the file; $USER is never read
+# from it, since the job always runs as the submitting user.
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SETTINGS=(GPU CPUS MEM CONSTRAINT HOURS PILOT_HOURS BASELINE_HOURS ROOT REPO)
+ENV_FILE="${CONFIG_FILE:-}"
+for candidate in "$HERE/pace.conf" "$HOME/.spara.conf"; do
+  [[ -n "$ENV_FILE" ]] && break
+  [[ -f "$candidate" ]] && ENV_FILE="$candidate"
+done
+if [[ -n "$ENV_FILE" ]]; then
+  [[ -f "$ENV_FILE" ]] || die "settings file not found: $ENV_FILE"
+  for name in "${SETTINGS[@]}"; do
+    [[ -n "${!name+set}" ]] && declare "__keep_$name=${!name}"
+  done
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  for name in "${SETTINGS[@]}"; do
+    keep="__keep_$name"
+    [[ -n "${!keep+set}" ]] && declare "$name=${!keep}"
+  done
 fi
-: "${SPARA_ACCOUNT:?Could not detect a Slurm account; set SPARA_ACCOUNT}"
-: "${SPARA_QOS:?Could not detect a Slurm QoS; set SPARA_QOS}"
-PARTITION="${SPARA_PARTITION:-ice-gpu}"
-GPU="${SPARA_GPU:-gpu:h200:1}"
-PILOT_MINUTES="${SPARA_PILOT_MINUTES:-60}"
-BASELINE_MINUTES="${SPARA_BASELINE_MINUTES:-900}"
-[[ "$GPU" =~ ^gpu:[a-zA-Z0-9_]+:1$ ]] || die "SPARA_GPU must request exactly one GPU, e.g. gpu:h200:1"
-[[ "$PILOT_MINUTES" =~ ^[0-9]+$ ]] && (( PILOT_MINUTES >= 1 )) || die "SPARA_PILOT_MINUTES must be a positive integer"
-[[ "$BASELINE_MINUTES" =~ ^[0-9]+$ ]] && (( BASELINE_MINUTES >= 1 )) || die "SPARA_BASELINE_MINUTES must be a positive integer"
-if (( BASELINE )); then MINUTES="${SPARA_MINUTES:-$(( PILOT_MINUTES + BASELINE_MINUTES ))}"
-else MINUTES="${SPARA_MINUTES:-$PILOT_MINUTES}"; fi
-[[ "$MINUTES" =~ ^[0-9]+$ ]] && (( MINUTES >= 1 )) || die "SPARA_MINUTES must be a positive integer"
 
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+[[ -f "$REPO/configs/scaffolding.json" ]] || die "not a SPARA checkout: $REPO"
+ROOT="${ROOT:-$HOME/scratch/spara}"
+
+PARTITION=ice-gpu
+GPU="${GPU:-gpu:h200:1}"
+CPUS="${CPUS:-4}"
+MEM="${MEM:-96G}"
+PILOT_HOURS="${PILOT_HOURS:-1}"
+BASELINE_HOURS="${BASELINE_HOURS:-15}"
+[[ "$GPU" =~ ^gpu:[a-zA-Z0-9_]+:1$ ]] || die "GPU must request exactly one GPU, e.g. gpu:h200:1"
+[[ "$CPUS" =~ ^[0-9]+$ ]] && (( CPUS >= 1 )) || die "CPUS must be a positive integer"
+[[ "$MEM" =~ ^[0-9]+[KMGT]?B?$ ]] || die "MEM must be a Slurm size, e.g. 96G"
+[[ "$PILOT_HOURS" =~ ^[0-9]+$ ]] && (( PILOT_HOURS >= 1 )) || die "PILOT_HOURS must be a positive integer"
+[[ "$BASELINE_HOURS" =~ ^[0-9]+$ ]] && (( BASELINE_HOURS >= 1 )) || die "BASELINE_HOURS must be a positive integer"
+if (( BASELINE )); then HOURS="${HOURS:-$(( PILOT_HOURS + BASELINE_HOURS ))}"
+else HOURS="${HOURS:-$PILOT_HOURS}"; fi
+[[ "$HOURS" =~ ^[0-9]+$ ]] && (( HOURS >= 1 )) || die "HOURS must be a positive integer"
+
+note "settings:  ${ENV_FILE:-none; expected scripts/pace/pace.conf}"
 note "repo:      $REPO"
 note "root:      $ROOT"
-note "resources: account=$SPARA_ACCOUNT qos=$SPARA_QOS partition=$PARTITION gres=$GPU"
+note "resources: partition=$PARTITION gres=$GPU cpus=$CPUS mem=$MEM"
 if (( BASELINE )); then
-  note "walltime:  ${MINUTES}m total (pilot ${PILOT_MINUTES}m + baseline ${BASELINE_MINUTES}m), one allocation"
+  if (( HOURS == PILOT_HOURS + BASELINE_HOURS )); then
+    note "walltime:  ${HOURS}h total (pilot ${PILOT_HOURS}h + baseline ${BASELINE_HOURS}h), one allocation"
+  else
+    note "walltime:  ${HOURS}h total for both phases, one allocation (HOURS override)"
+  fi
 else
-  note "walltime:  ${MINUTES}m, pilot only"
+  note "walltime:  ${HOURS}h, pilot only"
 fi
 (( DRY )) && note "dry run: no directories, links or jobs will be created"
 
@@ -133,20 +161,20 @@ else
   SPARA_TEST_DATA="$DATA" SPARA_TEST_PROCESSOR="$MODEL" "$VENV" -m pytest -q "$REPO/tests"
 fi
 
-# Mirrors scripts/pace/submit-scaffolding.sh: one node, one task, 4 CPUs, 96 GiB.
+# One node, one task. Account and QoS are left to the Slurm default
+# association for the submitting user.
 # One job runs the pilot and then the baseline, so the baseline cannot lose the node.
 exports="ALL,SPARA_REMOTE_ROOT=$ROOT"
 (( BASELINE )) || exports="$exports,SPARA_PILOT_ONLY=1"
 [[ -n "$CONTINUE" ]] && exports="$exports,SPARA_RUN=$CONTINUE"
 
 args=(--parsable --job-name=spara-scaffolding
-      --account="$SPARA_ACCOUNT" --qos="$SPARA_QOS"
       --partition="$PARTITION" --gres="$GPU"
-      --nodes=1 --ntasks=1 --cpus-per-task=4 --mem=96G --time="$MINUTES:00"
+      --nodes=1 --ntasks=1 --cpus-per-task="$CPUS" --mem="$MEM" --time="$HOURS:00:00"
       --export="$exports"
       --output="$ROOT/logs/scaffolding-%j.log"
       --error="$ROOT/logs/scaffolding-%j.log")
-[[ -n "${SPARA_CONSTRAINT:-}" ]] && args+=(--constraint="$SPARA_CONSTRAINT")
+[[ -n "${CONSTRAINT:-}" ]] && args+=(--constraint="$CONSTRAINT")
 args+=("$ROOT/code/scripts/pace/scaffolding-all.sbatch")
 
 if (( DRY )); then
@@ -165,7 +193,7 @@ if (( BASELINE )); then
   note "The baseline starts as soon as the pilot finishes, in the same allocation."
   note "To stop it after the pilot instead, rerun with --no-baseline, or scancel $JOB."
   note "The specification asks for a review of the pilot before full-run hours:"
-  note "  - GPU-hour estimate for a full run vs the ${MINUTES}m requested here"
+  note "  - GPU-hour estimate for a full run vs the ${HOURS}h requested here"
   note "  - latent_loss_normalized (well below 1 means the predictor tracks z*)"
   note "  - the RL gradient norm split into latent and text terms"
 else
