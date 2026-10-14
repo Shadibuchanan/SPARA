@@ -16,11 +16,14 @@ Usage: scripts/run_scaffolding.sh --model DIR [options]
   --config FILE        Recipe (default: configs/scaffolding.json)
   --python BIN         Interpreter with spara installed (default: python)
   --phases LIST        Comma-separated subset of scaffold,predict,eval1,rl,eval2 (default: all)
+  --scaffold-from DIR  Reuse a completed Scaffolding Phase directory from another run
+  --rl-floor X         Start RL only if Stage 1 accuracy is at least X (default: 0.05; 0 disables)
   --pilot              Run the bounded pilot instead of the baseline
   --retry-incomplete   Move an unfinished phase directory aside and rerun that phase
 
-Each option can also be set as SPARA_MODEL, SPARA_RUN, SPARA_DATA, SPARA_CONFIG or
-SPARA_PYTHON. Relative paths are resolved from the repository root.
+Each option can also be set as SPARA_MODEL, SPARA_RUN, SPARA_DATA, SPARA_CONFIG,
+SPARA_PYTHON, SPARA_PHASES, SPARA_SCAFFOLD_FROM or SPARA_RL_FLOOR. Relative paths are resolved
+from the repository root.
 EOF
 }
 
@@ -33,13 +36,16 @@ RUN="${SPARA_RUN:-}"
 DATA="${SPARA_DATA:-data/vsp}"
 CONFIG="${SPARA_CONFIG:-configs/scaffolding.json}"
 PYTHON="${SPARA_PYTHON:-python}"
-PHASES="scaffold predict eval1 rl eval2"
+SCAFFOLD_FROM="${SPARA_SCAFFOLD_FROM:-}"
+RL_FLOOR="${SPARA_RL_FLOOR:-0.05}"
+PHASES="${SPARA_PHASES:-scaffold predict eval1 rl eval2}"
+PHASES="${PHASES//,/ }"
 PILOT=0
 RETRY=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --model|--run|--data|--config|--python|--phases)
+    --model|--run|--data|--config|--python|--phases|--scaffold-from|--rl-floor)
       [[ $# -ge 2 ]] || die "$1 needs a value"
       case "$1" in
         --model) MODEL="$2" ;;
@@ -48,6 +54,8 @@ while [[ $# -gt 0 ]]; do
         --config) CONFIG="$2" ;;
         --python) PYTHON="$2" ;;
         --phases) PHASES="${2//,/ }" ;;
+        --scaffold-from) SCAFFOLD_FROM="$2" ;;
+        --rl-floor) RL_FLOOR="$2" ;;
       esac
       shift 2 ;;
     --pilot) PILOT=1; shift ;;
@@ -70,6 +78,11 @@ done
 [[ -f "$CONFIG" ]] || die "config not found: $CONFIG"
 command -v "$PYTHON" >/dev/null || die "python not found: $PYTHON"
 "$PYTHON" -c "import spara.scaffolding.cli" || die "spara is not importable with $PYTHON (pip install -e '.[model]')"
+[[ "$RL_FLOOR" =~ ^(0|1|0?\.[0-9]+)$ ]] || die "--rl-floor must be a fraction between 0 and 1"
+if [[ -n "$SCAFFOLD_FROM" ]]; then
+  [[ -f "$SCAFFOLD_FROM/final/complete.json" ]] || die "no completed Scaffolding Phase in $SCAFFOLD_FROM"
+  SCAFFOLD_FROM="$(cd "$SCAFFOLD_FROM" && pwd)"
+fi
 
 RUN="${RUN:-results/scaffolding-$(date +%Y%m%d-%H%M%S)}"
 mkdir -p "$RUN/logs"
@@ -86,13 +99,14 @@ fi
 STAMP="$(date +%Y%m%d-%H%M%S)"
 "$PYTHON" -m pip freeze > "$LOGS/environment-$STAMP.txt"
 note "run directory: $RUN"
+[[ -z "$SCAFFOLD_FROM" ]] || note "reusing Scaffolding Phase checkpoint: $SCAFFOLD_FROM"
 if (( PILOT )); then
   note "storage: the pilot writes about 24 GB of checkpoints"
 else
   note "storage: a full run writes about 90 GB of checkpoints (8 + 40 + 40 GB); check your quota"
 fi
 
-S1A="$RUN/stage1-scaffold"
+S1A="${SCAFFOLD_FROM:-$RUN/stage1-scaffold}"
 S1B="$RUN/stage1-predict"
 S2="$RUN/stage2-rl"
 E1="$RUN/evaluation-stage1"
@@ -109,6 +123,17 @@ complete() {  # phase-directory kind
 
 require() {  # phase-directory name
   complete "$1" train || die "$2 has not completed ($1/final is missing); run that phase first"
+}
+
+require_stage1_floor() {  # RL from a broken Stage 1 model cannot learn: every reward is zero.
+  [[ "$RL_FLOOR" =~ ^0?\.?0*$ ]] && return
+  complete "$E1" eval || die "RL needs the Stage 1 evaluation first (run eval1, or pass --rl-floor 0)"
+  "$PYTHON" - "$E1/summary.json" "$RL_FLOOR" <<'PY' || die "Stage 1 accuracy is below --rl-floor $RL_FLOOR; fix Stage 1 before RL"
+import json, sys
+accuracy = json.load(open(sys.argv[1]))["overall"]["accuracy"]
+print(f"Stage 1 accuracy {accuracy:.2%} (RL floor {float(sys.argv[2]):.2%})")
+sys.exit(0 if accuracy >= float(sys.argv[2]) else 1)
+PY
 }
 
 run_phase() {  # name kind output cli-args...
@@ -156,6 +181,7 @@ for phase in $PHASES; do
       run_phase eval1 eval "$E1" evaluate "${COMMON[@]}" --checkpoint "$S1B/final" ;;
     rl)
       require "$S1B" predict
+      complete "$S2" train || require_stage1_floor
       run_phase rl train "$S2" train --phase rl "${COMMON[@]}" --checkpoint "$S1B/final" ;;
     eval2)
       require "$S2" rl

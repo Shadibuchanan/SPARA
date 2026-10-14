@@ -878,3 +878,60 @@ External artifact: https://github.com/Shadibuchanan/SPARA/pull/5. Implementation
 ### Folders created
 
 - None
+
+## 2026-10-14 - Diagnose the first Scaffolding Minds run
+
+**Agent/tool:** Claude Code (VS Code extension); model Claude Opus 5.5 (claude-opus-5-5).
+**User request:** The user reported adding Scaffolding Minds results to `spara_results/`; the agent reviewed them.
+**AI contribution:** Analyzed the user-supplied logs, manifests and 400 evaluation responses from PACE job 6257067 (one H100). Found that the Stage 1 checkpoint scored 0/400 because the Latent-Prediction Phase damaged the language model: the agent's implementation choice to regress the final-norm hidden state (natural norm about 160-190, confirmed from the pinned Qwen final-norm weight) onto scaffold targets of norm about 48, with eq. 2's sum over 2,048 dimensions, produced latent losses near 38,000 and gradient norms near 4 million that dominated every clipped update, raising answer cross-entropy from 2.1 to 8.0. The subsequent RL phase then logged 106 steps with zero reward and zero gradient. Proposed two fixes for the user to choose between and two guards against repeating the wasted RL time; no project files were changed. A reviewer model advised on the fix options and the report.
+**Contribution type:** review
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Reported adding Scaffolding Minds results in `spara_results/` | Triggered review of the supplied run |
+| 2 | User-provided files | Logs, manifests, environment record, `summary.json` and `responses.jsonl` from PACE job 6257067, plus a `spara_results/.venv` copy of Transformers package metadata | Evidence for the diagnosis; the run itself, including its GPU time, was performed by the user, not the agent |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-10-14 - Add the latent-prediction fixes and run guards
+
+**Agent/tool:** Claude Code (VS Code extension); model Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Implement both proposed fixes (A and B) for the collapsed Latent-Prediction Phase.
+**AI contribution:** Added a `latent_reduction` option (variant A: mean-squared error instead of eq. 2's sum over dimensions) and a `latent_projection` option (variant B: a zero-initialized linear map from final-norm hidden states into the scaffold targets' space, kept for inference and used wherever the latent prior is computed, including decoding and RL). Variant B became the default recipe and variant A was added as a separate recipe; both remain compatible with the existing Scaffolding Phase checkpoint from job 6257067. Also added the guards proposed in the diagnosis, which the user did not separately approve: RL stops after consecutive all-zero-reward steps, the runner refuses RL below a Stage 1 accuracy floor and can reuse another run's Scaffolding Phase, the pilot checks answer loss on its own, and the evaluation manifest freezes parameters before recording them. Documented the failed first run, both variants and the comparison procedure. Neither variant has run on real hardware; no PACE job was submitted.
+**Contribution type:** debugging
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for both fix A and fix B | Implemented both as selectable recipe options, with B as the default |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/scaffolding/model.py | modified | Optional zero-initialized latent projection and a `project` step for every latent prior |
+| src/spara/scaffolding/training.py | modified | Latent reduction option, projected RL prior, zero-reward RL stop |
+| src/spara/scaffolding/cli.py | modified | Adds the projection to fresh predict runs; freezes before the evaluation manifest |
+| src/spara/scaffolding/pilot.py | modified | Uses the configured variant; separate answer-loss check; projection-aware query-gradient check |
+| src/spara/scaffolding/runtime.py | modified | Validates the new options; updated recorded assumptions |
+| configs/scaffolding.json | modified | Variant B (mean reduction plus linear projection) and the RL stop setting |
+| configs/scaffolding-mse.json | created | Variant A (mean reduction, no projection) |
+| scripts/run_scaffolding.sh | modified | `--scaffold-from` reuse, `--rl-floor` Stage 1 accuracy guard and `SPARA_PHASES` |
+| scripts/pace/scaffolding-baseline.sbatch | modified | Notes the environment variables passed through to the runner |
+| tests/test_scaffolding_model.py | modified | Projection initialization, gradient shielding, reduction, cache agreement and roundtrip tests |
+| tests/test_scaffolding_training.py | modified | RL stop test; CLI test confirms the default recipe's projection; pilot filter covers both learning checks |
+| docs/SCAFFOLDING_BASELINE_SPEC.md | modified | First-run record, variant table, comparison commands, measured Stage 1 timings |
+| README.md | modified | First-run outcome, variants, reuse and guard options |
+
+### Folders created
+
+- None

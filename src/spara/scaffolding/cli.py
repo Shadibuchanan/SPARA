@@ -61,6 +61,7 @@ def main(argv=None):
             parser.error("Evaluate a final predict (Stage 1) or rl (Stage 2) checkpoint")
         require_final(args.checkpoint, progress["phase"], config)
         model, processor = load_checkpoint(args.checkpoint, config, device="cuda")
+        model.requires_grad_(False)
         run_manifest = manifest(config, model, processor, args.data_root,
                                 {"checkpoint": str(args.checkpoint), "checkpoint_phase": progress["phase"]})
         evaluate(model, processor, args.data_root, output, config, run_manifest)
@@ -72,7 +73,7 @@ def train(args, config, parser):
     import torch
     from ..data import records
     from ..evaluation import ReferenceEvaluator
-    from .model import ScaffoldingEncoder, add_heads, load_token_rows, train_language
+    from .model import ScaffoldingEncoder, add_heads, add_latent_projection, load_token_rows, train_language
     from .runtime import load_base, load_checkpoint, require_final
     from .training import scaffold_targets, train_predict, train_rl, train_scaffold
     output, resume = Path(args.output), args.resume
@@ -100,6 +101,7 @@ def train(args, config, parser):
         else:
             model, processor = load_base(config, device="cuda")
             load_token_rows(model, encoder.context)
+            add_latent_projection(model, config["predict"]["latent_projection"])
         targets = scaffold_targets(encoder, processor, args.data_root, records(args.data_root, "train"),
                                    config, model.device)
         del encoder

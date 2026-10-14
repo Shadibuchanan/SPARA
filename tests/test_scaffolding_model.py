@@ -17,8 +17,8 @@ BOT, EOT, SLOT, QUERIES = 20, 21, 22, [23, 24, 25, 26]
 
 def prior_of(model, prompt):
     queries = predictor_sequence(prompt["input_ids"], model.config)
-    return model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
-                               query_start=queries.shape[1] - 4)[0, -4:]
+    return model.project(model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
+                                             query_start=queries.shape[1] - 4)[0, -4:])
 
 
 def rescore(model, prompt, rollout, indices, block_bot=False):
@@ -245,3 +245,32 @@ def test_checkpoint_roundtrip_keeps_heads_and_token_ids(tiny_scaffold, tiny_samp
         torch.testing.assert_close(model.hidden_states(ids, prompt["pixel_values"], prompt["image_grid_thw"], prior[None]),
                                    reloaded.hidden_states(ids, prompt["pixel_values"], prompt["image_grid_thw"], prior[None]),
                                    atol=0, rtol=0)
+
+
+def test_latent_projection_starts_at_zero_and_shields_the_language_model(tiny_scaffold, tiny_sample, tmp_path):
+    from spara.scaffolding.model import add_latent_projection, train_language
+    model, prompt = tiny_scaffold.train(), tiny_sample["prompt"]
+    target = torch.randn(4, 32, generator=torch.Generator().manual_seed(9))
+    add_latent_projection(model, "linear")
+    train_language(model)
+    loss, stats = latent_matching(model, tiny_sample, target, "mean")
+    assert abs(stats["latent_loss_normalized"] - 1.0) < 1e-6  # z = 0 at initialization
+    loss.backward()
+    assert model.latent_projection.weight.grad.abs().sum() > 0
+    # Zero weights pass no latent gradient back into the language model yet.
+    assert all(p.grad is None or p.grad.abs().sum() == 0 for name, p in model.named_parameters()
+               if not name.startswith("latent_projection"))
+    with torch.no_grad():
+        model.latent_projection.weight.normal_(std=0.1)
+    summed, _ = latent_matching(model, tiny_sample, target, "sum")
+    mean, _ = latent_matching(model, tiny_sample, target, "mean")
+    torch.testing.assert_close(mean, summed / 32)
+    model.eval()
+    with torch.no_grad():
+        hidden, cache, delta = model.prefill(prompt["input_ids"], prompt["pixel_values"], prompt["image_grid_thw"])
+        torch.testing.assert_close(model.latent_prior(cache, delta), prior_of(model, prompt), atol=1e-5, rtol=1e-5)
+    model.save_pretrained(tmp_path)
+    reloaded = ScaffoldingQwen.from_pretrained(tmp_path, attn_implementation="eager").eval()
+    assert torch.equal(reloaded.latent_projection.weight, model.latent_projection.weight)
+    with torch.no_grad():
+        torch.testing.assert_close(prior_of(reloaded, prompt), prior_of(model, prompt), atol=0, rtol=0)

@@ -23,16 +23,19 @@ ASSUMPTIONS = {
     "helper": "value-function heatmap from map_desc (App. E.1 code), one flat colour per cell at 320x320",
     "latent_layout": "one block: assistant header (no newline), BOT, K slots, EOT, answer",
     "special_tokens": "BOT/EOT rows copied from vision start/end; slot and query rows N(0, initializer_range)",
-    "latent_definition": "z is the final-norm hidden state at the K query positions",
+    "latent_definition": "z is the final-norm hidden state at the K query positions, optionally through a "
+                         "zero-initialized d->d linear projection (predict.latent_projection)",
     "pooling": "one pre-norm cross-attention block plus d->d MLP over [helper tokens; queries]",
     "vision_tower": "the VLM's own vision tower stays frozen in every phase, as for LIVR",
-    "latent_loss": "sum over d, mean over K, as written in eq. 2",
+    "latent_loss": "predict.latent_reduction: 'sum' is eq. 2 as written (sum over d, mean over K); 'mean' is the "
+                   "MSE reading. The literal sum with no projection collapsed the language model in job 6257067",
     "epochs": "paper's 3 epochs and batch 32 per Stage 1 phase, applied to 1,000 rows",
     "rl_schedule": "cosine with 5% warmup; prompts per step and step count are not in the paper",
     "rollouts": "temperature-only policy sampling; one update per rollout batch (GRPO default)",
     "kl": "exact per-token KL over the vocabulary against the frozen Stage 1 model",
     "suppression": "slot/query/EOT tokens never sampled; BOT blocked after the single block",
     "rl_data": "RL prompts are the same 1,000 training rows",
+    "rl_stop": "RL stops after rl.stop_after_zero_reward_steps consecutive all-zero-reward steps (no gradient)",
     "inference": "delta sampled from the learned Gaussian at evaluation (paper §4)",
 }
 
@@ -49,6 +52,12 @@ def read_config(path):
         raise ValueError("Rollouts must sample the policy itself (temperature only) for exact importance ratios")
     if rl["variant"] not in {"scaffolding", "text_only"}:
         raise ValueError(f"Unknown RL variant: {rl['variant']}")
+    if config["predict"]["latent_reduction"] not in {"sum", "mean"}:
+        raise ValueError("predict.latent_reduction must be 'sum' or 'mean'")
+    if config["predict"]["latent_projection"] not in {None, "linear"}:
+        raise ValueError("predict.latent_projection must be null or 'linear'")
+    if int(rl["stop_after_zero_reward_steps"]) < 0:
+        raise ValueError("rl.stop_after_zero_reward_steps must be >= 0 (0 disables)")
     if config["helper_image"] not in {"value_heatmap", "released"}:
         raise ValueError(f"Unknown helper image: {config['helper_image']}")
     return config

@@ -44,19 +44,23 @@ def scaffold_loss(vlm, encoder, sample):
     return loss, {"loss": loss.item(), "target_norm": target.detach().float().norm(dim=-1).mean().item()}
 
 
-def latent_matching(model, sample, target):
+def latent_matching(model, sample, target, reduction="sum"):
     """Eq. 2, first term: the predictor pass regresses z (final-norm hidden states at
-    the K query positions) onto the frozen target z*."""
+    the K query positions, through the optional projection) onto the frozen target z*.
+    "sum" is eq. 2 as written (sum over d, mean over K); "mean" is the MSE reading."""
     prompt, k = sample["prompt"], model.config.scaffold_k
     queries = predictor_sequence(prompt["input_ids"], model.config)
-    z = model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
-                            query_start=queries.shape[1] - k)[0, -k:].float()
+    z = model.project(model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
+                                          query_start=queries.shape[1] - k)[0, -k:]).float()
     target = target.float()
-    loss = (z - target).square().sum(-1).mean()
+    squared = (z - target).square()
+    if reduction not in {"sum", "mean"}:
+        raise ValueError(f"Unknown latent reduction: {reduction}")
+    loss = squared.sum(-1).mean() if reduction == "sum" else squared.mean()
     with torch.no_grad():
         stats = {"latent_loss": loss.item(),
                  # Below 1 means z explains part of z*; z = 0 would score exactly 1.
-                 "latent_loss_normalized": (loss / target.square().sum(-1).mean()).item(),
+                 "latent_loss_normalized": (squared.sum(-1).mean() / target.square().sum(-1).mean()).item(),
                  "latent_cosine": F.cosine_similarity(z, target, dim=-1).mean().item()}
     return loss, stats
 
@@ -182,7 +186,7 @@ def train_predict(model, processor, targets, data_root, output, config, resume=N
         target = targets[index].to(model.device)
         # Backward each pass separately so only one graph is alive at a time.
         with amp(model.device):
-            latent, latent_stats = latent_matching(model, sample, target)
+            latent, latent_stats = latent_matching(model, sample, target, phase["latent_reduction"])
         check_finite(latent)
         (phase["lambda_latent"] * latent / count).backward()
         with amp(model.device):
@@ -245,8 +249,8 @@ def rl_update(model, reference, groups, rl, old):
                 prefix_ids = torch.tensor([list(prefix)], dtype=torch.long, device=device)
                 queries = predictor_sequence(torch.cat([prompt["input_ids"], prefix_ids], dim=1), c)
                 with amp(device):
-                    prior = model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
-                                                query_start=queries.shape[1] - k)[0, -k:]
+                    prior = model.project(model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
+                                                              query_start=queries.shape[1] - k)[0, -k:])
                 mean, sigma = model.latent_heads(prior)
                 loss = 0.0
                 for i in members:
@@ -319,6 +323,7 @@ def train_rl(model, reference, processor, data_root, output, config, evaluator, 
     scheduler = schedule(optimizer, rl["steps"] * rl["ppo_epochs"], config)
     progress = begin(output, "rl", config, optimizer, scheduler, resume, {"reference": str(source)})
     save = lambda path: save_checkpoint(path, model, processor, optimizer, scheduler, progress)
+    patience, unrewarded = rl["stop_after_zero_reward_steps"], 0
     with (output / "steps.jsonl").open("w", encoding="utf-8") as log:
         for step in range(progress["rl_steps"], rl["steps"]):
             started = time.perf_counter()
@@ -341,6 +346,12 @@ def train_rl(model, reference, processor, data_root, output, config, evaluator, 
                    "seconds": time.perf_counter() - started}
             log.write(json.dumps(row) + "\n"); log.flush()
             print(json.dumps(row), flush=True)
+            # With every reward zero, all advantages are zero and nothing can be learned.
+            unrewarded = unrewarded + 1 if row["reward_mean"] == 0 else 0
+            if patience and unrewarded >= patience:
+                reason = f"no rollout succeeded in {unrewarded} consecutive steps; check the Stage 1 checkpoint"
+                json_write(output / "stopped.json", progress | {"reason": reason})
+                raise RuntimeError(f"Scaffolding RL stopped: {reason}")
             every = config.get("checkpoint_every_steps", 0)
             if every and progress["rl_steps"] % every == 0:
                 save(output / f"step-{progress['rl_steps']}")

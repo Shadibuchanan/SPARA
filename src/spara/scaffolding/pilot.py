@@ -20,8 +20,8 @@ from ..training import amp
 from . import serialization
 from .decoding import LatentDecoder
 from .helper import helper_image
-from .model import (ScaffoldingEncoder, ScaffoldingQwen, add_heads, answer_sequence, predictor_sequence,
-                    suppression, train_language)
+from .model import (ScaffoldingEncoder, ScaffoldingQwen, add_heads, add_latent_projection, answer_sequence,
+                    predictor_sequence, suppression, train_language)
 from .training import (answer_loss, check_finite, collect_group, grad_norm, latent_matching, rl_update,
                        scaffold_loss, to_device)
 
@@ -55,8 +55,8 @@ def sequence_logits(model, sample, latents):
 def prior_of(model, sample):
     prompt, k = sample["prompt"], model.config.scaffold_k
     queries = predictor_sequence(prompt["input_ids"], model.config)
-    return model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
-                               query_start=queries.shape[1] - k)[0, -k:]
+    return model.project(model.hidden_states(queries, prompt["pixel_values"], prompt["image_grid_thw"],
+                                             query_start=queries.shape[1] - k)[0, -k:])
 
 
 def cache_agreement(model, prompt, precision):
@@ -158,6 +158,7 @@ def run_pilot(config, data_root, output, model, processor, run_manifest=None):
 
     # Stage 1, Latent-Prediction Phase: language model trains, vision tower frozen.
     phase = config["predict"]
+    add_latent_projection(model, phase["latent_projection"])
     train_language(model)
     model.train(); model.visual.eval()
     model.config.scaffold_phase = "predict"
@@ -173,7 +174,7 @@ def run_pilot(config, data_root, output, model, processor, run_manifest=None):
         rows_stats = []
         for _ in range(microsteps):
             with amp(device):
-                latent, stats = latent_matching(model, samples[index], targets[index])
+                latent, stats = latent_matching(model, samples[index], targets[index], phase["latent_reduction"])
             check_finite(latent)
             (phase["lambda_latent"] * latent / microsteps).backward()
             with amp(device):
@@ -194,7 +195,12 @@ def run_pilot(config, data_root, output, model, processor, run_manifest=None):
     fit = [predict_update(typical, 1) for _ in range(10)]
     weighted = [phase["lambda_latent"] * f["latent_loss"] + phase["lambda_task"] * f["ce_loss"] for f in fit]
     check("predict_tiny_fit", weighted[-1] < 0.9 * weighted[0], fit)
-    check("predict_query_gradients", all(query_gradients))
+    # The weighted sum can fall while answer loss rises (the first full run did): check CE alone.
+    check("predict_tiny_fit_answer_loss", fit[-1]["ce_loss"] < fit[0]["ce_loss"],
+          [f["ce_loss"] for f in fit])
+    # A zero-initialized projection passes no latent gradient on the first update.
+    shielded = getattr(model, "latent_projection", None) is not None
+    check("predict_query_gradients", all(query_gradients[1:] if shielded else query_gradients), query_gradients)
     check("predict_vision_frozen", all(p.grad is None for p in model.visual.parameters())
           and torch.equal(visual_probe, next(model.visual.parameters())))
     check("predict_queries_updated", not torch.equal(queries_before, model.get_input_embeddings().weight[query_ids]))

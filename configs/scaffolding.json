@@ -17,7 +17,7 @@
   "max_grad_norm": 1.0,
   "scaffold": {"epochs": 3, "microbatch": 1, "gradient_accumulation": 32, "learning_rate": 5e-5, "pooling_heads": 16},
   "predict": {"epochs": 3, "microbatch": 1, "gradient_accumulation": 32, "learning_rate": 2e-5,
-              "lambda_latent": 1.0, "lambda_task": 0.5},
+              "lambda_latent": 1.0, "lambda_task": 0.5, "latent_reduction": "mean", "latent_projection": "linear"},
   "rl": {
     "variant": "scaffolding",
     "steps": 500,
@@ -32,6 +32,7 @@
     "log_sigma_bounds": [-9.21, 0.0],
     "latent_logprob_reduction": "sum",
     "reference_dtype": "float32",
+    "stop_after_zero_reward_steps": 5,
     "rollout": {"do_sample": true, "temperature": 1.0, "top_p": 1.0, "top_k": 0, "repetition_penalty": 1.0,
                 "max_new_tokens": 256}
   },

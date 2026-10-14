@@ -190,7 +190,7 @@ def test_pilot_correctness_checks_pass_on_tiny_model(tiny_scaffold, fake_data, m
     summary = json.loads((tmp_path / "pilot/summary.json").read_text())
     # Learning checks need the real model; every correctness check must hold even here.
     for name, result in summary["checks"].items():
-        assert result["passed"] or name.endswith("tiny_fit"), name
+        assert result["passed"] or "tiny_fit" in name, name
     assert summary["estimated_gpu_hours"]["total"] > 0
 
 
@@ -216,8 +216,31 @@ def test_cli_phases_set_trainability_before_the_manifest(tiny_scaffold, fake_dat
     encoder = run()
     model, _, _, run = cli.train(args("predict", encoder=str(encoder)), config, parser)
     assert all(p.requires_grad != name.startswith("visual.") for name, p in model.named_parameters())
+    assert model.latent_projection.weight.abs().sum() == 0  # the default recipe is variant B
+    assert model.latent_projection.weight.requires_grad
     checkpoint = run()
     model, _, _, run = cli.train(args("rl", checkpoint=str(checkpoint)), config, parser)
     assert all(p.requires_grad != name.startswith("visual.") for name, p in model.named_parameters())
     assert model.latent_heads.mean[0].weight.requires_grad
+    assert model.latent_projection.weight.requires_grad and model.latent_projection.weight.abs().sum() > 0
     assert json.loads((run() / "complete.json").read_text())["progress"]["completed"]
+
+
+def test_rl_stops_when_no_rollout_succeeds(tiny_scaffold, fake_data, tmp_path):
+    class Never:
+        def score(self, row, text):
+            return {"success": False}
+    config = tiny_recipe()
+    config["rl"] = config["rl"] | {"steps": 6, "stop_after_zero_reward_steps": 2}
+    reference = ScaffoldingQwen.from_pretrained(_save(tiny_scaffold, tmp_path / "s1"), attn_implementation="eager")
+    add_heads(tiny_scaffold, config["rl"])
+    with pytest.raises(RuntimeError, match="2 consecutive steps"):
+        training.train_rl(tiny_scaffold, reference, Processor(), "unused", tmp_path / "rl", config, Never())
+    assert len((tmp_path / "rl/steps.jsonl").read_text().splitlines()) == 2
+    assert json.loads((tmp_path / "rl/stopped.json").read_text())["rl_steps"] == 2
+    assert not (tmp_path / "rl/final").exists()
+
+
+def _save(model, path):
+    model.save_pretrained(path)
+    return path

@@ -91,6 +91,13 @@ class ScaffoldingQwen(Qwen2_5_VLForConditionalGeneration):
         super().__init__(config)
         if getattr(config, "scaffold_heads", None):
             self.latent_heads = GaussianHeads(config.hidden_size, **config.scaffold_heads)
+        if getattr(config, "scaffold_latent_projection", None) == "linear":
+            self.latent_projection = nn.Linear(config.hidden_size, config.hidden_size)
+
+    def project(self, hidden):
+        """Query-position hidden states -> latent vectors z, through the optional projection."""
+        projection = getattr(self, "latent_projection", None)
+        return hidden if projection is None else projection(hidden)
 
     def embed(self, input_ids, pixel_values=None, image_grid_thw=None, latents=None):
         embeds = self.model.embed_tokens(input_ids)
@@ -152,7 +159,7 @@ class ScaffoldingQwen(Qwen2_5_VLForConditionalGeneration):
         ids = torch.tensor([[c.scaffold_bot_id, *c.scaffold_query_ids]], device=self.device)
         hidden = self.extend(ids, cache, delta, query_start=1)
         cache.crop(past + 1)
-        return hidden[0, 1:]
+        return self.project(hidden[0, 1:])
 
     @torch.no_grad()
     def append_latent(self, cache, delta, latents):
@@ -229,6 +236,21 @@ def load_token_rows(model, saved):
 def train_language(model):
     for name, parameter in model.named_parameters():
         parameter.requires_grad_(not name.startswith("visual."))
+
+
+def add_latent_projection(model, kind):
+    """Adaptation B: a d->d linear map from final-norm hidden states (output space, norm ~160)
+    into the scaffold targets' input-embedding space. Zero-initialized, so the
+    language model receives no latent gradient until the projection has started to fit."""
+    if kind is None:
+        return
+    if kind != "linear":
+        raise ValueError(f"Unknown latent projection: {kind}")
+    model.config.scaffold_latent_projection = kind
+    size = model.config.hidden_size
+    model.latent_projection = nn.Linear(size, size).to(device=next(model.parameters()).device, dtype=model.dtype)
+    nn.init.zeros_(model.latent_projection.weight)
+    nn.init.zeros_(model.latent_projection.bias)
 
 
 def add_heads(model, rl):

@@ -158,7 +158,11 @@ LIVR, it trains with helper images: a value-function heatmap per map
 Report it separately from LIVR and SPARA. The recipe is
 [configs/scaffolding.json](configs/scaffolding.json). Method mapping, recorded
 assumptions and checks are in [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md).
-It has CPU tests only; no PACE job or budget exists for it yet.
+The first PACE run (job 6257067, logs in `spara_results/`) scored 0/400 because
+the paper-literal latent loss collapsed the language model. The default recipe is
+now variant B (a zero-initialized linear latent projection plus MSE), and
+`configs/scaffolding-mse.json` is variant A (MSE only); neither has run on PACE
+yet. See [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md#first-run-job-6257067).
 
 On a GPU machine, one script runs the whole baseline. It trains all three
 phases and evaluates both the Stage 1 and the Stage 2 checkpoints, writing logs
@@ -171,7 +175,10 @@ bash scripts/run_scaffolding.sh --model M --run P --pilot  # bounded pilot
 
 Rerun with the same `--run` to continue: completed phases are skipped. A phase
 that stopped part-way is left untouched unless you pass `--retry-incomplete`.
-`--phases` selects a subset, and `--help` lists the remaining options. The script
+`--phases` selects a subset, `--scaffold-from DIR` reuses another run's completed
+Scaffolding Phase, and `--help` lists the remaining options. RL starts only if
+Stage 1 scored at least `--rl-floor` (default 5%), and it stops itself after five
+consecutive steps in which every rollout fails, recording why in `stage2-rl/stopped.json`. The script
 wraps these CLI calls:
 
 ```bash
@@ -184,5 +191,6 @@ python -m spara.scaffolding.cli evaluate --checkpoint S2/final --output EVAL2
 
 On PACE, submit `bash scripts/pace/submit-scaffolding.sh pilot` (or `baseline`)
 with the same account and GPU variables as the LIVR pilot, plus `SPARA_MINUTES`.
-Only do this after the budget is agreed. The baseline job runs the script above;
-to continue an earlier run, set `SPARA_RUN` to its directory when submitting.
+Only do this after the budget is agreed. The baseline job runs the script above
+and passes through `SPARA_RUN` (continue an earlier run), `SPARA_CONFIG`,
+`SPARA_PHASES`, `SPARA_SCAFFOLD_FROM` and `SPARA_RL_FLOOR` from the submitting shell.
