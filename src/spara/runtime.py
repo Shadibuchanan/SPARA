@@ -77,12 +77,18 @@ def load_model(config, checkpoint=None, device="cpu"):
     # FP32 trainable parameters and optimizer states; autocast supplies BF16 ops.
     model = LivrQwen.from_pretrained(source, torch_dtype=torch.float32,
                                     attn_implementation=config["attention_backend"], **revision)
+    latents = config.get("latent_tokens", 4)
     if checkpoint:
-        ids = processor.tokenizer.convert_tokens_to_ids(LATENT_TOKENS)
+        ids = processor.tokenizer.convert_tokens_to_ids(LATENT_TOKENS) if latents else []
         if ids != model.config.livr_latent_ids:
             raise ValueError("Checkpoint tokenizer/latent IDs disagree")
-    else:
+    elif latents:
         initialize_latents(model, processor)
+    else:
+        # Vanilla SFT control: no latent tokens and no Stage 1 bottleneck.
+        model.config.livr_latent_ids, model.config.livr_latent_tokens = [], []
+        model.config.livr_stage = 2
+        model.config.livr_serialization = "user-end,assistant-header-no-newline,answer,im-end"
     freeze_vision(model)
     return model.to(device), processor
 

@@ -26,7 +26,7 @@ def run_benchmark(model, processor, config, data_root, output, run_manifest):
     outputs = []
     with (output / "responses.jsonl").open("w", encoding="utf-8") as log:
         for index, row in enumerate(records(data_root, "test")):
-            inputs = to_device(encode(processor, data_root, "test", row, training=False), model.device)
+            inputs = to_device(encode(processor, data_root, "test", row, training=False, latents=model.config.livr_latent_tokens), model.device)
             with torch.no_grad(), amp(model.device):
                 generated = model.generate(**inputs, **config["generation"], use_cache=True)
             result = evaluator.score(row, processor.tokenizer.decode(generated[0], skip_special_tokens=False))
@@ -47,7 +47,7 @@ def sample_test_maps(model, processor, config, data_root, samples, path):
     seed_all(config["seed"])
     with Path(path).open("w", encoding="utf-8") as log:
         for index, row in enumerate(records(data_root, "test")):
-            prompt = to_device(encode(processor, data_root, "test", row, training=False), model.device)
+            prompt = to_device(encode(processor, data_root, "test", row, training=False, latents=model.config.livr_latent_tokens), model.device)
             with torch.no_grad(), amp(model.device):
                 generated = model.generate(**repeat_prompt(prompt, samples), **config["generation"], use_cache=True)
             completions = generated[:, prompt["input_ids"].shape[-1]:]

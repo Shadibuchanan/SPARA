@@ -64,7 +64,8 @@ def main():
         source = args.resume or args.checkpoint
         if args.resume and args.checkpoint:
             parser.error("Specify resume OR weights-only checkpoint")
-        if args.stage == 2 and not source:
+        # A one-segment run without latents is labelled Stage 2 and starts from the base model.
+        if args.stage == 2 and not source and config.get("segments", 2) != 1:
             parser.error("Stage 2 requires final Stage 1 weights")
         if args.checkpoint and args.stage == 2:
             require_final_checkpoint(args.checkpoint, 1, config)
@@ -132,6 +133,7 @@ def main():
             parser.error("Benchmark evaluation requires Stage 2")
         run_benchmark(model, processor, config, args.data_root, args.output,
                       manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)})
+
 
 if __name__ == "__main__":
     main()

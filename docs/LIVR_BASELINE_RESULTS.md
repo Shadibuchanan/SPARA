@@ -11,6 +11,8 @@ implementation settings remain unavailable; see the [specification](LIVR_IMPLEME
 A subsequent [discrepancy audit](LIVR_REPRODUCTION_AUDIT.md) found no scoring
 or answer-leakage error in the checked paths. Excluding the eight known overlapping
 test rows gave 315/392 (80.36%); the cause of the paper-score gap remains unknown.
+A [2026-10-14 paper review](LIVR_REPRODUCTION_AUDIT.md#paper-review-addendum-2026-10-14)
+identifies numerical precision as the most concrete, untested candidate.
 
 | Grid | Correct | Test examples | Success rate |
 | --- | ---: | ---: | ---: |

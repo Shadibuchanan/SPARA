@@ -27,6 +27,41 @@ def tiny_model():
     return model
 
 
+SCAFFOLD_IDS = [20, 21, 22, 23, 24, 25, 26]  # BOT, EOT, latent slot, four queries
+
+
+@pytest.fixture
+def tiny_scaffold():
+    from spara.scaffolding.model import ScaffoldingQwen, initialize_tokens
+    torch.manual_seed(42)
+    torch.set_num_threads(2)
+    config = Qwen2_5_VLConfig(
+        vocab_size=40, hidden_size=32, intermediate_size=64, num_hidden_layers=3,
+        num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=256,
+        image_token_id=3, video_token_id=4, vision_start_token_id=2,
+        vision_end_token_id=5, pad_token_id=0, bos_token_id=1, eos_token_id=6,
+        rope_scaling={"type": "mrope", "mrope_section": [1, 1, 2]},
+        vision_config={"depth": 1, "hidden_size": 32, "intermediate_size": 64,
+                       "out_hidden_size": 32, "num_heads": 4, "patch_size": 14,
+                       "temporal_patch_size": 2, "spatial_merge_size": 2,
+                       "window_size": 28, "fullatt_block_indexes": [0]},
+    )
+    config._attn_implementation = "eager"
+    model = ScaffoldingQwen(config)
+    initialize_tokens(model, SCAFFOLD_IDS, 4)
+    return model
+
+
+@pytest.fixture
+def tiny_sample():
+    # One merged visual token from 2x2 patches; separate helper pixels for the encoder.
+    generator = torch.Generator().manual_seed(7)
+    image = lambda: {"pixel_values": torch.randn(4, 3 * 2 * 14 * 14, generator=generator),
+                     "image_grid_thw": torch.tensor([[1, 2, 2]])}
+    return {"prompt": {"input_ids": torch.tensor([[1, 2, 3, 5, 7, 8, 9]]), **image()},
+            "answer": torch.tensor([[14, 15, 6]]), "helper": image()}
+
+
 @pytest.fixture
 def tiny_batch():
     # One visual token from 2x2 spatial patches; four latents then two header tokens.

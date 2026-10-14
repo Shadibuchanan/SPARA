@@ -157,3 +157,72 @@ After a successful job, it independently rescores the saved responses against
 `--data-root` (default `data/vsp` in this project), checks complete training and
 budget accounting, and writes `run-validation.json` and `RUN_REPORT.md`.
 The local collector requires this workstation to remain running.
+
+## Scaffolding Minds baseline (helper-supervised reference)
+
+`src/spara/scaffolding/` adapts [Scaffolding Minds v2](docs/related_literature/Scaffolding_Minds_2608.19669v2.pdf)
+to the LIVR baseline's data, backbone, evaluator and decoding settings. Unlike
+LIVR, it trains with helper images: a value-function heatmap per map
+([ADR-0003](docs/adr/0003-scaffolding-minds-helper-supervised-reference.md)).
+Report it separately from LIVR and SPARA. The recipe is
+[configs/scaffolding.json](configs/scaffolding.json). Method mapping, recorded
+assumptions and checks are in [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md).
+The first PACE run (job 6257067, logs in `spara_results/`) scored 0/400 because
+the paper-literal latent loss collapsed the language model. The default recipe is
+now variant B (a zero-initialized linear latent projection plus MSE), and
+`configs/scaffolding-mse.json` is variant A (MSE only); neither has run on PACE
+yet. See [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md#first-run-job-6257067).
+
+On a GPU machine, one script runs the whole baseline. It trains all three
+phases and evaluates both the Stage 1 and the Stage 2 checkpoints, writing logs
+to `RUN/logs/`:
+
+```bash
+bash scripts/run_scaffolding.sh --model M --run R          # full baseline
+bash scripts/run_scaffolding.sh --model M --run P --pilot  # bounded pilot
+```
+
+Rerun with the same `--run` to continue: completed phases are skipped. A phase
+that stopped part-way is left untouched unless you pass `--retry-incomplete`.
+`--phases` selects a subset, `--scaffold-from DIR` reuses another run's completed
+Scaffolding Phase, and `--help` lists the remaining options. RL starts only if
+Stage 1 scored at least `--rl-floor` (default 5%), and it stops itself after five
+consecutive steps in which every rollout fails, recording why in `stage2-rl/stopped.json`. The script
+wraps these CLI calls:
+
+```bash
+python -m spara.scaffolding.cli train --phase scaffold --base-model M --output S1A
+python -m spara.scaffolding.cli train --phase predict --base-model M --encoder S1A/final --output S1B
+python -m spara.scaffolding.cli evaluate --checkpoint S1B/final --output EVAL1
+python -m spara.scaffolding.cli train --phase rl --checkpoint S1B/final --output S2
+python -m spara.scaffolding.cli evaluate --checkpoint S2/final --output EVAL2
+```
+
+On PACE, submit `bash scripts/pace/submit-scaffolding.sh pilot` (or `baseline`)
+with the same account and GPU variables as the LIVR pilot, plus `SPARA_MINUTES`.
+Only do this after the budget is agreed. The baseline job runs the script above
+and passes through `SPARA_RUN` (continue an earlier run), `SPARA_CONFIG`,
+`SPARA_PHASES`, `SPARA_SCAFFOLD_FROM` and `SPARA_RL_FLOOR` from the submitting shell.
+
+To do all of that in one step from a PACE login node — prepare the `$ROOT/code`
+layout, run `setup.sh`, run the CPU tests, then submit a single job that runs the
+pilot and the full baseline back to back — use:
+
+```bash
+bash scripts/pace/run-all-scaffolding.sh                 # pilot, then baseline
+bash scripts/pace/run-all-scaffolding.sh --no-baseline   # stop after the pilot
+bash scripts/pace/run-all-scaffolding.sh --continue DIR  # continue an earlier run
+bash scripts/pace/run-all-scaffolding.sh --dry-run       # print the plan only
+```
+
+Both phases share one allocation (`scripts/pace/scaffolding-all.sbatch`), so the
+baseline cannot lose the node to a second queue wait. Settings live in
+[`scripts/pace/pace.conf`](scripts/pace/pace.conf): edit the GPU and walltime there
+and they persist. Anything set in the environment overrides the file, and
+`--config` points at a different one. The partition is always `ice-gpu`. Walltime is
+`PILOT_HOURS + BASELINE_HOURS` whole hours, 16 by default, unless `HOURS`
+overrides it. Account and QoS are left to your default Slurm
+association, and `ROOT` defaults to `$HOME/scratch/spara` with `code/` linked to this checkout. A failing pilot stops the job before the baseline, but nobody sees the
+pilot's numbers first, so the full-run budget review that
+[the specification](docs/SCAFFOLDING_BASELINE_SPEC.md) asks for means running
+`--no-baseline`, then rerunning with `--continue` once the numbers check out.
