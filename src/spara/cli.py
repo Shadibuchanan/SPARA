@@ -31,6 +31,9 @@ def main():
             cmd.add_argument("--resume", help="Trusted same-stage checkpoint including optimizer state")
             if command == "train-rl":
                 cmd.add_argument("--max-steps", type=int, help="Pilot: stop after this many updates")
+                cmd.add_argument("--rl-seed", type=int, help="Seed for RL map order and rollout sampling (default: recipe seed)")
+                cmd.add_argument("--evaluate-in-memory", type=int, metavar="SAMPLES",
+                                 help="Skip saving final weights; run the benchmark and a SAMPLES-per-map diagnostic in memory")
             cmd.add_argument("--final-weights-only", action="store_true",
                              help="Omit optimizer/RNG state from the final checkpoint to save storage")
     args = parser.parse_args()
@@ -81,6 +84,8 @@ def main():
     elif args.command == "train-rl":
         from .text_rl import train_text_rl
         rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
+        if args.rl_seed is not None:
+            rl["seed"] = args.rl_seed
         if not args.checkpoint:
             parser.error("Text-only RL requires the final Stage 2 LIVR checkpoint (also its KL reference)")
         require_final_checkpoint(args.checkpoint, 2, config)
@@ -99,14 +104,21 @@ def main():
             "rl_reward": "1 if the reference evaluator reports success, else 0",
         }
         json_write(output.with_name(output.name + "-manifest.json"), run_manifest)
+        if "seed" in rl:
+            seed_all(rl["seed"])
         train_text_rl(model, reference, processor, args.data_root, output, config, rl,
                       args.checkpoint, args.resume, final_weights_only=args.final_weights_only,
-                      max_steps=args.max_steps)
+                      max_steps=args.max_steps, save_final=args.evaluate_in_memory is None)
+        if args.evaluate_in_memory is not None:
+            from .benchmark import run_benchmark, sample_test_maps
+            del reference
+            torch.cuda.empty_cache()
+            run_benchmark(model, processor, config, args.data_root, output.with_name(output.name + "-evaluation"),
+                          run_manifest | {"checkpoint": f"in-memory {output}"})
+            sample_test_maps(model, processor, config, args.data_root, args.evaluate_in_memory,
+                             output.with_name(output.name + "-multisample.jsonl"))
     else:
-        from .data import records
-        from .evaluation import ReferenceEvaluator, summarize
-        from .serialization import encode
-        from .training import amp, to_device
+        from .benchmark import run_benchmark
         if not args.checkpoint:
             parser.error("Evaluation requires a final Stage 2 or text-only RL checkpoint")
         from .runtime import checkpoint_phase, require_final_rl_checkpoint
@@ -118,28 +130,8 @@ def main():
         model, processor = load_model(config, args.checkpoint, device="cuda")
         if model.config.livr_stage != 2:
             parser.error("Benchmark evaluation requires Stage 2")
-        output = Path(args.output); output.mkdir(parents=True, exist_ok=False)
-        evaluator = ReferenceEvaluator(args.data_root)
-        model.eval()
-        generation = model.generation_config.to_dict() | config["generation"]
-        run_manifest = manifest(config, model, processor, args.data_root)
-        run_manifest.update(evaluator=evaluator.provenance, effective_generation=generation, checkpoint=str(args.checkpoint))
-        json_write(output / "manifest.json", run_manifest)
-        # Reset after loading/initialization so sampling begins from the recorded seed.
-        seed_all(config["seed"])
-        outputs = []
-        with (output / "responses.jsonl").open("w", encoding="utf-8") as log:
-            for index, row in enumerate(records(args.data_root, "test")):
-                inputs = to_device(encode(processor, args.data_root, "test", row, training=False), model.device)
-                with torch.no_grad(), amp(model.device):
-                    generated = model.generate(**inputs, **config["generation"], use_cache=True)
-                result = evaluator.score(row, processor.tokenizer.decode(generated[0], skip_special_tokens=False))
-                result["row_index"] = index
-                outputs.append(result)
-                log.write(json.dumps(result) + "\n"); log.flush()
-                json_write(output / "summary.json", summarize(outputs))
-                print(f"{index+1}/400 {summarize(outputs)['overall']}", flush=True)
-
+        run_benchmark(model, processor, config, args.data_root, args.output,
+                      manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)})
 
 if __name__ == "__main__":
     main()

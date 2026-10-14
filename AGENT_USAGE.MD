@@ -861,3 +861,34 @@ External artifact: https://github.com/Shadibuchanan/SPARA/pull/5. Implementation
 - docs/experiments/livr-6253300/ - compact baseline-rerun evidence.
 - docs/experiments/text-rl-6256423/ - compact text-only RL evidence.
 - On PACE (not in the repository): ~/scratch/SPARA/ with code, environment, data, model, logs and results.
+
+## 2026-10-14 — Analyze text-only RL learning signal and variance
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Explain why text-only RL underperformed Scaffolding Minds' reported gain, then give evidence on zero-reward groups, the ideal reward distribution, the value of more epochs, how maps were gained or lost, and variance within checkpoints and across runs.
+**AI contribution:** Compared the run with the Scaffolding Minds text-only GRPO setup. Analyzed the RL rollout log by grid size and shortest-path length, compared per-map outcomes across three evaluated runs, and derived the GRPO signal as a function of per-map success probability. Wrote and ran a 16-sample-per-map test evaluation of both checkpoints on PACE, and added the findings and evidence to the results report.
+**Contribution type:** Analysis and generation.
+**Initial state:** Branch `text-only-rl` at 09ef203, pushed.
+**Unfinished work:** New files are uncommitted. Training-run variance is estimated from two LIVR runs only.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked why RL performance decreased compared with Scaffolding Minds | Compared setups and effect sizes |
+| 2 | User message | Asked for evidence on zero-reward groups, ideal distribution, epochs, gained/lost maps and variance | Ran rollout, outcome and multi-sample analyses |
+| 3 | User message | Reported that PACE access was restored | Submitted the multi-sample evaluation |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| scripts/pace/multisample_eval.py | created | Samples each test map K times per checkpoint |
+| scripts/pace/multisample_eval.sbatch | created | PACE job for the multi-sample evaluation |
+| docs/experiments/multisample-6267411/base.jsonl | created | 16 samples per test map, LIVR rerun |
+| docs/experiments/multisample-6267411/rl.jsonl | created | 16 samples per test map, text-only RL |
+| docs/TEXT_RL_RESULTS.md | modified | Learning-signal and variance section; updated GPU accounting |
+
+### Folders created
+
+- docs/experiments/multisample-6267411/ - per-map multi-sample evidence.

@@ -70,7 +70,8 @@ def steps_per_epoch(rows, rl):
 
 
 def train_text_rl(model, reference, processor, data_root, output, config, rl,
-                  source, resume=None, scorer=None, final_weights_only=False, max_steps=None):
+                  source, resume=None, scorer=None, final_weights_only=False, max_steps=None,
+                  save_final=True):
     """GRPO on the original training records. `reference` is the frozen LIVR checkpoint."""
     if scorer is None:
         from .evaluation import ReferenceEvaluator
@@ -104,7 +105,7 @@ def train_text_rl(model, reference, processor, data_root, output, config, rl,
         for epoch in range(progress["epoch"], rl["epochs"]):
             if pilot and progress["optimizer_steps"] >= max_steps:
                 break
-            generator = torch.Generator().manual_seed(config["seed"] + epoch)
+            generator = torch.Generator().manual_seed(rl.get("seed", config["seed"]) + epoch)
             order = torch.randperm(len(rows), generator=generator).tolist()
             start = progress["next_row"] if epoch == progress["epoch"] else 0
             for offset in range(start, len(rows), rl["prompts_per_step"]):
@@ -159,9 +160,9 @@ def train_text_rl(model, reference, processor, data_root, output, config, rl,
             else:
                 progress.update(epoch=epoch + 1, next_row=0)
     model.eval()
-    if pilot:
-        # Pilot weights are not an experiment result; record measurements only.
-        json_write(output / "summary.json", progress | {"pilot": True})
+    if pilot or not save_final:
+        # Pilot weights are not an experiment result; unsaved runs are evaluated by the caller.
+        json_write(output / "summary.json", progress | ({"pilot": True} if pilot else {}))
         return None
     save_checkpoint(output / "final", model, processor, optimizer, scheduler, progress, not final_weights_only)
     json_write(output / "summary.json", progress)

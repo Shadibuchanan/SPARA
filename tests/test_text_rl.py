@@ -134,6 +134,14 @@ def test_rl_loop_freezes_vision_and_resumes_exactly(tiny_model, tiny_batch, tmp_
     progress = json.loads((tmp_path / "pilot/summary.json").read_text())
     assert progress["pilot"] and progress["optimizer_steps"] == 1
     assert len((tmp_path / "pilot/steps.jsonl").read_text().splitlines()) == 1
+    # In-memory evaluation runs train fully but leave no weights on disk.
+    policy = copy.deepcopy(reference)
+    freeze_vision(policy)
+    unsaved = text_rl.train_text_rl(policy, reference, Processor(), "unused", tmp_path / "unsaved",
+                                    config, rl | {"seed": 7}, "livr/final", scorer=scorer, save_final=False)
+    progress = json.loads((tmp_path / "unsaved/summary.json").read_text())
+    assert unsaved is None and not (tmp_path / "unsaved/final").exists()
+    assert "pilot" not in progress and progress["optimizer_steps"] == 4 and progress["rl"]["seed"] == 7
 
 
 def test_rl_checkpoint_completion_contract(tmp_path):
