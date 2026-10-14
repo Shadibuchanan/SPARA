@@ -39,7 +39,7 @@ class LivrQwen(Qwen2_5_VLForConditionalGeneration):
     def forward(self, input_ids=None, attention_mask=None, position_ids=None,
                 past_key_values=None, cache_position=None, livr_full_input_ids=None,
                 pixel_values=None, image_grid_thw=None, labels=None, **kwargs):
-        if getattr(self.config, "livr_stage", 2) == 1:
+        if getattr(self.config, "livr_stage", 2) == 1 and self.config.livr_latent_ids:
             if kwargs.get("inputs_embeds") is not None:
                 raise ValueError("Stage 1 requires token IDs to identify visual and latent positions")
             if attention_mask is not None and attention_mask.ndim != 2:

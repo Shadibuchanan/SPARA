@@ -10,6 +10,7 @@ from transformers import get_cosine_schedule_with_warmup
 from .data import records
 from .runtime import make_optimizer, save_checkpoint, restore_training, json_write
 from .serialization import encode
+from .model import LATENT_TOKENS
 
 
 def amp(device):
@@ -18,6 +19,14 @@ def amp(device):
 
 def to_device(batch, device):
     return {key: value.to(device) for key, value in batch.items()}
+
+
+def epoch_order(config, epoch, size):
+    # order_cycle replays the per-stage permutations so a one-stage run sees
+    # LIVR's step-by-step data order.
+    cycle = config.get("order_cycle", config["epochs_per_stage"])
+    generator = torch.Generator().manual_seed(config["seed"] + epoch % cycle)
+    return torch.randperm(size, generator=generator).tolist()
 
 
 def train_stage(model, processor, data_root, output, config, stage, resume=None):
@@ -41,11 +50,13 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None)
         progress = restore_training(resume, optimizer, scheduler)
         if progress["stage"] != stage or progress["config"] != config:
             raise ValueError("Resume must keep the same stage and recipe; stage transitions load weights only")
+    latents = getattr(model.config, "livr_latent_tokens", LATENT_TOKENS)
+    # LIVR keeps the default call; only runs without its latents override them.
+    serialization = {} if latents == LATENT_TOKENS else {"latents": latents}
     with (output / "steps.jsonl").open("w", encoding="utf-8") as log:
         import json
         for epoch in range(progress["epoch"], config["epochs_per_stage"]):
-            generator = torch.Generator().manual_seed(config["seed"] + epoch)
-            order = torch.randperm(len(rows), generator=generator).tolist()
+            order = epoch_order(config, epoch, len(rows))
             start = progress["next_row"] if epoch == progress["epoch"] else 0
             for offset in range(start, len(rows), accumulation):
                 selected = order[offset:offset + accumulation]
@@ -53,7 +64,7 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None)
                 loss_sum = 0.0
                 started = time.perf_counter()
                 for index in selected:
-                    batch = to_device(encode(processor, data_root, "train", rows[index]), model.device)
+                    batch = to_device(encode(processor, data_root, "train", rows[index], **serialization), model.device)
                     with amp(model.device):
                         loss = model(**batch, use_cache=False).loss
                     if not torch.isfinite(loss):
