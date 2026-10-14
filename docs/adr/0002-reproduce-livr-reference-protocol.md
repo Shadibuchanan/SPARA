@@ -1,3 +1,7 @@
+---
+status: accepted; direct-SFT control superseded by ADR-0004
+---
+
 # Reproduce LIVR's planning baseline with one reference protocol
 
 The user clarified on 2026-10-11 that the first phase should reproduce LIVR's

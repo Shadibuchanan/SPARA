@@ -9,7 +9,7 @@ from .model import LATENT_TOKENS
 ASSISTANT = "<|im_start|>assistant"
 
 
-def encode(processor, root, split, row, training=True):
+def encode(processor, root, split, row, training=True, latents=LATENT_TOKENS):
     text = row["text_input"]
     if text.count("<image>") != 1 or any(t in text for t in LATENT_TOKENS):
         raise ValueError("Expected one released image placeholder and no latent tokens")
@@ -20,7 +20,7 @@ def encode(processor, root, split, row, training=True):
         {"type": "text", "text": before}, {"type": "image", "image": picture},
         {"type": "text", "text": after}]}]
     prompt = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-    prompt += "".join(LATENT_TOKENS) + ASSISTANT
+    prompt += "".join(latents) + ASSISTANT
     images, _ = process_vision_info(messages)
     batch = processor(text=[prompt], images=images, padding=False, return_tensors="pt")
     # Tokenize the continuation separately to make the prefix boundary identical

@@ -194,3 +194,26 @@ with the same account and GPU variables as the LIVR pilot, plus `SPARA_MINUTES`.
 Only do this after the budget is agreed. The baseline job runs the script above
 and passes through `SPARA_RUN` (continue an earlier run), `SPARA_CONFIG`,
 `SPARA_PHASES`, `SPARA_SCAFFOLD_FROM` and `SPARA_RL_FLOOR` from the submitting shell.
+
+To do all of that in one step from a PACE login node — prepare the `$ROOT/code`
+layout, run `setup.sh`, run the CPU tests, then submit a single job that runs the
+pilot and the full baseline back to back — use:
+
+```bash
+bash scripts/pace/run-all-scaffolding.sh                 # pilot, then baseline
+bash scripts/pace/run-all-scaffolding.sh --no-baseline   # stop after the pilot
+bash scripts/pace/run-all-scaffolding.sh --continue DIR  # continue an earlier run
+bash scripts/pace/run-all-scaffolding.sh --dry-run       # print the plan only
+```
+
+Both phases share one allocation (`scripts/pace/scaffolding-all.sbatch`), so the
+baseline cannot lose the node to a second queue wait. Settings live in
+[`scripts/pace/pace.conf`](scripts/pace/pace.conf): edit the GPU and walltime there
+and they persist. Anything set in the environment overrides the file, and
+`--config` points at a different one. The partition is always `ice-gpu`. Walltime is
+`PILOT_HOURS + BASELINE_HOURS` whole hours, 16 by default, unless `HOURS`
+overrides it. Account and QoS are left to your default Slurm
+association, and `ROOT` defaults to `$HOME/scratch/spara` with `code/` linked to this checkout. A failing pilot stops the job before the baseline, but nobody sees the
+pilot's numbers first, so the full-run budget review that
+[the specification](docs/SCAFFOLDING_BASELINE_SPEC.md) asks for means running
+`--no-baseline`, then rerunning with `--continue` once the numbers check out.

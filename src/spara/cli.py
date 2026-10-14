@@ -54,7 +54,8 @@ def main():
         source = args.resume or args.checkpoint
         if args.resume and args.checkpoint:
             parser.error("Specify resume OR weights-only checkpoint")
-        if args.stage == 2 and not source:
+        # A one-segment run without latents is labelled Stage 2 and starts from the base model.
+        if args.stage == 2 and not source and config.get("segments", 2) != 1:
             parser.error("Stage 2 requires final Stage 1 weights")
         if args.checkpoint and args.stage == 2:
             require_final_checkpoint(args.checkpoint, 1, config)
@@ -93,7 +94,7 @@ def main():
         outputs = []
         with (output / "responses.jsonl").open("w", encoding="utf-8") as log:
             for index, row in enumerate(records(args.data_root, "test")):
-                inputs = to_device(encode(processor, args.data_root, "test", row, training=False), model.device)
+                inputs = to_device(encode(processor, args.data_root, "test", row, training=False, latents=model.config.livr_latent_tokens), model.device)
                 with torch.no_grad(), amp(model.device):
                     generated = model.generate(**inputs, **config["generation"], use_cache=True)
                 result = evaluator.score(row, processor.tokenizer.decode(generated[0], skip_special_tokens=False))

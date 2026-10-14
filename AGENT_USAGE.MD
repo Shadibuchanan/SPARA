@@ -879,6 +879,187 @@ External artifact: https://github.com/Shadibuchanan/SPARA/pull/5. Implementation
 
 - None
 
+## 2026-10-14 - One-step PACE runner for the Scaffolding Minds baseline
+
+**Agent/tool:** Claude Code (CLI); model Claude Opus 5 (claude-opus-5[1m]).
+**User request:** Confirm what the recently committed scaffolding code is for and which baseline it targets, then prepare a batch file that runs everything, including starting the full baseline automatically.
+**AI contribution:** Read the proposal, timeline, project plan, ADR-0003 and the baseline specification, and reported that the Scaffolding Minds code added in commit `2e2a35b` is a standalone helper-supervised reference trained from base Qwen2.5-VL-3B on the Mirage VSP spatial-planning benchmark, not a stage trained on top of LIVR; the proposal's conditions A/B/C instead place Scaffolding RL alone on a shared LIVR checkpoint, and that bridge does not exist in the repository yet. Established that this account holds no virtual environment, dataset, model download or LIVR checkpoint, and that both scaffolding job scripts `cd "$ROOT/code"`, a directory that does not exist when the checkout is itself `$HOME/scratch/SPARA`. Wrote `scripts/pace/run-all-scaffolding.sh`, which resolves that layout by giving the run root its own directory with `code/` linked to the checkout, then runs `setup.sh`, runs the CPU tests and submits one GPU job. On the user's instruction that a second queue wait could lose the node, the pilot and the full baseline were placed in a single allocation as `scripts/pace/scaffolding-all.sbatch` rather than two jobs chained by `--dependency=afterok`; `--no-baseline`, `--continue`, `--skip-setup`, `--skip-tests` and `--dry-run` select the variants. Resource settings were moved out of environment variables into `scripts/pace/pace.conf`, read as shell and overridable from the environment or by `--config`, `-c` and `--mem`; the partition is fixed at `ice-gpu`, walltime is expressed in whole hours totalling 16, and account and QoS are left to the submitting user's default Slurm association. The scripts were checked with `bash -n` and exercised in dry-run mode across the default, pilot-only and continue paths; no PACE job was submitted and no GPU time was used.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the timeline and proposal to be read, and for help preparing to train Scaffolding Minds on top of LIVR, inviting a correction if that was not what those documents specified | Set the scope and prompted the correction that Scaffolding Minds Stage 1 is a separate helper-supervised reference, with only Scaffolding RL planned on top of LIVR |
+| 2 | User message | Objected that the exploration was excessive and that subagents were overkill, and asked for a small plan | Stopped the remaining exploration and shifted to direct answers |
+| 3 | User message | Asked what the commits by raymond-zeng were for | Directed the work to commit `2e2a35b` and its three-phase scaffold/predict/RL pipeline |
+| 4 | User message | Asked which baseline the new scaffolding code uses | Produced the benchmark summary: Mirage VSP rather than the paper's own FrozenLake suite or BLINK |
+| 5 | User message | Stated that someone else would run the job and that disk space was not a concern, and asked for a batch file that also starts the full baseline automatically | Set the scope of the runner and the decision to chain the baseline job |
+| 6 | User message | Asked which specification required reviewing the pilot before the full run | Added the specification references to the script's warning output |
+| 7 | User decision | Chose the chained baseline as the default behaviour over a held job | Made the baseline run by default, with `--no-baseline` as the alternative |
+| 8 | User message | Asked for line-number citations to be removed as they go stale | Replaced them with the specification's section name |
+| 9 | User message | Asked whether the runner allocates a node and runs there | Prompted the split being documented: layout, setup and tests on the login node, training inside the submitted job |
+| 10 | User message | Stated that the pilot and baseline must be successive because failing to get a node for the baseline would lose the work | Replaced the two-job dependency chain with a single allocation running both phases |
+| 11 | User message | Questioned a summary-printing block added to the job script | Removed it; it guessed at a `summary.json` schema that had not been read |
+| 12 | User message | Asked for the requested runtime to be 16 hours | Set the default walltime to 16 hours |
+| 13 | User message | Objected to settings being passed as environment variables and asked for them to persist in a text file | Added a settings file read by the runner, with the environment still taking precedence |
+| 14 | User message | Said the Slurm user must stay `$USER` and not be configurable | Kept the submitting user out of the settings |
+| 15 | User message | Asked for the example file to be dropped in favour of a real config, and for the partition not to be an argument | Made the config the tracked file and fixed the partition at `ice-gpu` |
+| 16 | User message | Asked for a different file extension | Renamed the settings file to `pace.conf` and the flag to `--config` |
+| 17 | User message | Pointed out that account and QoS were still being passed to `sbatch` | Removed both flags and the account detection; Slurm uses the default association |
+| 18 | User message | Asked for the `SPARA_` prefix to be dropped from the settings | Renamed the settings to `GPU`, `CPUS`, `MEM`, `CONSTRAINT`, `PILOT_HOURS`, `BASELINE_HOURS`, `HOURS`, `ROOT` and `REPO` |
+| 19 | User message | Asked for CPU-core and memory flags, noting `-c` as the usual spelling | Added `-c` and `--mem`, backed by `CPUS` and `MEM` settings with validation |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| scripts/pace/run-all-scaffolding.sh | created | Login-node runner: prepares the run root and `code/` link, runs setup and the CPU tests, and submits the combined job |
+| scripts/pace/scaffolding-all.sbatch | created | Job script running the pilot and then the full baseline in one allocation, with `SPARA_PILOT_ONLY` and `SPARA_RUN` controls |
+| scripts/pace/pace.conf | created | Persistent settings for the runner: GPU, CPU cores, memory, constraint, walltime hours and run root |
+| README.md | modified | Documented the runner, its options and the pilot-review caveat |
+
+### Folders created
+
+- None
+
+## 2026-10-14 — Plan the vanilla SFT control (Run 1)
+
+**Agent/tool:** Claude Code, Opus 5 (1M context)
+**User request:** Plan, without submitting any PACE job, a vanilla supervised fine-tuning control on the VSP spatial-planning benchmark matched to the existing LIVR baseline, and decide how "matched" should be defined.
+**AI contribution:** Read the LIVR implementation, config, serialization, training and evaluation code plus the baseline results, reproduction audit, dataset-comparability note and ADRs 0001/0002, then wrote an ordered plan with per-task GPU estimates, sanity checks, stop conditions, a reserved results-table row and open questions. Chose matching total optimizer updates (2,500, as a single 20-epoch stage) over matching epochs, wall-clock or tokens, and recorded what each alternative would have shown. Inspected the local environment and found that this account holds none of the LIVR run artifacts (job 6189457 absent from Slurm accounting, `~/scratch/SPARA` is the bare repo checkout), that scratch has about 42 GB free against an estimated 48 GB need, and that the current allocation is an H100 80 GB rather than the baseline's H200; these became blocking preconditions in the plan. After the user settled the budget, hardware handover and tracker questions, revised the plan accordingly and added a justification for the chosen matched-budget option based on which conclusions each possible outcome would support, plus a storage mitigation that drops the final checkpoint's optimizer state without altering any computation. Finalized the plan with both arms approved: a single-stage 20-epoch run and a schedule-matched 10+10 run, an `order_cycle` change that makes the single-stage run step-for-step data-identical to the LIVR baseline, and explicit per-file edit points, commands, stop conditions and reference constants for a different agent to implement.
+**Contribution type:** advice
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Handoff brief: plan a vanilla SFT control, scope limited to one training run and one evaluation, no PACE submission before plan and GPU-budget approval | Set the deliverable as a plan document and prohibited any job submission |
+| 2 | User message | Stated the rationale: the LIVR 80.75% result is uninterpretable without a no-latent comparison, and plain SFT reaching a similar score would be the headline result | Drove the stop condition that a within-±2-point result is reported as the headline rather than investigated further |
+| 3 | User message | Listed fixed artifacts not to modify (`configs/livr.json`, the LIVR run behaviour, `docs/experiments/livr-6189457/`) and components to reuse | Shaped the task list toward a new config plus conditional latent handling, leaving the LIVR path unchanged |
+| 4 | User message | Noted that ADR-0001 withdrew this control while the project proposal still commits to it, and asked for a new ADR rather than a quiet reinstatement | Made ADR-0004 an explicit task preceding implementation |
+| 5 | User message | Required verification of the four-token serialization diff, both 400- and 392-row reporting, precision parity, and storage headroom | Became the pre-flight verification section and several per-task sanity checks |
+| 6 | User message | Declared the matched-budget definition the central design decision and forbade an unjustified pick | Produced the decision section with four alternatives and their interpretations |
+| 7 | User message | Interrupted the investigation, saying it had gone too deep | Ended environment inspection and moved directly to writing the plan |
+| 8 | User message | Said to follow `scripts/pace/pace.conf` and that no QoS, partition or `coc-ice` specification is needed | Closed the account/host question and removed Slurm association settings from the plan |
+| 9 | User message | Approved a 10 GPU-hour ceiling, noting the job may finish early | Replaced the requested 3-hour ceiling and made the option-C follow-up affordable within budget |
+| 10 | User message | Will hand over a ready interactive H200 or H100 allocation | Replaced the planned sbatch task with a shell runner executed inside the allocation |
+| 11 | User message | Instructed not to refetch the LIVR checkpoints | Fixed the committed evidence bundle as the sole comparison source |
+| 12 | User message | Declined a GitHub ticket | Removed that task from the plan |
+| 13 | User message | Said it was unclear whether option A is better for the information the experiment needs | Added a section arguing A from the asymmetry of the two possible outcomes, and the point that LIVR's stage boundary exists only because the latents exist |
+| 14 | User message | Reported clearing ~70 GB of scratch; asked for more detail on option A's shuffle-order wrinkle and how hard it would be to code and run both A and C | Removed the storage blocker, added the `order_cycle` analysis, and costed option C as roughly one config plus a handful of guard changes |
+| 15 | User message | Objected that the plan had accumulated meta-documentation about the conversation | Rewrote the plan as a technical specification with the negotiation history removed |
+| 16 | User message | Approved both arms, said a different agent will implement, and asked for concise code and comments | Finalized the plan as a self-contained spec with explicit edit points, commands and constraints |
+| 17 | User message | Asked that tests match the existing tests folder's kind and depth rather than going overboard | Scoped the test task to two targeted tests and said not to build out a broad suite |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/plans/VANILLA_SFT_CONTROL_PLAN.md | created | The plan: environment preconditions, matched-budget decision and alternatives, ordered tasks with GPU estimates and sanity checks, stop conditions, reserved results row, open questions |
+
+### Folders created
+
+- `docs/plans/` — holds planning documents that are not ADRs or experiment reports
+
+## 2026-10-14 — Implement the vanilla SFT control (Run 1), CPU tasks
+
+**Agent/tool:** Claude Code, Opus 5.5 (1M context)
+**User request:** Follow and implement `docs/plans/VANILLA_SFT_CONTROL_PLAN.md`, using the H100 allocation the session was already running on instead of requesting new compute.
+**AI contribution:** Created the `~/scratch/sft-run` run root, linked the checkout as `code/`, and ran `scripts/pace/setup.sh`; its data split and pinned model revision matched the plan's checks. Wrote ADR-0004 to reinstate the control and updated the status lines of ADR-0001 and ADR-0002. Added two SFT configs and five LIVR-neutral code edits that gate the latent machinery and add `order_cycle`; the permutation seeding moved into an `epoch_order` helper so it can be tested. Added the two planned tests, plus a pilot script, an arm runner, an evidence-bundle exporter and a comparison-chart script, none of which has run on a GPU yet. The T5 pilot could not start: CUDA context creation fails on the allocated H100 (job 6259360), which reports "GPU Recovery Action: Reset", and the kernel log shows repeated `NV_ERR_RESET_REQUIRED` errors, so T5–T9 remain undone.
+**Contribution type:** generation, editing, debugging
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the vanilla SFT control plan to be followed and implemented | Set the scope to tasks T0–T9 of the plan |
+| 2 | User message | Said the session was already on an H100 node (8 CPUs, 64 GB RAM, 14 h left), so no new compute should be requested | Setup and the pilot were run directly in this allocation; no job was submitted |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/adr/0004-reinstate-vanilla-sft-control.md | created | Reinstates the vanilla SFT control. Supersedes ADR-0002 on that point only and resolves its disagreement with the proposal; pause tokens stay out of scope |
+| docs/adr/0001-include-matched-sft-control.md | modified | Status line now points to ADR-0004 |
+| docs/adr/0002-reproduce-livr-reference-protocol.md | modified | Added a status line noting the direct-SFT supersession by ADR-0004 |
+| configs/sft.json | created | Arm A: LIVR recipe with no latents, 20 epochs, `order_cycle` 10, one segment |
+| configs/sft-staged.json | created | Arm C: LIVR recipe with no latents, two 10-epoch segments |
+| src/spara/serialization.py | modified | `encode` accepts a `latents` parameter; the default keeps LIVR unchanged |
+| src/spara/runtime.py | modified | With `latent_tokens: 0`, skips latent initialisation, sets empty latent IDs, Stage 2 and the SFT serialization marker, and expects empty IDs on checkpoint load |
+| src/spara/model.py | modified | The Stage-1 bottleneck applies only when latent IDs exist |
+| src/spara/training.py | modified | Adds the `epoch_order` helper with `order_cycle` seeding, and passes the model's latent tokens to `encode` when they differ from LIVR's |
+| src/spara/cli.py | modified | Allows `--stage 2` without a source when `segments == 1`; evaluation passes the model's latent tokens |
+| tests/test_sft_control.py | created | Checks that the SFT prefix is the LIVR prefix minus the four latent IDs, and that `order_cycle` replays LIVR's permutations |
+| scripts/pace/sft_pilot.py | created | T5 pilot: prefix check on the real processor, two optimizer steps through `train_stage`, one checkpoint save, two evaluation records, memory and RSS report |
+| scripts/pace/run-sft.sh | created | Runs arm A and arm C inside an allocation, records per-phase GPU seconds, and drops never-resumed optimizer state from final checkpoints |
+| scripts/export_sft_evidence.py | created | Validates one arm and writes a `docs/experiments/sft-<arm>-<id>/` bundle with 400- and 392-row figures and SHA-256 provenance |
+| scripts/plot_sft_comparison.py | created | Comparison charts of LIVR, SFT A and SFT C (accuracy and training loss) |
+
+### Folders created
+
+- None in the repository. The run root `~/scratch/sft-run` is outside the project.
+
+## 2026-10-14 — Vanilla SFT control: new-node check and T5 pilot
+
+**Agent/tool:** Claude Code, Opus 5.5 (1M context)
+**User request:** Check whether the new H100 node is ready to use.
+**AI contribution:** Confirmed the new allocation (job 6259811) has a healthy H100: recovery action None, 78 GiB free, and a CUDA matmul succeeds. Ran the T5 pilot. Its first attempt failed on the pilot's own assertion that every image is 121 tokens, but image size varies with grid size (3×3 gives 49 tokens, 6×6 gives 196). The check was changed to compare each row with its LIVR encoding, keeping 121 only for the 5×5 train row. The rerun passed: prefix check passed, 2 finite steps, peak 55.6 GiB allocated, peak host RSS 17.9 GiB, checkpoint save 59 s / 39.7 GB with optimizer state, and 2 evaluation records generated. Deleted the pilot's own 37 GB checkpoint afterwards.
+**Contribution type:** debugging, editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Moved the session to a new node with an H100 and asked whether it is ready | Verified the GPU, then ran the T5 pilot that the faulted node had blocked |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| scripts/pace/sft_pilot.py | modified | The image-token check now compares with the LIVR encoding of the same row instead of a fixed 121 tokens |
+
+### Folders created
+
+- None
+
+## 2026-10-14 — Vanilla SFT control: arms A and C, evidence and report
+
+**Agent/tool:** Claude Code, Opus 5.5 (1M context)
+**User request:** Run the full arms after the pilot and finish the plan through T9 while the user was away.
+**AI contribution:** Ran arm A (20 epochs) and arm C (10+10 epochs) in job 6259811 on one H100. All losses were finite, and the runs used about 3.2 GPU-hours in total including the pilot. Results: A 320/400 (80.00%), 312/392 (79.59%); C 323/400 (80.75%), 315/392 (80.36%). LIVR scored 323/400. Paired McNemar p-values were 0.74 (LIVR vs A) and 1.0 (LIVR vs C). Exported and validated both evidence bundles, rendered comparison charts, wrote the results report, filled the plan's Results table and committed the work on a new local branch. The plan's overlap rows (38, 62, …) are one-based; the evidence uses the zero-based indices derived from the data (37, 61, 108, 151, 268, 277, 343, 365), which reproduce LIVR's 315/392. A background waiter for the runner hung because its `pgrep -f` pattern matched itself, which delayed reporting arm C by several hours; the run itself was unaffected. The loss chart's legend was moved off the arm C curve.
+**Contribution type:** experiment execution, analysis, documentation
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | "yes go" after the pilot report | Started arms A and C |
+| 2 | User message | Asked the agent to finish C and the rest of the plan while away | Completed export, charts, report and the local commit without further check-ins |
+| 3 | User message | Asked for a status check about 6 hours later | Found that the run had finished and the waiter was stuck, then completed the remaining T9 work |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/experiments/sft-a-6259811/ | created | Arm A evidence bundle |
+| docs/experiments/sft-c-6259811/ | created | Arm C evidence bundle |
+| docs/figures/sft-control-evaluation.png, .svg | created | Accuracy comparison chart |
+| docs/figures/sft-control-training-loss.png, .svg | created | Training-loss comparison chart |
+| docs/SFT_CONTROL_RESULTS.md | created | Results report with headline wording, n=1 caveat, compute, deviations and the overlap-index correction |
+| docs/plans/VANILLA_SFT_CONTROL_PLAN.md | modified | Filled the Results table and annotated the overlap rows as one-based (the plan file itself is user-authored) |
+| scripts/plot_sft_comparison.py | modified | Moved the loss-chart legend to the lower left |
+
+### Folders created
+
+- docs/experiments/sft-a-6259811/, docs/experiments/sft-c-6259811/
+
+### Unfinished work
+
+- Branch `vanilla-sft-control` (commit 68f604d) is local only; not pushed and no PR. AGENT_USAGE.MD is not committed.
+- Checkpoints (~15 GB each, without optimizer state) remain at `~/scratch/sft-run/results/6259811/`.
+- Job 6259811 is still allocated (job 6259360 has ended).
+
 ## 2026-10-14 - Diagnose the first Scaffolding Minds run
 
 **Agent/tool:** Claude Code (VS Code extension); model Claude Opus 5.5 (claude-opus-5-5).

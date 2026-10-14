@@ -1,5 +1,5 @@
 ---
-status: superseded by ADR-0002
+status: superseded by ADR-0002; reinstated by ADR-0004
 ---
 
 # Include a matched direct-SFT control
