@@ -782,3 +782,99 @@ External artifact: https://github.com/Shadibuchanan/SPARA/pull/5. Implementation
 - docs/experiments/ and docs/experiments/livr-6189457/ - compact committed evidence bundle.
 
 - results/pr-livr-baseline/ - ignored local PR-description artifact. Temporary chart-verification files were created and removed under a system temporary spara-pr-charts-* directory.
+
+## 2026-10-13 - Implement the Scaffolding Minds baseline
+
+**Agent/tool:** Claude Code (VS Code extension); model Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Implement the Scaffolding Minds paper (arXiv 2608.19669v2, supplied as a PDF) as a baseline that can be run.
+**AI contribution:** Implemented the paper's three phases (scaffolding encoder, latent prediction, Scaffolding RL) as a new `spara.scaffolding` package on stock Qwen2.5-VL, adapted to the LIVR baseline's Mirage VSP split, 3B backbone, reference evaluator and decoding settings. Added a value-function heatmap helper using the paper's Appendix E.1 code, a cached decoder with model-triggered latent blocks, a pilot command that measures cost and repeats correctness checks on the real model, PACE job scripts, a recipe file and CPU tests. Recorded the helper-image scope exception in ADR-0003 and documented paper-to-code mapping and unspecified choices in a specification. A reviewer model advised on the design and final review; its suggestions (ADR, latent injection after the image merge, decoding through HF's processors, pilot, freezing before the manifest, CLI coverage) were applied. Implemented and CPU-tested only: not run on PACE, no GPU job submitted, no GPU budget requested or approved, no GitHub issue or PR created, nothing committed. The local ignored `.venv`, `data/vsp` and `.cache/processor` were set up with the repository's documented commands to run the tests.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the Scaffolding Minds paper to be implemented as a baseline to run | Set the task; the agent chose the LIVR benchmark/backbone adaptation and recorded it as an assumption |
+| 2 | User-provided file | The Scaffolding Minds v2 paper PDF | Source of the method, hyperparameters and Appendix E.1 value-iteration code |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/scaffolding/__init__.py | created | Package docstring noting the helper-supervised scope |
+| src/spara/scaffolding/helper.py | created | Appendix E.1 value iteration, heatmap rendering, released-overlay option |
+| src/spara/scaffolding/model.py | created | Scaffold tokens, latent-slot Qwen subclass, query masks, cached latent block, scaffolding encoder, Gaussian heads |
+| src/spara/scaffolding/policy.py | created | Gaussian log-probability, clipped surrogate, group advantages, masked exact KL |
+| src/spara/scaffolding/serialization.py | created | Released prompt/answer layout and helper preprocessing |
+| src/spara/scaffolding/decoding.py | created | HF-processor sampling, sequential and grouped rollouts with BOT-triggered latent blocks |
+| src/spara/scaffolding/training.py | created | Phase losses and loops for scaffold, predict and RL, with resume and logging |
+| src/spara/scaffolding/runtime.py | created | Recipe checks, loading, manifests, recorded assumptions, final-checkpoint validation |
+| src/spara/scaffolding/evaluation.py | created | Reference-protocol evaluation of Stage 1 or Stage 2 checkpoints |
+| src/spara/scaffolding/pilot.py | created | Real-model cost measurements and correctness/learning checks for all phases |
+| src/spara/scaffolding/cli.py | created | pilot, train (three phases) and evaluate commands |
+| configs/scaffolding.json | created | Paper hyperparameters plus recorded engineering choices |
+| tests/conftest.py | modified | Added tiny scaffold model and sample fixtures; LIVR fixtures unchanged |
+| tests/test_scaffolding_model.py | created | Mask, decoding, zero-adjustment, policy, phase-gradient and roundtrip tests |
+| tests/test_scaffolding_training.py | created | Loop, resume, CLI, pilot, recipe-contract and real-data integration tests |
+| scripts/pace/scaffolding-pilot.sbatch | created | Pilot job script (not submitted) |
+| scripts/pace/scaffolding-baseline.sbatch | created | Full three-phase run with Stage 1 and Stage 2 evaluation (not submitted) |
+| scripts/pace/submit-scaffolding.sh | created | Parameterized Slurm submission for pilot or baseline |
+| docs/adr/0003-scaffolding-minds-helper-supervised-reference.md | created | Records the helper-image exception for this reference only |
+| docs/SCAFFOLDING_BASELINE_SPEC.md | created | Method mapping, hyperparameters, assumptions, commands, checks, cost and open items |
+| GLOSSARY.md | modified | Added baseline and Scaffolding RL terms; qualified the helper-image entry |
+| README.md | modified | Added a Scaffolding Minds baseline section with commands |
+
+### Folders created
+
+- src/spara/scaffolding/ - the Scaffolding Minds baseline package.
+
+## 2026-10-14 - Review the LIVR implementation against the paper
+
+**Agent/tool:** Claude Code (VS Code extension); model Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Review the LIVR paper (arXiv 2512.21218v2) and make sure the LIVR baseline implementation is accurate.
+**AI contribution:** Reread LIVR v2 (method, VSP comparison and Appendix B) from the repository's copy and checked each stated VSP setting against the LIVR source and recipe; all stated settings match, and no LIVR source or configuration was changed. Rechecked the Mirage-derived fallbacks against the pinned Mirage code, confirmed the LIVR project page still links no official code, and identified numerical precision as the most concrete untested candidate for the score gap: the paper's 48 GB single-GPU hardware cannot hold this implementation's FP32 configuration, Mirage's released code trains in pure BF16, and a new probe on sampled pinned Qwen weights found that most single Adam steps would be rounded away in BF16. Recorded the review and its caveats as an addendum to the discrepancy audit and added a pointer from the results report. No training, evaluation or PACE job was run; Mirage source files and Qwen weight byte ranges were downloaded only to the session scratchpad. A reviewer model advised on the final wording; its corrections (narrowing which Mirage code the authors used, checking Mirage's own Transformers fork, testing larger Adam steps) were applied.
+**Contribution type:** review
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the LIVR paper at https://arxiv.org/html/2512.21218v2 to be reviewed and the implementation checked for accuracy | Set the review scope; findings were recorded in the existing audit rather than by changing the completed baseline |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/LIVR_REPRODUCTION_AUDIT.md | modified | Added the paper conformance table, the precision hypothesis with evidence and caveats, and the probe command |
+| docs/LIVR_BASELINE_RESULTS.md | modified | Added a pointer to the review addendum |
+| scripts/probe_bf16_updates.py | created | Range-request probe measuring how many pinned Qwen weights a BF16 AdamW step leaves unchanged |
+
+### Folders created
+
+- None
+
+## 2026-10-14 - Add a script to run the Scaffolding Minds baseline
+
+**Agent/tool:** Claude Code (VS Code extension); model Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Write a bash script to run the Scaffolding Minds baseline.
+**AI contribution:** Wrote `scripts/run_scaffolding.sh`, which runs the scaffold, predict, Stage 1 evaluation, RL and Stage 2 evaluation phases in order on one GPU. It checks inputs first, skips phases that already completed when rerun with the same run directory, refuses to overwrite a partly finished phase unless asked to move it aside, logs each phase, and prints both evaluation scores; a `--pilot` mode runs the bounded pilot and summarizes its checks and GPU-hour estimates. Replaced the duplicated phase list in the PACE baseline job script with a call to this script, which also lets a resubmitted job continue an earlier run, and documented the script in the README and baseline specification. The script's control flow was exercised locally with a stand-in for the Python CLI; it has not run the real model, and no PACE job was submitted.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for a bash script to run the Scaffolding Minds baseline | Produced the end-to-end runner and routed the PACE job script through it |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| scripts/run_scaffolding.sh | created | End-to-end runner with preflight checks, phase skipping, retry handling, logging, pilot mode and score summary |
+| scripts/pace/scaffolding-baseline.sbatch | modified | Calls the runner instead of listing phases; `SPARA_RUN` continues an earlier run |
+| README.md | modified | Documented the runner, rerun behaviour and PACE continuation |
+| docs/SCAFFOLDING_BASELINE_SPEC.md | modified | Noted the runner beside the CLI commands |
+
+### Folders created
+
+- None

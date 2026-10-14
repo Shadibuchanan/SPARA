@@ -148,3 +148,41 @@ After a successful job, it independently rescores the saved responses against
 `--data-root` (default `data/vsp` in this project), checks complete training and
 budget accounting, and writes `run-validation.json` and `RUN_REPORT.md`.
 The local collector requires this workstation to remain running.
+
+## Scaffolding Minds baseline (helper-supervised reference)
+
+`src/spara/scaffolding/` adapts [Scaffolding Minds v2](docs/related_literature/Scaffolding_Minds_2608.19669v2.pdf)
+to the LIVR baseline's data, backbone, evaluator and decoding settings. Unlike
+LIVR, it trains with helper images: a value-function heatmap per map
+([ADR-0003](docs/adr/0003-scaffolding-minds-helper-supervised-reference.md)).
+Report it separately from LIVR and SPARA. The recipe is
+[configs/scaffolding.json](configs/scaffolding.json). Method mapping, recorded
+assumptions and checks are in [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md).
+It has CPU tests only; no PACE job or budget exists for it yet.
+
+On a GPU machine, one script runs the whole baseline. It trains all three
+phases and evaluates both the Stage 1 and the Stage 2 checkpoints, writing logs
+to `RUN/logs/`:
+
+```bash
+bash scripts/run_scaffolding.sh --model M --run R          # full baseline
+bash scripts/run_scaffolding.sh --model M --run P --pilot  # bounded pilot
+```
+
+Rerun with the same `--run` to continue: completed phases are skipped. A phase
+that stopped part-way is left untouched unless you pass `--retry-incomplete`.
+`--phases` selects a subset, and `--help` lists the remaining options. The script
+wraps these CLI calls:
+
+```bash
+python -m spara.scaffolding.cli train --phase scaffold --base-model M --output S1A
+python -m spara.scaffolding.cli train --phase predict --base-model M --encoder S1A/final --output S1B
+python -m spara.scaffolding.cli evaluate --checkpoint S1B/final --output EVAL1
+python -m spara.scaffolding.cli train --phase rl --checkpoint S1B/final --output S2
+python -m spara.scaffolding.cli evaluate --checkpoint S2/final --output EVAL2
+```
+
+On PACE, submit `bash scripts/pace/submit-scaffolding.sh pilot` (or `baseline`)
+with the same account and GPU variables as the LIVR pilot, plus `SPARA_MINUTES`.
+Only do this after the budget is agreed. The baseline job runs the script above;
+to continue an earlier run, set `SPARA_RUN` to its directory when submitting.
