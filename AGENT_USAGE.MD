@@ -878,3 +878,38 @@ External artifact: https://github.com/Shadibuchanan/SPARA/pull/5. Implementation
 ### Folders created
 
 - None
+
+## 2026-10-14 - One-step PACE runner for the Scaffolding Minds baseline
+
+**Agent/tool:** Claude Code (CLI); model Claude Opus 5 (claude-opus-5[1m]).
+**User request:** Confirm what the recently committed scaffolding code is for and which baseline it targets, then prepare a batch file that runs everything, including starting the full baseline automatically.
+**AI contribution:** Read the proposal, timeline, project plan, ADR-0003 and the baseline specification, and reported that the Scaffolding Minds code added in commit `2e2a35b` is a standalone helper-supervised reference trained from base Qwen2.5-VL-3B on the Mirage VSP spatial-planning benchmark, not a stage trained on top of LIVR; the proposal's conditions A/B/C instead place Scaffolding RL alone on a shared LIVR checkpoint, and that bridge does not exist in the repository yet. Established that this account holds no virtual environment, dataset, model download or LIVR checkpoint, and that both scaffolding job scripts `cd "$ROOT/code"`, a directory that does not exist when the checkout is itself `$HOME/scratch/SPARA`. Wrote `scripts/pace/run-all-scaffolding.sh`, which resolves that layout by giving the run root its own directory with `code/` linked to the checkout, then runs `setup.sh`, runs the CPU tests and submits one GPU job. On the user's instruction that a second queue wait could lose the node, the pilot and the full baseline were placed in a single allocation as `scripts/pace/scaffolding-all.sbatch` rather than two jobs chained by `--dependency=afterok`; `--no-baseline`, `--continue`, `--skip-setup`, `--skip-tests` and `--dry-run` select the variants. The scripts were checked with `bash -n` and exercised in dry-run mode across the default, pilot-only and continue paths; no PACE job was submitted and no GPU time was used.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the timeline and proposal to be read, and for help preparing to train Scaffolding Minds on top of LIVR, inviting a correction if that was not what those documents specified | Set the scope and prompted the correction that Scaffolding Minds Stage 1 is a separate helper-supervised reference, with only Scaffolding RL planned on top of LIVR |
+| 2 | User message | Objected that the exploration was excessive and that subagents were overkill, and asked for a small plan | Stopped the remaining exploration and shifted to direct answers |
+| 3 | User message | Asked what the commits by raymond-zeng were for | Directed the work to commit `2e2a35b` and its three-phase scaffold/predict/RL pipeline |
+| 4 | User message | Asked which baseline the new scaffolding code uses | Produced the benchmark summary: Mirage VSP rather than the paper's own FrozenLake suite or BLINK |
+| 5 | User message | Stated that someone else would run the job and that disk space was not a concern, and asked for a batch file that also starts the full baseline automatically | Set the scope of the runner and the decision to chain the baseline job |
+| 6 | User message | Asked which specification required reviewing the pilot before the full run | Added the specification references to the script's warning output |
+| 7 | User decision | Chose the chained baseline as the default behaviour over a held job | Made the baseline run by default, with `--no-baseline` as the alternative |
+| 8 | User message | Asked for line-number citations to be removed as they go stale | Replaced them with the specification's section name |
+| 9 | User message | Asked whether the runner allocates a node and runs there | Prompted the split being documented: layout, setup and tests on the login node, training inside the submitted job |
+| 10 | User message | Stated that the pilot and baseline must be successive because failing to get a node for the baseline would lose the work | Replaced the two-job dependency chain with a single allocation running both phases |
+| 11 | User message | Questioned a summary-printing block added to the job script | Removed it; it guessed at a `summary.json` schema that had not been read |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| scripts/pace/run-all-scaffolding.sh | created | Login-node runner: prepares the run root and `code/` link, runs setup and the CPU tests, and submits the combined job |
+| scripts/pace/scaffolding-all.sbatch | created | Job script running the pilot and then the full baseline in one allocation, with `SPARA_PILOT_ONLY` and `SPARA_RUN` controls |
+| README.md | modified | Documented the runner, its options and the pilot-review caveat |
+
+### Folders created
+
+- None

@@ -186,3 +186,25 @@ On PACE, submit `bash scripts/pace/submit-scaffolding.sh pilot` (or `baseline`)
 with the same account and GPU variables as the LIVR pilot, plus `SPARA_MINUTES`.
 Only do this after the budget is agreed. The baseline job runs the script above;
 to continue an earlier run, set `SPARA_RUN` to its directory when submitting.
+
+To do all of that in one step from a PACE login node — prepare the `$ROOT/code`
+layout, run `setup.sh`, run the CPU tests, then submit a single job that runs the
+pilot and the full baseline back to back — use:
+
+```bash
+bash scripts/pace/run-all-scaffolding.sh                 # pilot, then baseline
+bash scripts/pace/run-all-scaffolding.sh --no-baseline   # stop after the pilot
+bash scripts/pace/run-all-scaffolding.sh --continue DIR  # continue an earlier run
+bash scripts/pace/run-all-scaffolding.sh --dry-run       # print the plan only
+```
+
+Both phases share one allocation (`scripts/pace/scaffolding-all.sbatch`), so the
+baseline cannot lose the node to a second queue wait. Walltime is
+`SPARA_PILOT_MINUTES + SPARA_BASELINE_MINUTES`, 16 hours by default, unless
+`SPARA_MINUTES` overrides it;
+account and GPU variables are the same as `submit-scaffolding.sh`, and
+`SPARA_REMOTE_ROOT` defaults to `$HOME/scratch/spara` with `code/` linked to this
+checkout. A failing pilot stops the job before the baseline, but nobody sees the
+pilot's numbers first, so the full-run budget review that
+[the specification](docs/SCAFFOLDING_BASELINE_SPEC.md) asks for means running
+`--no-baseline`, then rerunning with `--continue` once the numbers check out.
