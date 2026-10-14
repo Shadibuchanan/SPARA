@@ -1,0 +1,12 @@
+{
+  "method": "text-only GRPO; LIVR latents unperturbed",
+  "epochs": 1,
+  "prompts_per_step": 8,
+  "group_size": 8,
+  "learning_rate": 0.000001,
+  "clip_epsilon": 0.2,
+  "kl_coefficient": 0.001,
+  "reference_policy": "final Stage 2 LIVR checkpoint",
+  "checkpoint_every_steps": 0,
+  "generation": {"do_sample": true, "temperature": 0.7, "top_p": 0.9, "max_new_tokens": 1024}
+}

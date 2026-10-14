@@ -29,6 +29,11 @@ learned mean and scale, and rewards those that lead to route success.
 Supervised fine-tuning on map questions and route answers without LIVR's
 latent-token method.
 
+**Text-only RL**:
+Reinforcement learning from the LIVR baseline that optimizes generated route
+text against route success, without sampling or adjusting latent tokens.
+Condition B in the planned comparisons.
+
 **Map layout**:
 The arrangement of safe tiles, holes, the start, and the goal, independent of
 how that arrangement is rendered as an image.

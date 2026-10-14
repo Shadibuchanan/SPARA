@@ -63,3 +63,19 @@ def test_pilot_or_partial_checkpoint_cannot_be_a_baseline(tmp_path):
     require_final_checkpoint(tmp_path, 1, config)
     with pytest.raises(ValueError, match="recipe mismatch"):
         require_final_checkpoint(tmp_path, 1, config | {"learning_rate": 0.02})
+
+
+def test_final_weights_only_checkpoint_loads_without_optimizer_state(tiny_model, tmp_path):
+    from spara.model import LivrQwen
+    config = read_config("configs/livr.json")
+    optimizer = make_optimizer(tiny_model, config)
+    scheduler = get_cosine_schedule_with_warmup(optimizer, 0, 10)
+    class Processor:
+        def save_pretrained(self, path): pass
+    save_checkpoint(tmp_path / "final", tiny_model, Processor(), optimizer, scheduler, {"stage": 1}, training_state=False)
+    assert (tmp_path / "final/complete.json").is_file() and not (tmp_path / "final/training_state.pt").exists()
+    reloaded = LivrQwen.from_pretrained(tmp_path / "final", attn_implementation="eager")
+    for key, value in tiny_model.state_dict().items():
+        torch.testing.assert_close(value, reloaded.state_dict()[key], atol=0, rtol=0)
+    with pytest.raises(FileNotFoundError):
+        restore_training(tmp_path / "final", optimizer, scheduler)

@@ -106,6 +106,15 @@ top-p 0.9 and max 1,024 new tokens, preserving inherited generation defaults.
 It writes raw responses, extracted routes and reference outcomes, plus overall
 and per-grid results. No test-based checkpoint selection is implemented.
 
+## Text-only RL
+
+`python -m spara.cli train-rl --checkpoint /path/to/stage2/final ...` runs GRPO
+on route text from the final LIVR checkpoint, without latent adjustments. It is
+condition B of the planned comparisons. Settings, sources, assumptions and open
+issues are in the [text-only RL specification](docs/TEXT_RL_SPEC.md). One epoch
+scored 326/400 (81.5%) from a rerun LIVR baseline at 328/400 (82.0%); see
+[the results](docs/TEXT_RL_RESULTS.md).
+
 ## Reproduction assumptions
 
 The public sources do not recover LIVR's exact model/package revisions. This
