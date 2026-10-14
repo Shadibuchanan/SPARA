@@ -10,7 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 
-COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]  # fixed categorical order: LIVR, SFT A, SFT C
+COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]  # fixed categorical order: LIVR, Vanilla SFT Continuous (arm A), Vanilla SFT Staged (arm C)
 
 
 def load(evidence, step_files):
@@ -33,8 +33,8 @@ def main():
     parser.add_argument("--output", type=Path, default=project / "docs/figures")
     args = parser.parse_args()
     runs = [("LIVR (K=4, 10+10)", *load(project / "docs/experiments/livr-6189457", ["stage1-steps.jsonl", "stage2-steps.jsonl"])),
-            ("Vanilla SFT A (20)", *load(args.sft_a, ["train-steps.jsonl"])),
-            ("Vanilla SFT C (10+10)", *load(args.sft_c, ["segment1-steps.jsonl", "segment2-steps.jsonl"]))]
+            ("Vanilla SFT Continuous (20 ep)", *load(args.sft_a, ["train-steps.jsonl"])),
+            ("Vanilla SFT Staged (10+10 ep)", *load(args.sft_c, ["segment1-steps.jsonl", "segment2-steps.jsonl"]))]
     # Zero-based overlap rows recorded by the exporter; the test set is shared by all three runs.
     overlap, other = (set(json.loads((path / "evaluation-summary.json").read_text())["excluding_overlap"]["excluded_rows"])
                       for path in (args.sft_a, args.sft_c))
@@ -88,7 +88,7 @@ def main():
     fig, ax = plt.subplots(figsize=(11.4, 5.1))
     fig.subplots_adjust(left=.085, right=.98, top=.76, bottom=.2)
     fig.suptitle("Vanilla SFT control vs LIVR: training loss", x=.085, y=.96, ha="left", fontsize=19, fontweight="bold")
-    fig.text(.085, .865, "Epoch-mean answer-token loss over 20 epochs (125 updates each)  |  Dotted line: LIVR stage / C segment boundary", color="#475569")
+    fig.text(.085, .865, "Epoch-mean answer-token loss over 20 epochs (125 updates each)  |  Dotted line: LIVR stage / Staged restart", color="#475569")
     for color, (label, _, steps) in zip(COLORS, runs):
         by_epoch = defaultdict(list)
         for index, row in enumerate(steps):

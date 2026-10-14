@@ -511,37 +511,37 @@ L 846.72 314.496
    </g>
    <g id="legend_2">
     <g id="patch_26">
-     <path d="M 715.161094 111.706594
-L 733.161094 111.706594
-L 733.161094 105.406594
-L 715.161094 105.406594
+     <path d="M 675.497812 111.706594
+L 693.497812 111.706594
+L 693.497812 105.406594
+L 675.497812 105.406594
 z
 " style="fill: #2a78d6"/>
     </g>
     <g id="text_28">
-     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="740.361094" y="111.706594" transform="rotate(-0 740.361094 111.706594)">LIVR (K=4, 10+10)</text>
+     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="700.697812" y="111.706594" transform="rotate(-0 700.697812 111.706594)">LIVR (K=4, 10+10)</text>
     </g>
     <g id="patch_27">
-     <path d="M 715.161094 124.916906
-L 733.161094 124.916906
-L 733.161094 118.616906
-L 715.161094 118.616906
+     <path d="M 675.497812 124.916906
+L 693.497812 124.916906
+L 693.497812 118.616906
+L 675.497812 118.616906
 z
 " style="fill: #eb6834"/>
     </g>
     <g id="text_29">
-     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="740.361094" y="124.916906" transform="rotate(-0 740.361094 124.916906)">Vanilla SFT A (20)</text>
+     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="700.697812" y="124.916906" transform="rotate(-0 700.697812 124.916906)">Vanilla SFT Continuous (20 ep)</text>
     </g>
     <g id="patch_28">
-     <path d="M 715.161094 138.127219
-L 733.161094 138.127219
-L 733.161094 131.827219
-L 715.161094 131.827219
+     <path d="M 675.497812 138.127219
+L 693.497812 138.127219
+L 693.497812 131.827219
+L 675.497812 131.827219
 z
 " style="fill: #1baf7a"/>
     </g>
     <g id="text_30">
-     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="740.361094" y="138.127219" transform="rotate(-0 740.361094 138.127219)">Vanilla SFT C (10+10)</text>
+     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="700.697812" y="138.127219" transform="rotate(-0 700.697812 138.127219)">Vanilla SFT Staged (10+10 ep)</text>
     </g>
    </g>
   </g>

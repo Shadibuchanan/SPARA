@@ -681,7 +681,7 @@ L 95.868 267.427969
      </g>
     </g>
     <g id="text_13">
-     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="103.068" y="270.577969" transform="rotate(-0 103.068 270.577969)">Vanilla SFT A (20)</text>
+     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="103.068" y="270.577969" transform="rotate(-0 103.068 270.577969)">Vanilla SFT Continuous (20 ep)</text>
     </g>
     <g id="line2d_58">
      <path d="M 77.868 280.638281
@@ -693,7 +693,7 @@ L 95.868 280.638281
      </g>
     </g>
     <g id="text_14">
-     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="103.068" y="283.788281" transform="rotate(-0 103.068 283.788281)">Vanilla SFT C (10+10)</text>
+     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="103.068" y="283.788281" transform="rotate(-0 103.068 283.788281)">Vanilla SFT Staged (10+10 ep)</text>
     </g>
    </g>
   </g>
@@ -701,7 +701,7 @@ L 95.868 280.638281
    <text style="font-weight: 700; font-size: 19px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0f172a" x="69.768" y="29.125031" transform="rotate(-0 69.768 29.125031)">Vanilla SFT control vs LIVR: training loss</text>
   </g>
   <g id="text_16">
-   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="69.768" y="49.572" transform="rotate(-0 69.768 49.572)">Epoch-mean answer-token loss over 20 epochs (125 updates each)  |  Dotted line: LIVR stage / C segment boundary</text>
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="69.768" y="49.572" transform="rotate(-0 69.768 49.572)">Epoch-mean answer-token loss over 20 epochs (125 updates each)  |  Dotted line: LIVR stage / Staged restart</text>
   </g>
   <g id="text_17">
    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #475569" x="69.768" y="347.004" transform="rotate(-0 69.768 347.004)">Training loss measures fit to training answers; it is not validation accuracy.</text>
