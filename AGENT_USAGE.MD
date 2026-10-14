@@ -1116,3 +1116,27 @@ None
 ### Folders created
 
 - None
+
+## 2026-10-14 - Commit, merge and push the Scaffolding Minds fixes
+
+**Agent/tool:** Claude Code (VS Code extension); model Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Push and merge all local work except `spara_results/` and `.DS_Store`, concatenating any `AGENT_USAGE.MD` conflict.
+**AI contribution:** Committed the latent-prediction fixes and guards as `f297a53`, leaving `spara_results/` and `.DS_Store` untracked, then merged `origin/main`, which held five upstream commits by Pranav Somu (the Direct SFT control and a one-step Scaffolding Minds PACE runner). Resolved the usage-log conflict by rebuilding the file as the shared base followed by the upstream entries and then the local ones, after confirming both sides only appended; resolved the README conflict by keeping both sections. Checked that the upstream runner still calls `run_scaffolding.sh` compatibly and that the shared modules the Scaffolding package imports were unchanged, then pushed `main` to `origin`.
+**Contribution type:** editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked to push and merge everything except `spara_results/` and `.DS_Store`, concatenating `AGENT_USAGE.MD` if it conflicted | Authorized the commit, merge and push to `main`, and set the conflict policy |
+| 2 | Observed upstream commits with author attribution in Git history | Pranav Somu's five commits on `origin/main` (Direct SFT control, PACE runner, usage-log entries) | Merged unchanged apart from the two conflict resolutions |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| README.md | modified | Merge resolution keeping the runner's environment pass-through note and the upstream one-step PACE runner section |
+
+### Folders created
+
+- None
