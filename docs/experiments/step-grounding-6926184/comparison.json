@@ -1,0 +1,327 @@
+{
+  "primary_benchmark": {
+    "maps": 400,
+    "grounded": 326,
+    "livr": 328,
+    "only_grounded": 14,
+    "only_livr": 16,
+    "p": 0.855535551905632,
+    "per_size": {
+      "3": {
+        "maps": 100,
+        "grounded": 92,
+        "livr": 92,
+        "only_grounded": 1,
+        "only_livr": 1,
+        "p": 1.0
+      },
+      "4": {
+        "maps": 100,
+        "grounded": 89,
+        "livr": 88,
+        "only_grounded": 4,
+        "only_livr": 3,
+        "p": 1.0
+      },
+      "5": {
+        "maps": 100,
+        "grounded": 83,
+        "livr": 86,
+        "only_grounded": 3,
+        "only_livr": 6,
+        "p": 0.5078125
+      },
+      "6": {
+        "maps": 100,
+        "grounded": 62,
+        "livr": 62,
+        "only_grounded": 6,
+        "only_livr": 6,
+        "p": 1.0
+      }
+    },
+    "failures": {
+      "grounded": {
+        "hole": 68,
+        "short": 6
+      },
+      "livr": {
+        "hole": 69,
+        "short": 3
+      }
+    },
+    "reading": "no detectable difference"
+  },
+  "greedy_test": {
+    "maps": 400,
+    "grounded": 329,
+    "livr": 327,
+    "only_grounded": 15,
+    "only_livr": 13,
+    "p": 0.8505540192127228,
+    "per_size": {
+      "3": {
+        "maps": 100,
+        "grounded": 93,
+        "livr": 92,
+        "only_grounded": 2,
+        "only_livr": 1,
+        "p": 1.0
+      },
+      "4": {
+        "maps": 100,
+        "grounded": 89,
+        "livr": 90,
+        "only_grounded": 3,
+        "only_livr": 4,
+        "p": 1.0
+      },
+      "5": {
+        "maps": 100,
+        "grounded": 84,
+        "livr": 85,
+        "only_grounded": 2,
+        "only_livr": 3,
+        "p": 1.0
+      },
+      "6": {
+        "maps": 100,
+        "grounded": 63,
+        "livr": 60,
+        "only_grounded": 8,
+        "only_livr": 5,
+        "p": 0.5810546875
+      }
+    },
+    "failures": {
+      "grounded": {
+        "hole": 67,
+        "short": 4
+      },
+      "livr": {
+        "hole": 68,
+        "short": 5
+      }
+    }
+  },
+  "greedy_fresh": {
+    "maps": 400,
+    "grounded": 203,
+    "livr": 217,
+    "only_grounded": 17,
+    "only_livr": 31,
+    "p": 0.05946337525377032,
+    "per_size": {
+      "5": {
+        "maps": 100,
+        "grounded": 77,
+        "livr": 77,
+        "only_grounded": 5,
+        "only_livr": 5,
+        "p": 1.0
+      },
+      "6": {
+        "maps": 100,
+        "grounded": 61,
+        "livr": 67,
+        "only_grounded": 5,
+        "only_livr": 11,
+        "p": 0.210113525390625
+      },
+      "7": {
+        "maps": 100,
+        "grounded": 39,
+        "livr": 43,
+        "only_grounded": 2,
+        "only_livr": 6,
+        "p": 0.2890625
+      },
+      "8": {
+        "maps": 100,
+        "grounded": 26,
+        "livr": 30,
+        "only_grounded": 5,
+        "only_livr": 9,
+        "p": 0.4239501953125
+      }
+    },
+    "failures": {
+      "grounded": {
+        "hole": 141,
+        "short": 56
+      },
+      "livr": {
+        "hole": 135,
+        "short": 48
+      }
+    }
+  },
+  "training_fit": {
+    "grounded": {
+      "answer_loss": 0.0007785413102326971,
+      "grounding_loss": 0.019847345163456338,
+      "cell_accuracy": 1.0,
+      "outcome_accuracy": 0.9904756692051887
+    },
+    "livr": {
+      "answer_loss": 0.012966420852095496,
+      "grounding_loss": null,
+      "cell_accuracy": null,
+      "outcome_accuracy": null
+    },
+    "answer_loss_more_than_doubled": false
+  },
+  "manipulation_check": {
+    "held_out_position_accuracy": {
+      "grounded": {
+        "4": 0.3020833333333333,
+        "8": 0.4270833333333333,
+        "12": 0.4419642857142857,
+        "16": 0.6369047619047619,
+        "20": 0.8273809523809523,
+        "24": 0.8616071428571429,
+        "28": 0.7752976190476191,
+        "32": 0.6726190476190477,
+        "36": 0.625
+      },
+      "livr": {
+        "4": 0.30505952380952384,
+        "8": 0.3288690476190476,
+        "12": 0.38244047619047616,
+        "16": 0.4270833333333333,
+        "20": 0.43154761904761907,
+        "24": 0.3869047619047619,
+        "28": 0.42410714285714285,
+        "32": 0.35267857142857145,
+        "36": 0.35714285714285715
+      }
+    },
+    "selected_layer": {
+      "grounded": 24,
+      "livr": 20
+    },
+    "test": {
+      "layer_20_solved_step_accuracy": {
+        "grounded": 0.8905704307334109,
+        "livr": 0.3945818610129564
+      },
+      "layer_20_fatal_step_accuracy_k2": {
+        "grounded": 0.7592592592592593,
+        "livr": 0.1568627450980392
+      },
+      "S1_at_selected_layer": {
+        "grounded": {
+          "fatal_steps": 67,
+          "fatal_first_moves": 13,
+          "fatal_first_move_accuracy": 0.9230769230769231,
+          "tested": 54,
+          "nearest_k_used": 0,
+          "unmatched": 0,
+          "correct": 42,
+          "accuracy": 0.7777777777777778,
+          "expected_accuracy": 0.8619988731150436,
+          "gap": 0.08422109533726585,
+          "p_one_sided": 0.057355033053895235,
+          "reading": "tracking intact"
+        },
+        "livr": {
+          "fatal_steps": 68,
+          "fatal_first_moves": 17,
+          "fatal_first_move_accuracy": 0.7058823529411765,
+          "tested": 51,
+          "nearest_k_used": 0,
+          "unmatched": 0,
+          "correct": 8,
+          "accuracy": 0.1568627450980392,
+          "expected_accuracy": 0.2554582746273441,
+          "gap": 0.09859552952930489,
+          "p_one_sided": 0.0626570409397043,
+          "reading": "tracking intact"
+        }
+      },
+      "head": {
+        "solved_steps": {
+          "steps": 859,
+          "cell_accuracy": 0.9906868451688009,
+          "outcome_accuracy_other_directions": 0.9476135040745041,
+          "move_taken_read_as_hole": 0.008149010477299184
+        },
+        "fatal_steps_k2": {
+          "steps": 54,
+          "cell_accuracy": 0.9444444444444444,
+          "outcome_accuracy_other_directions": 0.8333333333333335,
+          "move_taken_read_as_hole": 0.12962962962962962
+        },
+        "fatal_steps_all": {
+          "steps": 67,
+          "cell_accuracy": 0.9402985074626866,
+          "outcome_accuracy_other_directions": 0.8407960199004975,
+          "move_taken_read_as_hole": 0.208955223880597
+        }
+      }
+    },
+    "fresh": {
+      "layer_20_solved_step_accuracy": {
+        "grounded": 0.7024390243902439,
+        "livr": 0.48504273504273504
+      },
+      "layer_20_fatal_step_accuracy_k2": {
+        "grounded": 0.4793388429752066,
+        "livr": 0.16666666666666666
+      },
+      "S1_at_selected_layer": {
+        "grounded": {
+          "fatal_steps": 141,
+          "fatal_first_moves": 20,
+          "fatal_first_move_accuracy": 0.3,
+          "tested": 121,
+          "nearest_k_used": 4,
+          "unmatched": 0,
+          "correct": 59,
+          "accuracy": 0.48760330578512395,
+          "expected_accuracy": 0.5739046472629756,
+          "gap": 0.08630134147785168,
+          "p_one_sided": 0.005744200383358431,
+          "reading": "tracking intact"
+        },
+        "livr": {
+          "fatal_steps": 50,
+          "fatal_first_moves": 8,
+          "fatal_first_move_accuracy": 0.75,
+          "tested": 42,
+          "nearest_k_used": 0,
+          "unmatched": 0,
+          "correct": 7,
+          "accuracy": 0.16666666666666666,
+          "expected_accuracy": 0.39616191848809346,
+          "gap": 0.2294952518214268,
+          "p_one_sided": 0.0011510683192881184,
+          "reading": "tracking contributes"
+        }
+      },
+      "head": {
+        "solved_steps": {
+          "steps": 615,
+          "cell_accuracy": 0.824390243902439,
+          "outcome_accuracy_other_directions": 0.9235772357723581,
+          "move_taken_read_as_hole": 0.013008130081300813
+        },
+        "fatal_steps_k2": {
+          "steps": 121,
+          "cell_accuracy": 0.6033057851239669,
+          "outcome_accuracy_other_directions": 0.8595041322314054,
+          "move_taken_read_as_hole": 0.1487603305785124
+        },
+        "fatal_steps_all": {
+          "steps": 141,
+          "cell_accuracy": 0.5673758865248227,
+          "outcome_accuracy_other_directions": 0.8676122931442087,
+          "move_taken_read_as_hole": 0.18439716312056736
+        }
+      },
+      "note": "LIVR's fresh probe used 5 x 5 and 6 x 6 maps only; G's adds 7 x 7 and 8 x 8"
+    },
+    "took": true
+  },
+  "reading": "position became decodable but routes did not improve"
+}

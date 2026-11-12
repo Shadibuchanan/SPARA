@@ -1,0 +1,50 @@
+[
+  {
+    "row_index": 0,
+    "mode": "unmasked",
+    "same_route": true,
+    "nll_difference": 0.0
+  },
+  {
+    "row_index": 0,
+    "mode": "bottleneck",
+    "same_route": true,
+    "nll_difference": 0.0
+  },
+  {
+    "row_index": 1,
+    "mode": "unmasked",
+    "same_route": true,
+    "nll_difference": 0.0
+  },
+  {
+    "row_index": 1,
+    "mode": "bottleneck",
+    "same_route": true,
+    "nll_difference": 0.0
+  },
+  {
+    "row_index": 2,
+    "mode": "unmasked",
+    "same_route": true,
+    "nll_difference": 0.0008242204785346985
+  },
+  {
+    "row_index": 2,
+    "mode": "bottleneck",
+    "same_route": true,
+    "nll_difference": 1.1418014764785767e-06
+  },
+  {
+    "row_index": 3,
+    "mode": "unmasked",
+    "same_route": true,
+    "nll_difference": 0.0
+  },
+  {
+    "row_index": 3,
+    "mode": "bottleneck",
+    "same_route": true,
+    "nll_difference": 0.0
+  }
+]

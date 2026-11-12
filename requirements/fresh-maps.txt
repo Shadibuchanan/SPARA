@@ -1,0 +1,4 @@
+# Renderer for spara.fresh_maps. These versions reproduce every released Mirage VSP
+# map image pixel for pixel. Only map generation needs them; training does not.
+gymnasium==1.0.0
+pygame==2.6.1

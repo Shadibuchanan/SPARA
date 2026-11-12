@@ -1,0 +1,104 @@
+{
+ "uniform": {
+  "solved_within": {
+   "64": 0,
+   "1000": 14,
+   "20000": 60
+  },
+  "policy_calls": {
+   "median": 9151,
+   "p90": 20001
+  },
+  "verifier_calls_solved": {
+   "median": 977.0,
+   "p90": 4370
+  },
+  "rejected": 302630,
+  "stops": {
+   "solved": 60,
+   "budget": 37
+  },
+  "by_size": {
+   "3": {
+    "maps": 2,
+    "solved": 2
+   },
+   "4": {
+    "maps": 10,
+    "solved": 10
+   },
+   "5": {
+    "maps": 14,
+    "solved": 14
+   },
+   "6": {
+    "maps": 36,
+    "solved": 23
+   },
+   "7": {
+    "maps": 18,
+    "solved": 7
+   },
+   "8": {
+    "maps": 17,
+    "solved": 4
+   }
+  },
+  "validity": {
+   "accepted_answers_pass_evaluator": true,
+   "costs_nondecreasing": true
+  },
+  "seconds": 13.1
+ },
+ "toward_goal": {
+  "solved_within": {
+   "64": 9,
+   "1000": 67,
+   "20000": 90
+  },
+  "policy_calls": {
+   "median": 329,
+   "p90": 10044
+  },
+  "verifier_calls_solved": {
+   "median": 107.5,
+   "p90": 2249
+  },
+  "rejected": 141842,
+  "stops": {
+   "solved": 90,
+   "budget": 7
+  },
+  "by_size": {
+   "3": {
+    "maps": 2,
+    "solved": 2
+   },
+   "4": {
+    "maps": 10,
+    "solved": 10
+   },
+   "5": {
+    "maps": 14,
+    "solved": 14
+   },
+   "6": {
+    "maps": 36,
+    "solved": 33
+   },
+   "7": {
+    "maps": 18,
+    "solved": 17
+   },
+   "8": {
+    "maps": 17,
+    "solved": 14
+   }
+  },
+  "validity": {
+   "accepted_answers_pass_evaluator": true,
+   "costs_nondecreasing": true
+  },
+  "seconds": 7.4
+ }
+}

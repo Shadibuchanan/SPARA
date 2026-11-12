@@ -129,15 +129,27 @@ class LatentDecoder:
                 rollouts[i] = self.generate(prompt, max_new_tokens, state, (first[i], first_log_probs[i]))
         if not bot_rows:
             return rollouts
-        n = len(bot_rows)
         prior = model.latent_prior(cache, delta)
-        actions, mean, sigma = self.action(prior, n)
+        actions, mean, sigma = self.action(prior, len(bot_rows))
+        rows, _ = self.decode_block(ids, cache, delta, actions, max_new_tokens,
+                                    [float(first_log_probs[i]) for i in bot_rows], mean, sigma)
+        for r, i in enumerate(bot_rows):
+            rollouts[i] = rows[r]
+        return rollouts
+
+    @torch.no_grad()
+    def decode_block(self, ids, cache, delta, actions, max_new_tokens, bot_log_probs=None, mean=None, sigma=None):
+        """Rows that opened with BOT, one per latent action (n, K, d), decoded in lockstep
+        from one shared prefill. Returns the rollouts and the logits right after EOT."""
+        model, c = self.model, self.model.config
+        n = actions.shape[0]
+        bot_log_probs = bot_log_probs or [0.0] * n
         cache.batch_repeat_interleave(n)
-        logits = model.lm_head(model.append_latent(cache, delta, actions)[:, -1])
+        first = logits = model.lm_head(model.append_latent(cache, delta, actions)[:, -1])
         block = [c.scaffold_bot_id] + self._block_ids()
         sequence = torch.cat([ids.expand(n, -1), torch.tensor([block], device=ids.device).expand(n, -1)], dim=1)
-        rows = [Rollout(ids.shape[1], list(block), [0], [float(first_log_probs[i])], 0, actions[r], sigma, mean)
-                for r, i in enumerate(bot_rows)]
+        rows = [Rollout(ids.shape[1], list(block), [0], [bot_log_probs[r]], 0, actions[r], sigma, mean)
+                for r in range(n)]
         finished = torch.zeros(n, dtype=torch.bool, device=ids.device)
         eos = torch.tensor(sorted(self.eos), device=ids.device, dtype=torch.long)
         for _ in range(1, max_new_tokens):
@@ -152,6 +164,4 @@ class LatentDecoder:
             if bool(finished.all()):
                 break
             logits = model.lm_head(model.extend(token[:, None], cache, delta)[:, -1])
-        for r, i in enumerate(bot_rows):
-            rollouts[i] = rows[r]
-        return rollouts
+        return rows, first

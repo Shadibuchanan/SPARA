@@ -1,0 +1,176 @@
+{
+  "layer": 16,
+  "basis": {
+    "captured": [
+      0.7797181269081079,
+      0.9403327999871429,
+      0.8776065375513136,
+      0.8541752075170083
+    ],
+    "k": 16,
+    "maps": 1000
+  },
+  "sweep": {
+    "per_size": {
+      "5": {
+        "maps": 100,
+        "greedy_success_rate": 0.77,
+        "sample_success_rate": 0.77125,
+        "mixed_share": 0.11,
+        "all_fail_share": 0.17,
+        "all_success_share": 0.72,
+        "greedy_failures": 23,
+        "greedy_failures_rescued_by_sampling": 0.2608695652173913,
+        "prompt_tokens_max": 431,
+        "peak_gpu_gib": 21.143272399902344
+      },
+      "6": {
+        "maps": 100,
+        "greedy_success_rate": 0.67,
+        "sample_success_rate": 0.64875,
+        "mixed_share": 0.12,
+        "all_fail_share": 0.29,
+        "all_success_share": 0.59,
+        "greedy_failures": 33,
+        "greedy_failures_rescued_by_sampling": 0.15151515151515152,
+        "prompt_tokens_max": 506,
+        "peak_gpu_gib": 21.35037136077881
+      },
+      "7": {
+        "maps": 100,
+        "greedy_success_rate": 0.43,
+        "sample_success_rate": 0.4275,
+        "mixed_share": 0.08,
+        "all_fail_share": 0.53,
+        "all_success_share": 0.39,
+        "greedy_failures": 57,
+        "greedy_failures_rescued_by_sampling": 0.07017543859649122,
+        "prompt_tokens_max": 566,
+        "peak_gpu_gib": 21.58974313735962
+      },
+      "8": {
+        "maps": 100,
+        "greedy_success_rate": 0.3,
+        "sample_success_rate": 0.305,
+        "mixed_share": 0.1,
+        "all_fail_share": 0.65,
+        "all_success_share": 0.25,
+        "greedy_failures": 70,
+        "greedy_failures_rescued_by_sampling": 0.07142857142857142,
+        "prompt_tokens_max": 634,
+        "peak_gpu_gib": 21.73852300643921
+      }
+    },
+    "training_sizes": [
+      5,
+      6,
+      7,
+      8
+    ]
+  },
+  "noise": {
+    "rows": 200,
+    "base_success_rate": 0.715,
+    "base_failures": 57,
+    "families": {
+      "isotropic": {
+        "scales": {
+          "1.2": {
+            "route_change_rate": 0.11375,
+            "success_rate": 0.70375,
+            "rescue_rate": 0.05701754385964912,
+            "break_rate": 0.038461538461538464,
+            "rescue_share": 0.14285714285714285,
+            "maps_with_rescue": 7,
+            "maps_with_break": 15
+          },
+          "1.6": {
+            "route_change_rate": 0.255,
+            "success_rate": 0.62125,
+            "rescue_rate": 0.06578947368421052,
+            "break_rate": 0.15734265734265734,
+            "rescue_share": 0.07352941176470588,
+            "maps_with_rescue": 8,
+            "maps_with_break": 41
+          },
+          "2.0": {
+            "route_change_rate": 0.495,
+            "success_rate": 0.465,
+            "rescue_rate": 0.03070175438596491,
+            "break_rate": 0.3618881118881119,
+            "rescue_share": 0.017676767676767676,
+            "maps_with_rescue": 5,
+            "maps_with_break": 79
+          },
+          "2.4": {
+            "route_change_rate": 0.71,
+            "success_rate": 0.2775,
+            "rescue_rate": 0.0043859649122807015,
+            "break_rate": 0.6136363636363636,
+            "rescue_share": 0.0017605633802816902,
+            "maps_with_rescue": 1,
+            "maps_with_break": 119
+          }
+        },
+        "chosen": 1.2
+      },
+      "structured": {
+        "scales": {
+          "0.5": {
+            "route_change_rate": 0.0175,
+            "success_rate": 0.72,
+            "rescue_rate": 0.021929824561403508,
+            "break_rate": 0.0017482517482517483,
+            "rescue_share": 0.35714285714285715,
+            "maps_with_rescue": 2,
+            "maps_with_break": 1
+          },
+          "1.0": {
+            "route_change_rate": 0.025,
+            "success_rate": 0.72125,
+            "rescue_rate": 0.03070175438596491,
+            "break_rate": 0.0034965034965034965,
+            "rescue_share": 0.35,
+            "maps_with_rescue": 4,
+            "maps_with_break": 1
+          },
+          "2.0": {
+            "route_change_rate": 0.05875,
+            "success_rate": 0.72625,
+            "rescue_rate": 0.05263157894736842,
+            "break_rate": 0.005244755244755245,
+            "rescue_share": 0.2553191489361702,
+            "maps_with_rescue": 6,
+            "maps_with_break": 2
+          },
+          "4.0": {
+            "route_change_rate": 0.1,
+            "success_rate": 0.715,
+            "rescue_rate": 0.07456140350877193,
+            "break_rate": 0.02972027972027972,
+            "rescue_share": 0.2125,
+            "maps_with_rescue": 11,
+            "maps_with_break": 14
+          },
+          "8.0": {
+            "route_change_rate": 0.35,
+            "success_rate": 0.55375,
+            "rescue_rate": 0.05263157894736842,
+            "break_rate": 0.2465034965034965,
+            "rescue_share": 0.04285714285714286,
+            "maps_with_rescue": 9,
+            "maps_with_break": 93
+          }
+        },
+        "chosen": 4.0
+      }
+    },
+    "decision": {
+      "family": "structured",
+      "scale": 4.0,
+      "structured_rescue_share": 0.2125,
+      "matched_isotropic_sigma": 1.2,
+      "isotropic_rescue_share": 0.14285714285714285
+    }
+  }
+}

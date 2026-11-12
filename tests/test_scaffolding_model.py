@@ -2,7 +2,7 @@ import copy
 
 import numpy as np
 import torch
-from spara.scaffolding import policy
+from spara.scaffolding import policy, probe
 from spara.scaffolding.decoding import LatentDecoder
 from spara.scaffolding.helper import RAMP, value_heatmap, value_iteration
 from spara.scaffolding.model import (ScaffoldingEncoder, ScaffoldingQwen, add_heads, answer_sequence,
@@ -129,6 +129,36 @@ def test_zero_adjustment_reproduces_stage1_and_nonzero_changes_answer(tiny_scaff
     torch.testing.assert_close(zero, stage1, atol=0, rtol=0)
     assert torch.equal(nudged[:, :bot + 1], stage1[:, :bot + 1])
     assert not torch.allclose(nudged[:, bot + 5:], stage1[:, bot + 5:])
+
+
+def test_latent_probe_is_exact_at_zero_scale_and_moves_answers_at_large_scale(tiny_scaffold, tiny_sample):
+    model, prompt = tiny_scaffold.eval(), tiny_sample["prompt"]
+    length = prompt["input_ids"].shape[1]
+
+    class Processor:
+        class tokenizer:
+            @staticmethod
+            def decode(ids, skip_special_tokens=False):
+                return " ".join(map(str, ids))
+
+    class Evaluator:
+        """Spells each generated token as a move, so any change in the answer is a route change."""
+        def score(self, row, text):
+            answer = ",".join("UDRL"[int(t) % 4] for t in text.split()[length:])
+            return {"extracted_answer": answer, "success": len(answer) % 4 == 1}
+
+    decoder = LatentDecoder(model, {"do_sample": False, "repetition_penalty": 1.0, "max_new_tokens": 6}, "none")
+    with torch.no_grad():
+        result = probe.probe_row(decoder, Processor, prompt, {"map_desc": [[0] * 3] * 3}, Evaluator(),
+                                 [0.0, 100.0], 3, torch.Generator().manual_seed(0))
+    zero, large = result["sigmas"]["0.0"], result["sigmas"]["100.0"]
+    assert zero["route_changed"] == [False] * 3 and zero["first_token_kl"] == [0.0] * 3
+    assert zero["success"] == [result["success"]] * 3
+    assert min(large["first_token_kl"]) > 0
+    summary = probe.summarize_probe([result], [0.0, 100.0])
+    assert summary["rows"] == 1 and summary["sigmas"]["0.0"]["route_change_rate"] == 0
+    assert summary["sigmas"]["0.0"]["gained"] == summary["sigmas"]["0.0"]["lost"] == 0
+    assert probe.moves("RIGHT, DOWN, LEFT, UP") == "RDLU"
 
 
 def test_policy_terms():

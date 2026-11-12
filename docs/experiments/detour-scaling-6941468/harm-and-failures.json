@@ -1,0 +1,102 @@
+{
+ "noise_floor": {
+  "livr_6189457_vs_6253300": {
+   "all": {
+    "maps": 400,
+    "first": 323,
+    "second": 328,
+    "only_first": 13,
+    "only_second": 18,
+    "p": 0.47312965989112854
+   },
+   "detour": {
+    "maps": 40,
+    "first": 7,
+    "second": 9,
+    "only_first": 1,
+    "only_second": 3,
+    "p": 0.625
+   },
+   "no_detour": {
+    "maps": 360,
+    "first": 316,
+    "second": 319,
+    "only_first": 12,
+    "only_second": 15,
+    "p": 0.7011080384254456
+   }
+  },
+  "livr_6253300_single_pass_from_16_samples": {
+   "all": {
+    "expected": 326.2,
+    "sd": 2.29
+   },
+   "detour": {
+    "expected": 8.2,
+    "sd": 0.69
+   },
+   "no_detour": {
+    "expected": 318.0,
+    "sd": 2.19
+   }
+  }
+ },
+ "outcomes": {
+  "livr": {
+   "held_out_greedy": {
+    "goal, longer": 2,
+    "goal, shortest": 40,
+    "hole": 192,
+    "stops short": 6
+   },
+   "benchmark_no_detour": {
+    "goal, longer": 2,
+    "goal, shortest": 317,
+    "hole": 38,
+    "stops short": 3
+   }
+  },
+  "n98": {
+   "held_out_greedy": {
+    "goal, longer": 2,
+    "goal, shortest": 62,
+    "hole": 170,
+    "stops short": 6
+   },
+   "benchmark_no_detour": {
+    "goal, longer": 3,
+    "goal, shortest": 303,
+    "hole": 46,
+    "stops short": 8
+   }
+  },
+  "n500": {
+   "held_out_greedy": {
+    "goal, longer": 2,
+    "goal, shortest": 95,
+    "hole": 139,
+    "stops short": 4
+   },
+   "benchmark_no_detour": {
+    "goal, longer": 5,
+    "goal, shortest": 305,
+    "hole": 45,
+    "stops short": 5
+   }
+  },
+  "n2000": {
+   "held_out_greedy": {
+    "goal, longer": 1,
+    "goal, shortest": 106,
+    "hole": 130,
+    "stops short": 3
+   },
+   "benchmark_no_detour": {
+    "goal, longer": 7,
+    "goal, shortest": 296,
+    "hole": 45,
+    "stops short": 12
+   }
+  }
+ }
+}

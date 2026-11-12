@@ -1,0 +1,37 @@
+{
+  "arm": "livr",
+  "distinct": 0,
+  "checks": {
+    "labels_accepted": [
+      2200,
+      2200
+    ],
+    "shared_layouts": {
+      "fresh/detour-heldout|fresh/detour-pool": 0,
+      "fresh/detour-heldout|fresh/probe": 0,
+      "fresh/detour-heldout|train": 0,
+      "fresh/detour-heldout|test": 0,
+      "fresh/detour-pool|fresh/probe": 0,
+      "fresh/detour-pool|train": 0,
+      "fresh/detour-pool|test": 0
+    },
+    "valid": true
+  },
+  "training": null,
+  "greedy": {
+    "heldout": [
+      34,
+      200
+    ],
+    "test_detour": [
+      8,
+      40
+    ],
+    "seen": [
+      22,
+      98
+    ]
+  },
+  "seconds": 149.86757946014404,
+  "peak_gpu_gib": 20.0570330619812
+}

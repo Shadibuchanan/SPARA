@@ -75,11 +75,13 @@ def test_three_phases_run_end_to_end(tiny_scaffold, fake_data, tmp_path):
     reference = ScaffoldingQwen.from_pretrained(final, attn_implementation="eager")
     add_heads(policy, config["rl"])
     heads = {k: v.clone() for k, v in policy.latent_heads.state_dict().items()}
+    config["rl"] = config["rl"] | {"head_learning_rate": 2e-3}
     final = training.train_rl(policy, reference, Processor(), "unused", tmp_path / "rl", config, Evaluator(),
                               source=final)
     steps = [json.loads(line) for line in (tmp_path / "rl/steps.jsonl").read_text().splitlines()]
     assert len(steps) == 2
     assert {"reward_mean", "reward_std_within_group", "pass_at_group", "kl", "grad_norm"} <= steps[0].keys()
+    assert steps[0]["head_lr"] == pytest.approx(2 * steps[0]["lr"])
     assert any(not torch.equal(v, policy.latent_heads.state_dict()[k]) for k, v in heads.items())
     reloaded = ScaffoldingQwen.from_pretrained(final, attn_implementation="eager")
     assert reloaded.config.scaffold_phase == "rl" and hasattr(reloaded, "latent_heads")

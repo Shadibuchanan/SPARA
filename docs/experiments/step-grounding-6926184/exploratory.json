@@ -1,0 +1,106 @@
+{
+  "note": "Post hoc; not among the pre-declared measures",
+  "fresh_position_layer_20": {
+    "ridge": {
+      "5x5_6x6": {
+        "solved_steps": {
+          "steps": 447,
+          "accuracy": 0.8456375838926175
+        },
+        "fatal_steps_k2": {
+          "steps": 50,
+          "accuracy": 0.78
+        }
+      },
+      "7x7_8x8_cell_in_trained_range": {
+        "solved_steps": {
+          "steps": 136,
+          "accuracy": 0.39705882352941174
+        },
+        "fatal_steps_k2": {
+          "steps": 60,
+          "accuracy": 0.31666666666666665
+        }
+      },
+      "7x7_8x8_row_or_column_beyond": {
+        "solved_steps": {
+          "steps": 32,
+          "accuracy": 0.0
+        },
+        "fatal_steps_k2": {
+          "steps": 11,
+          "accuracy": 0.0
+        }
+      }
+    },
+    "head": {
+      "5x5_6x6": {
+        "solved_steps": {
+          "steps": 447,
+          "accuracy": 0.9843400447427293
+        },
+        "fatal_steps_k2": {
+          "steps": 50,
+          "accuracy": 0.92
+        }
+      },
+      "7x7_8x8_cell_in_trained_range": {
+        "solved_steps": {
+          "steps": 136,
+          "accuracy": 0.49264705882352944
+        },
+        "fatal_steps_k2": {
+          "steps": 60,
+          "accuracy": 0.45
+        }
+      },
+      "7x7_8x8_row_or_column_beyond": {
+        "solved_steps": {
+          "steps": 32,
+          "accuracy": 0.0
+        },
+        "fatal_steps_k2": {
+          "steps": 11,
+          "accuracy": 0.0
+        }
+      }
+    }
+  },
+  "hole_ahead_direction_taken": {
+    "layer": 24,
+    "test": {
+      "fatal_steps": 67,
+      "fatal_read_as_hole": 0.5074626865671642,
+      "safe_steps": 859,
+      "safe_read_as_hole": 0.08032596041909197
+    },
+    "fresh": {
+      "fatal_steps": 141,
+      "fatal_read_as_hole": 0.3971631205673759,
+      "safe_steps": 615,
+      "safe_read_as_hole": 0.10569105691056911
+    },
+    "fresh_5x5_6x6": {
+      "fatal_steps": 54,
+      "fatal_read_as_hole": 0.46296296296296297,
+      "safe_steps": 447,
+      "safe_read_as_hole": 0.11409395973154363
+    }
+  },
+  "matched_start": [
+    {
+      "step": 1,
+      "grounded_answer_loss": 0.08192570937080745,
+      "livr_answer_loss": 0.08192570937080745,
+      "grounded_grad_norm_with_head": 15.055008888244629,
+      "livr_grad_norm": 14.059274673461914
+    },
+    {
+      "step": 2,
+      "grounded_answer_loss": 0.17769013853671822,
+      "livr_answer_loss": 0.17769013853671822,
+      "grounded_grad_norm_with_head": 8.541892051696777,
+      "livr_grad_norm": 6.336678981781006
+    }
+  ]
+}

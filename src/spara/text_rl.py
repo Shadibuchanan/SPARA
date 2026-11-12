@@ -1,4 +1,8 @@
-"""Text-only GRPO from the final LIVR checkpoint (condition B); latents are not perturbed."""
+"""GRPO from the final LIVR checkpoint. Condition B (text only) leaves the latents
+unperturbed; with an `rl["latent"]` section the same loop runs condition C, adding
+Gaussian adjustments of the latent states (spara.latent_rl).
+"""
+import contextlib
 import json
 import math
 import time
@@ -55,14 +59,20 @@ def sequence_loss(policy, reference, advantage, rl):
 
 
 @torch.no_grad()
-def rollout(model, prompt, rl, eos_ids):
+def rollout(model, prompt, rl, eos_ids, adjuster=None):
+    """G sampled completions and, for condition C, each row's latent action (G, K, d)."""
     model.eval()
-    with amp(prompt["input_ids"].device):
+    with (adjuster.sample() if adjuster else contextlib.nullcontext()) as state, amp(prompt["input_ids"].device):
         generated = model.generate(**repeat_prompt(prompt, rl["group_size"]),
                                    **rl["generation"], use_cache=True)
     completions = generated[:, prompt["input_ids"].shape[-1]:]
     lengths = completion_mask(completions, eos_ids).sum(-1)
-    return [completions[i, :lengths[i]] for i in range(len(completions))]
+    actions = None
+    if adjuster:
+        if len(state["records"]) != 1:
+            raise RuntimeError(f"Expected one adjusted prefill per group, saw {len(state['records'])}")
+        actions = state["records"][0]["actions"]
+    return [completions[i, :lengths[i]] for i in range(len(completions))], actions
 
 
 def steps_per_epoch(rows, rl):
@@ -71,33 +81,52 @@ def steps_per_epoch(rows, rl):
 
 def train_text_rl(model, reference, processor, data_root, output, config, rl,
                   source, resume=None, scorer=None, final_weights_only=False, max_steps=None,
-                  save_final=True):
-    """GRPO on the original training records. `reference` is the frozen LIVR checkpoint."""
+                  save_final=True, adjusters=None):
+    """GRPO on the training records (`rl["train_split"]`, default the released split).
+    `reference` is the frozen LIVR checkpoint.
+
+    Condition C: `rl["latent"]` holds the latent policy and `adjusters` the
+    (policy, reference) LatentAdjusters; the model must carry `latent_heads`.
+    """
+    latent = rl.get("latent")
+    if bool(latent) != bool(adjusters):
+        raise ValueError("Latent RL needs both rl['latent'] and the latent adjusters")
+    if latent:
+        from .latent_rl import PHASE as phase, latent_objective, replaying
+        if getattr(model, "latent_heads", None) is None:
+            raise ValueError("Latent RL requires Gaussian heads on the policy")
+        policy_adjuster, reference_adjuster = adjusters
+    else:
+        phase, policy_adjuster, reference_adjuster = PHASE, None, None
+        replaying = lambda adjuster, actions: contextlib.nullcontext({})
     if scorer is None:
         from .evaluation import ReferenceEvaluator
         evaluator = ReferenceEvaluator(data_root)
         scorer = lambda row, text: float(evaluator.score(row, text)["success"])
     if model.config.livr_stage != 2:
         raise ValueError("Text-only RL starts from final Stage 2 LIVR weights")
-    rows = records(data_root, "train")
+    # B and C train on the released training split; B' and C' on a fresh/<name> set.
+    split = rl.get("train_split", "train")
+    rows = records(data_root, split)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     reference.eval().requires_grad_(False)
     model.config.use_cache = False
     if config["gradient_checkpointing"]:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-    optimizer = make_optimizer(model, config | {"learning_rate": rl["learning_rate"]})
+    optimizer = make_optimizer(model, config | {"learning_rate": rl["learning_rate"]},
+                               {"latent_heads.": latent["head_learning_rate"]} if latent else None)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
     eos_ids = model.generation_config.eos_token_id
     eos_ids = eos_ids if isinstance(eos_ids, list) else [eos_ids]
     temperature = rl["generation"].get("temperature", 1.0)
-    progress = {"phase": PHASE, "stage": 2, "epoch": 0, "next_row": 0, "optimizer_steps": 0,
+    progress = {"phase": phase, "stage": 2, "epoch": 0, "next_row": 0, "optimizer_steps": 0,
                 "config": config, "rl": rl, "source_checkpoint": str(source)}
     # A step-limited pilot measures cost and signal; its checkpoint never counts as complete.
     pilot = max_steps is not None
     if resume:
         progress = restore_training(resume, optimizer, scheduler)
-        if (progress.get("phase") != PHASE or progress["config"] != config or progress["rl"] != rl
+        if (progress.get("phase") != phase or progress["config"] != config or progress["rl"] != rl
                 or progress["source_checkpoint"] != str(source)):
             raise ValueError("Resume must keep the same LIVR source and RL recipe")
     with (output / "steps.jsonl").open("w", encoding="utf-8") as log, \
@@ -115,12 +144,12 @@ def train_text_rl(model, reference, processor, data_root, output, config, rl,
                 started = time.perf_counter()
                 groups = []
                 for index in selected:
-                    prompt = to_device(encode(processor, data_root, "train", rows[index], training=False), model.device)
-                    completions = rollout(model, prompt, rl, eos_ids)
+                    prompt = to_device(encode(processor, data_root, split, rows[index], training=False), model.device)
+                    completions, actions = rollout(model, prompt, rl, eos_ids, policy_adjuster)
                     texts = [processor.tokenizer.decode(torch.cat([prompt["input_ids"][0], c]), skip_special_tokens=False)
                              for c in completions]
                     rewards = torch.tensor([scorer(rows[index], text) for text in texts])
-                    groups.append((index, prompt, completions, rewards, group_advantages(rewards)))
+                    groups.append((index, prompt, completions, rewards, group_advantages(rewards), actions))
                     rollout_log.write(json.dumps({"step": progress["optimizer_steps"] + 1, "row": index,
                                                   "rewards": rewards.tolist(), "lengths": [len(c) for c in completions]}) + "\n")
                 generation_seconds = time.perf_counter() - started
@@ -129,15 +158,25 @@ def train_text_rl(model, reference, processor, data_root, output, config, rl,
                 optimizer.zero_grad(set_to_none=True)
                 count = sum(len(g[2]) for g in groups)
                 loss_sum = kl_sum = 0.0
-                for index, prompt, completions, rewards, advantages in groups:
-                    for completion, advantage in zip(completions, advantages.tolist()):
-                        with torch.no_grad():
+                latent_stats = []
+                for index, prompt, completions, rewards, advantages, actions in groups:
+                    for i, (completion, advantage) in enumerate(zip(completions, advantages.tolist())):
+                        action = None if actions is None else actions[i:i + 1]
+                        # The reference reads the same latent action, so KL covers the text only.
+                        with torch.no_grad(), replaying(reference_adjuster, action):
                             reference_logprobs = token_logprobs(reference, prompt, completion, temperature)
-                        policy = token_logprobs(model, prompt, completion, temperature)
-                        loss, kl = sequence_loss(policy, reference_logprobs, advantage, rl)
-                        if not torch.isfinite(loss):
-                            raise FloatingPointError(f"Nonfinite RL loss at row {index}")
-                        (loss / count).backward()
+                        # Keep the replay open through backward: checkpointing re-runs the hook.
+                        with replaying(policy_adjuster, action) as state:
+                            policy = token_logprobs(model, prompt, completion, temperature)
+                            loss, kl = sequence_loss(policy, reference_logprobs, advantage, rl)
+                            if latent:
+                                latent_loss, stats = latent_objective(model, state["prior"], action, advantage,
+                                                                      latent, rl["clip_epsilon"])
+                                loss = loss + latent_loss
+                                latent_stats.append(stats)
+                            if not torch.isfinite(loss):
+                                raise FloatingPointError(f"Nonfinite RL loss at row {index}")
+                            (loss / count).backward()
                         loss_sum += loss.item(); kl_sum += kl.item()
                 norm = torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad],
                                                       config["max_grad_norm"], error_if_nonfinite=True)
@@ -145,13 +184,16 @@ def train_text_rl(model, reference, processor, data_root, output, config, rl,
                 scheduler.step()
                 progress.update(epoch=epoch, next_row=offset + len(selected), optimizer_steps=progress["optimizer_steps"] + 1)
                 rewards = torch.stack([g[3] for g in groups])
-                row = {"phase": PHASE, "epoch": epoch, "step": progress["optimizer_steps"],
+                row = {"phase": phase, "epoch": epoch, "step": progress["optimizer_steps"],
                        "reward": rewards.mean().item(), "zero_variance_groups": int((rewards.std(-1) == 0).sum()),
                        "groups": len(groups), "loss": loss_sum / count, "kl": kl_sum / count,
                        "grad_norm": float(norm), "lr": scheduler.get_last_lr()[0],
                        "mean_completion_tokens": sum(len(c) for g in groups for c in g[2]) / count,
                        "generation_seconds": generation_seconds, "seconds": time.perf_counter() - started,
                        "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
+                if latent:
+                    row |= {key: sum(s[key] for s in latent_stats) / len(latent_stats) for key in latent_stats[0]}
+                    row["head_lr"] = scheduler.get_last_lr()[-1]
                 log.write(json.dumps(row) + "\n"); log.flush(); rollout_log.flush()
                 print(json.dumps(row), flush=True)
                 every = rl.get("checkpoint_every_steps", 0)

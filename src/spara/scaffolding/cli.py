@@ -4,6 +4,7 @@
     python -m spara.scaffolding.cli train --phase predict --base-model M --encoder S1A/final --output S1B
     python -m spara.scaffolding.cli train --phase rl --checkpoint S1B/final --output S2
     python -m spara.scaffolding.cli evaluate --checkpoint S2/final --output EVAL
+    python -m spara.scaffolding.cli probe --checkpoint S1B/final --output PROBE
 """
 import argparse
 import gc
@@ -14,7 +15,7 @@ from pathlib import Path
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="python -m spara.scaffolding.cli")
     sub = parser.add_subparsers(dest="command", required=True)
-    for command in ("pilot", "train", "evaluate"):
+    for command in ("pilot", "train", "evaluate", "probe"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/scaffolding.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -25,8 +26,16 @@ def main(argv=None):
             cmd.add_argument("--encoder", help="Final Scaffolding Phase checkpoint (predict phase)")
             cmd.add_argument("--checkpoint", help="Final Latent-Prediction checkpoint (rl phase)")
             cmd.add_argument("--resume", help="Trusted same-phase checkpoint including optimizer state")
-        if command == "evaluate":
+        if command in ("evaluate", "probe"):
             cmd.add_argument("--checkpoint", required=True, help="Final predict (Stage 1) or rl (Stage 2) checkpoint")
+        if command == "evaluate":
+            cmd.add_argument("--evaluation-latent", choices=["sample", "mean", "none"],
+                             help="Override the recipe's Stage 2 latent: sampled delta, its mean, or delta = 0")
+        if command == "probe":
+            cmd.add_argument("--sigmas", default="0.05,0.1,0.2,0.5,1,2",
+                             help="Comma-separated isotropic adjustment scales")
+            cmd.add_argument("--rows", type=int, default=64, help="Training maps, sampled with the recipe seed")
+            cmd.add_argument("--draws", type=int, default=4, help="Adjustments per map and sigma")
     args = parser.parse_args(argv)
 
     import torch
@@ -34,6 +43,8 @@ def main(argv=None):
     from ..runtime import json_write, seed_all
     from .runtime import read_config, manifest
     config = read_config(args.config)
+    if getattr(args, "evaluation_latent", None):
+        config["evaluation_latent"] = args.evaluation_latent
     if args.base_model:
         config["local_model_path"] = str(Path(args.base_model).resolve())
     seed_all(config["seed"])
@@ -55,16 +66,21 @@ def main(argv=None):
         run()
     else:
         from .evaluation import evaluate
+        from .probe import latent_probe
         from .runtime import load_checkpoint, require_final
         progress = json.loads((Path(args.checkpoint) / "complete.json").read_text())["progress"]
         if progress.get("phase") not in {"predict", "rl"}:
-            parser.error("Evaluate a final predict (Stage 1) or rl (Stage 2) checkpoint")
+            parser.error(f"{args.command.capitalize()} a final predict (Stage 1) or rl (Stage 2) checkpoint")
         require_final(args.checkpoint, progress["phase"], config)
         model, processor = load_checkpoint(args.checkpoint, config, device="cuda")
         model.requires_grad_(False)
         run_manifest = manifest(config, model, processor, args.data_root,
                                 {"checkpoint": str(args.checkpoint), "checkpoint_phase": progress["phase"]})
-        evaluate(model, processor, args.data_root, output, config, run_manifest)
+        if args.command == "probe":
+            sigmas = [float(s) for s in args.sigmas.split(",")]
+            latent_probe(model, processor, args.data_root, output, config, sigmas, args.rows, args.draws, run_manifest)
+        else:
+            evaluate(model, processor, args.data_root, output, config, run_manifest)
 
 
 def train(args, config, parser):

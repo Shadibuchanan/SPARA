@@ -319,7 +319,10 @@ def train_rl(model, reference, processor, data_root, output, config, evaluator, 
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     decoder = LatentDecoder(model, rl["rollout"], "sample" if rl["variant"] == "scaffolding" else "none")
     parameters = [p for p in model.parameters() if p.requires_grad]
-    optimizer = make_optimizer(model, config | {"learning_rate": rl["learning_rate"]})
+    # Optional own rate for the Gaussian heads; absent from older recipes, so read with get.
+    heads = rl.get("head_learning_rate")
+    optimizer = make_optimizer(model, config | {"learning_rate": rl["learning_rate"]},
+                               {"latent_heads.": heads} if heads else None)
     scheduler = schedule(optimizer, rl["steps"] * rl["ppo_epochs"], config)
     progress = begin(output, "rl", config, optimizer, scheduler, resume, {"reference": str(source)})
     save = lambda path: save_checkpoint(path, model, processor, optimizer, scheduler, progress)
@@ -342,7 +345,8 @@ def train_rl(model, reference, processor, data_root, output, config, evaluator, 
                 progress["optimizer_steps"] += 1
             progress["rl_steps"] = step + 1
             row = {"phase": "rl", "step": step + 1, **rollout_stats(groups), **update, "grad_norm": float(norm),
-                   "lr": scheduler.get_last_lr()[0], "rollout_seconds": rollout_seconds,
+                   "lr": scheduler.get_last_lr()[0], "head_lr": scheduler.get_last_lr()[-1],
+                   "rollout_seconds": rollout_seconds,
                    "seconds": time.perf_counter() - started}
             log.write(json.dumps(row) + "\n"); log.flush()
             print(json.dumps(row), flush=True)

@@ -1,5 +1,6 @@
 """Commands separate preparation, diagnostic pilots, training and evaluation."""
 import argparse
+import contextlib
 import json
 from pathlib import Path
 
@@ -13,7 +14,9 @@ def main():
     fetch.add_argument("--config", default="configs/livr.json")
     fetch.add_argument("--output", required=True)
     fetch.add_argument("--processor-only", action="store_true")
-    for command in ("pilot", "train", "train-rl", "evaluate"):
+    for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
+                    "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
+                    "expert-iteration", "expert-round2"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -23,10 +26,75 @@ def main():
             cmd.add_argument("--continue-from", help="Prior pilot directory with a completed Stage 1 roundtrip")
         if command != "pilot":
             cmd.add_argument("--checkpoint")
-        if command in ("train-rl", "evaluate"):
-            cmd.add_argument("--rl-config", default="configs/text_rl.json")
+        if command in ("train-rl", "evaluate", "latent-probe", "explore-probe", "planning-probe", "detour-probe"):
+            cmd.add_argument("--rl-config", default="configs/latent_rl.json"
+                             if command.endswith("-probe") and command != "detour-probe" else "configs/text_rl.json")
+        if command == "evaluate":
+            cmd.add_argument("--latent-mode", choices=["sample", "mean", "zero"], default="sample",
+                             help="Latent RL checkpoints: sampled adjustment, its mean, or none (LIVR's latents)")
+        if command == "latent-probe":
+            cmd.add_argument("--sigmas", default="0.01,0.02,0.05,0.1,0.2,0.5,1,2")
+            cmd.add_argument("--rows", type=int, default=100, help="Random training maps")
+            cmd.add_argument("--draws", type=int, default=2, help="Adjustments per map and sigma")
+        if command == "explore-probe":
+            cmd.add_argument("--split", required=True, help="Fresh map set, fresh/<name> (spara.fresh_maps)")
+            cmd.add_argument("--basis-k", type=int, default=16, help="Principal directions per latent slot")
+            cmd.add_argument("--samples", type=int, default=8, help="Sampled answers per map in the size sweep")
+            cmd.add_argument("--draws", type=int, default=4, help="Adjustments per map and scale")
+            cmd.add_argument("--isotropic", default="1.2,1.6,2.0,2.4", help="Isotropic sigmas")
+            cmd.add_argument("--structured", default="0.5,1,2,4,8", help="Structured scales, in across-map spreads")
+            cmd.add_argument("--noise-sizes", default="5,6", help="Grid sizes for the noise probe")
+            cmd.add_argument("--max-new-tokens", type=int, default=128, help="Greedy answer cap")
+        if command == "planning-probe":
+            cmd.add_argument("--basis", help="basis.pt from explore-probe (structured latent basis); needed for headroom")
+            cmd.add_argument("--fresh-split", default="", help="Fresh map set for the state-probe replication")
+            cmd.add_argument("--fresh-sizes", default="5,6", help="Grid sizes of the fresh set to use")
+            cmd.add_argument("--radii", default="1,2,4,8",
+                             help="Headroom norm bounds per latent slot, in spreads; 'none' skips headroom")
+            cmd.add_argument("--steps", type=int, default=40, help="Headroom optimisation steps per map")
+            cmd.add_argument("--learning-rate", type=float, default=0.25, help="Headroom Adam learning rate")
+            cmd.add_argument("--max-candidates", type=int, default=64, help="Shortest routes enumerated per map")
+            cmd.add_argument("--max-new-tokens", type=int, default=128, help="Greedy answer cap")
+        if command == "detour-probe":
+            cmd.add_argument("--test-routes", required=True, help="Greedy test routes: a planning-probe routes.jsonl")
+            cmd.add_argument("--fresh-routes", default="", help="Greedy fresh routes: an explore-probe sweep.jsonl")
+            cmd.add_argument("--fresh-split", default="", help="Fresh map set of those routes, fresh/<name>")
+        if command == "detour-scaling":
+            cmd.add_argument("--arm", required=True, help="An arm named in the recipe: livr, n98, n500 or n2000")
+            cmd.add_argument("--recipe", default="configs/detour_scaling.json")
+        if command == "expert-iteration":
+            cmd.add_argument("--stage", choices=["search", "train"], required=True)
+            cmd.add_argument("--settings", default="configs/expert_iteration.json")
+            cmd.add_argument("--probe-points", help="search: points.jsonl of a detour-probe run (validity check)")
+            cmd.add_argument("--reference", help="search: the JEPA judge run's searches-verdict_only.jsonl")
+            cmd.add_argument("--labels", choices=["search", "shortest"],
+                             help="train: the found routes, or the same maps' shortest-route labels")
+            cmd.add_argument("--routes", help="train: routes.jsonl of the search run")
+        if command == "expert-round2":
+            cmd.add_argument("--stage", choices=["batching-check", "search", "train"], required=True)
+            cmd.add_argument("--settings", default="configs/expert_round2.json")
+            cmd.add_argument("--batch", type=int, help="search: policy reads per pass, overriding the settings")
+            cmd.add_argument("--check-split", default="fresh/jepa-train",
+                             help="batching-check: a fresh set with maps of every size from 3 to 8")
+            cmd.add_argument("--round1-routes", help="search, train: routes.jsonl of round 1's search")
+            cmd.add_argument("--round1-greedy", help="search: greedy.jsonl of round 1's E (loading check)")
+            cmd.add_argument("--livr-checkpoint", help="search: LIVR's final Stage 2 checkpoint, for L's answers")
+            cmd.add_argument("--arm", choices=["e2", "eb2"], help="train: E2, or EB2 under the bottleneck")
+            cmd.add_argument("--search-run", help="train: the round 2 search job's output")
+        if command == "jepa-judge":
+            cmd.add_argument("--settings", default="configs/jepa_judge.json")
+            cmd.add_argument("--probe-points", required=True, help="points.jsonl of a detour-probe run (validity check)")
+        if command == "guided-search":
+            cmd.add_argument("--probe-points", required=True, help="points.jsonl of a detour-probe run (validity check)")
+            cmd.add_argument("--fresh-split", default="fresh/probe", help="Fresh map set whose detour maps to search")
+            cmd.add_argument("--budget", type=int, default=64, help="Policy calls per map")
         if command == "train":
             cmd.add_argument("--stage", type=int, choices=[1, 2], required=True)
+            cmd.add_argument("--grounding", help="Step-grounding settings (docs/STEP_GROUNDING_SPEC.md); Stage 2 only")
+        if command == "battery":
+            cmd.add_argument("--limit", type=int, help="Pilot: first LIMIT train and test rows of each grid size")
+            cmd.add_argument("--max-new-tokens", type=int, default=128,
+                             help="Greedy answer cap; LIVR's longest test answer is about 20 tokens")
         if command in ("train", "train-rl"):
             cmd.add_argument("--resume", help="Trusted same-stage checkpoint including optimizer state")
             if command == "train-rl":
@@ -34,6 +102,10 @@ def main():
                 cmd.add_argument("--rl-seed", type=int, help="Seed for RL map order and rollout sampling (default: recipe seed)")
                 cmd.add_argument("--evaluate-in-memory", type=int, metavar="SAMPLES",
                                  help="Skip saving final weights; run the benchmark and a SAMPLES-per-map diagnostic in memory")
+                cmd.add_argument("--sigma-init", type=float,
+                                 help="Latent RL: initial sigma chosen by latent-probe (overrides the recipe's)")
+                cmd.add_argument("--evaluate-latent-modes", action="store_true",
+                                 help="Latent RL: after training, run the benchmark with the mean, sampled and zero adjustment")
             cmd.add_argument("--final-weights-only", action="store_true",
                              help="Omit optimizer/RNG state from the final checkpoint to save storage")
     args = parser.parse_args()
@@ -54,7 +126,9 @@ def main():
     if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
     seed_all(config["seed"])
     audit(args.data_root)
-    if not torch.cuda.is_available():
+    # Round 2's batching check runs the real model on CPU by design (full-precision reference).
+    cpu_check = args.command == "expert-round2" and args.stage == "batching-check"
+    if not torch.cuda.is_available() and not cpu_check:
         raise RuntimeError("Use an allocated GPU for the actual 3B model; CPU correctness tests use tiny random weights")
     if args.command == "pilot":
         from .pilot import run_pilot
@@ -76,40 +150,87 @@ def main():
             parser.error("Stage 1 starts from the pinned base model; use --resume to continue")
         run_manifest = manifest(config, model, processor, args.data_root)
         run_manifest["checkpoint_lineage"] = {"source": source, "resume_optimizer": bool(args.resume)}
+        grounding = None
+        if args.grounding:
+            from .grounding import StepGrounding, read_settings
+            if args.stage != 2 or args.resume or not args.checkpoint:
+                parser.error("Step grounding trains Stage 2 from final Stage 1 weights, without --resume")
+            settings = read_settings(args.grounding)
+            grounding = StepGrounding(settings, model.config.hidden_size, model.config.num_hidden_layers)
+            run_manifest["grounding"] = settings
         # Save provenance before training; train_stage owns a new output directory.
         output = Path(args.output)
         if output.exists(): parser.error("Output already exists; choose a new directory")
         json_write(output.with_name(output.name + "-manifest.json"), run_manifest)
         train_stage(model, processor, args.data_root, output, config, args.stage, args.resume,
-                    args.final_weights_only)
+                    args.final_weights_only, grounding)
     elif args.command == "train-rl":
         from .text_rl import train_text_rl
         rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
         if args.rl_seed is not None:
             rl["seed"] = args.rl_seed
+        latent = rl.get("latent")
+        if args.sigma_init is not None:
+            if not latent:
+                parser.error("--sigma-init applies to latent RL recipes only")
+            from .latent_rl import sigma_bounds
+            latent |= {"sigma_init": args.sigma_init, "log_sigma_bounds": sigma_bounds(args.sigma_init)}
+        if latent and not latent.get("sigma_init"):
+            parser.error("Set the latent sigma from latent-probe (--sigma-init or the recipe)")
+        if (args.evaluate_latent_modes and not latent) or (latent and args.evaluate_in_memory is not None):
+            parser.error("--evaluate-latent-modes is for latent RL; --evaluate-in-memory for text-only RL")
         if not args.checkpoint:
-            parser.error("Text-only RL requires the final Stage 2 LIVR checkpoint (also its KL reference)")
+            parser.error("RL requires the final Stage 2 LIVR checkpoint (also its KL reference)")
         require_final_checkpoint(args.checkpoint, 2, config)
         output = Path(args.output)
         if output.exists(): parser.error("Output already exists; choose a new directory")
         reference, _ = load_model(config, args.checkpoint, device="cuda")
         model, processor = load_model(config, args.resume or args.checkpoint, device="cuda")
+        adjusters = None
+        if latent:
+            from .latent_rl import LatentAdjuster, add_latent_heads
+            if getattr(model, "latent_heads", None) is None:
+                if args.resume:
+                    parser.error("Resume checkpoint lacks latent heads")
+                add_latent_heads(model, latent)
+            adjusters = (LatentAdjuster(model, latent["layer"]), LatentAdjuster(reference, latent["layer"]))
         run_manifest = manifest(config, model, processor, args.data_root)
         run_manifest["rl"] = rl
         run_manifest["checkpoint_lineage"] = {"source": args.checkpoint, "resume": args.resume}
         run_manifest["assumptions"] |= {
-            "rl_objective": "Scaffolding Minds Eq. 6 text term only: clipped ratio, k3 KL to the LIVR checkpoint, per-sequence token mean then mean over rollouts",
+            "rl_objective": ("Scaffolding Minds Eq. 6 text term" + (" plus its latent term" if latent else " only")
+                             + ": clipped ratio, k3 KL to the LIVR checkpoint, per-sequence token mean then mean over rollouts"),
             "rl_updates": "one optimizer step per rollout batch (old policy = current policy)",
             "rl_logprobs": "logits divided by rollout temperature; top-p not applied",
             "rl_schedule": "constant learning rate; fresh AdamW with LIVR betas/epsilon/weight decay",
             "rl_reward": "1 if the reference evaluator reports success, else 0",
         }
+        if latent:
+            run_manifest["assumptions"] |= {
+                "latent_policy": f"a = z + delta at the output of decoder layer {latent['layer']} (one-based), "
+                                 "delta ~ N(mu, sigma^2) from Scaffolding's Gaussian heads reading RMS-normalised z",
+                "latent_objective": "Scaffolding eq. 6 latent term: clipped ratio of the Gaussian log-probability "
+                                    f"({latent['logprob_reduction']} over K x d), gradient into z and the heads",
+                "latent_reference": "the KL reference reads the rollout's latent action, so KL covers text only",
+            }
         json_write(output.with_name(output.name + "-manifest.json"), run_manifest)
         if "seed" in rl:
             seed_all(rl["seed"])
         train_text_rl(model, reference, processor, args.data_root, output, config, rl,
                       args.checkpoint, args.resume, final_weights_only=args.final_weights_only,
-                      max_steps=args.max_steps, save_final=args.evaluate_in_memory is None)
+                      max_steps=args.max_steps, save_final=args.evaluate_in_memory is None,
+                      adjusters=adjusters)
+        if args.evaluate_latent_modes and args.max_steps is None:
+            from .benchmark import run_benchmark
+            del reference
+            adjusters[1].remove()
+            torch.cuda.empty_cache()
+            for mode in ("mean", "sample", "zero"):
+                context = {"sample": adjusters[0].sample, "mean": adjusters[0].mean}.get(mode, contextlib.nullcontext)()
+                with context:
+                    run_benchmark(model, processor, config, args.data_root,
+                                  output.with_name(f"{output.name}-evaluation-{mode}"),
+                                  run_manifest | {"checkpoint": f"in-memory {output}", "latent_mode": mode})
         if args.evaluate_in_memory is not None:
             from .benchmark import run_benchmark, sample_test_maps
             del reference
@@ -118,21 +239,240 @@ def main():
                           run_manifest | {"checkpoint": f"in-memory {output}"})
             sample_test_maps(model, processor, config, args.data_root, args.evaluate_in_memory,
                              output.with_name(output.name + "-multisample.jsonl"))
+    elif args.command == "latent-probe":
+        from .latent_rl import latent_probe
+        rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
+        if not args.checkpoint:
+            parser.error("The latent probe requires the final Stage 2 LIVR checkpoint")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        model.config.livr_latent_layer = rl["latent"]["layer"]
+        latent_probe(model, processor, args.data_root, args.output, [float(x) for x in args.sigmas.split(",")],
+                     args.rows, args.draws, config["seed"],
+                     manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint), "rl": rl})
+    elif args.command == "explore-probe":
+        from .explore_probe import explore_probe
+        if not args.split.startswith("fresh/"):
+            parser.error("--split must name a fresh map set, fresh/<name>")
+        if not args.checkpoint:
+            parser.error("The exploration probe requires the final Stage 2 LIVR checkpoint")
+        rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        fresh = json.loads((Path(args.data_root) / args.split / "manifest.json").read_text(encoding="utf-8"))
+        floats = lambda text: [float(x) for x in text.split(",")]
+        explore_probe(model, processor, args.data_root, args.output, args.split, rl,
+                      manifest(config, model, processor, args.data_root)
+                      | {"checkpoint": str(args.checkpoint), "rl": rl, "fresh_manifest": fresh},
+                      config["seed"], basis_k=args.basis_k, samples=args.samples, draws=args.draws,
+                      isotropic=floats(args.isotropic), structured=floats(args.structured),
+                      noise_sizes=[int(x) for x in args.noise_sizes.split(",")], max_new_tokens=args.max_new_tokens)
+    elif args.command == "planning-probe":
+        from .planning_probe import planning_probe
+        if not args.checkpoint:
+            parser.error("The planning probe requires the final Stage 2 LIVR checkpoint")
+        if args.fresh_split and not args.fresh_split.startswith("fresh/"):
+            parser.error("--fresh-split must name a fresh map set, fresh/<name>")
+        radii = [] if args.radii.strip().lower() in ("", "none") else [float(x) for x in args.radii.split(",")]
+        if radii and not args.basis:
+            parser.error("The headroom test needs --basis; pass --radii none to skip it")
+        rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("The planning probe requires Stage 2")
+        extra = {}
+        if args.fresh_split:
+            extra["fresh_manifest"] = json.loads((Path(args.data_root) / args.fresh_split / "manifest.json")
+                                                 .read_text(encoding="utf-8"))
+        planning_probe(model, processor, args.data_root, args.output, args.basis, rl["latent"]["layer"],
+                       manifest(config, model, processor, args.data_root)
+                       | {"checkpoint": str(args.checkpoint), "rl": rl} | extra,
+                       config["seed"], fresh_split=args.fresh_split or None,
+                       fresh_sizes=[int(x) for x in args.fresh_sizes.split(",")],
+                       radii=radii, steps=args.steps,
+                       learning_rate=args.learning_rate, max_candidates=args.max_candidates,
+                       max_new_tokens=args.max_new_tokens)
+    elif args.command == "detour-probe":
+        from .detour_probe import detour_probe
+        if not args.checkpoint:
+            parser.error("The detour probe requires the final Stage 2 LIVR checkpoint")
+        if bool(args.fresh_routes) != bool(args.fresh_split):
+            parser.error("--fresh-routes and --fresh-split go together")
+        if args.fresh_split and not args.fresh_split.startswith("fresh/"):
+            parser.error("--fresh-split must name a fresh map set, fresh/<name>")
+        rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("The detour probe requires Stage 2")
+        extra = {}
+        if args.fresh_split:
+            extra["fresh_manifest"] = json.loads((Path(args.data_root) / args.fresh_split / "manifest.json")
+                                                 .read_text(encoding="utf-8"))
+        detour_probe(model, processor, args.data_root, args.output, args.test_routes, args.fresh_routes or None,
+                     args.fresh_split or None, rl["generation"],
+                     manifest(config, model, processor, args.data_root)
+                     | {"checkpoint": str(args.checkpoint), "rl_config": args.rl_config} | extra, config["seed"])
+    elif args.command == "guided-search":
+        from .evaluation import ReferenceEvaluator
+        from .route_search import search_pilot
+        if not args.checkpoint:
+            parser.error("The search pilot requires the final Stage 2 LIVR checkpoint")
+        if args.fresh_split and not args.fresh_split.startswith("fresh/"):
+            parser.error("--fresh-split must name a fresh map set, fresh/<name>")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("The search pilot requires Stage 2")
+        extra = {}
+        if args.fresh_split:
+            extra["fresh_manifest"] = json.loads((Path(args.data_root) / args.fresh_split / "manifest.json")
+                                                 .read_text(encoding="utf-8"))
+        search_pilot(model, processor, ReferenceEvaluator(args.data_root), args.data_root, args.output,
+                     args.probe_points, args.fresh_split or None,
+                     manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)} | extra,
+                     config["seed"], budget=args.budget)
+    elif args.command == "jepa-judge":
+        from .evaluation import ReferenceEvaluator
+        from .jepa import run_jepa
+        if not args.checkpoint:
+            parser.error("The JEPA judge reads the final Stage 2 LIVR checkpoint's states")
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        settings["veto"] = float(settings["veto"])  # "inf" allowed in JSON as a string
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("The JEPA judge requires Stage 2")
+        model.requires_grad_(False)
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (settings["train_split"], settings["heldout_split"], settings["fresh_split"])}
+        run_jepa(model, processor, ReferenceEvaluator(args.data_root), args.data_root, args.output, settings,
+                 manifest(config, model, processor, args.data_root)
+                 | {"checkpoint": str(args.checkpoint), "fresh_manifests": fresh}, args.probe_points)
+    elif args.command == "expert-iteration":
+        from .evaluation import ReferenceEvaluator
+        from .expert_iteration import run_search, run_train
+        if not args.checkpoint:
+            parser.error("Expert iteration starts from the final Stage 2 LIVR checkpoint")
+        if args.stage == "search" and not args.probe_points:
+            parser.error("The search stage needs --probe-points for its validity check")
+        if args.stage == "train" and not (args.labels and args.routes):
+            parser.error("The train stage needs --labels and --routes")
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("Expert iteration requires Stage 2")
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (settings["pool_split"], settings["heldout_split"], settings["fresh_split"])}
+        base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                    "fresh_manifests": fresh}
+        if args.stage == "search":
+            model.requires_grad_(False)
+            run_search(model, processor, ReferenceEvaluator(args.data_root), args.data_root, args.output, settings,
+                       base, args.probe_points, args.reference)
+        else:
+            run_train(model, processor, ReferenceEvaluator(args.data_root), config, args.data_root, args.output,
+                      settings, args.labels, args.routes, base)
+    elif args.command == "expert-round2":
+        from . import expert_round2 as round2
+        from .evaluation import ReferenceEvaluator
+        if not args.checkpoint:
+            parser.error("Round 2 starts from E, round 1's fine-tune on found routes")
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        if args.batch:
+            settings["batch"] = args.batch
+        round2.require_round1_checkpoint(args.checkpoint, config, settings)
+        if args.stage == "batching-check":
+            model, processor = load_model(config, args.checkpoint, device="cpu")
+            model.requires_grad_(False)
+            Path(args.output).mkdir(parents=True, exist_ok=False)
+            json_write(Path(args.output) / "manifest.json", manifest(config, model, processor, args.data_root)
+                       | {"checkpoint": str(args.checkpoint), "threads": torch.get_num_threads()})
+            round2.batching_check(model, processor, args.data_root, args.check_split, args.output)
+            return
+        needed = {"search": ("round1_routes", "round1_greedy", "livr_checkpoint"),
+                  "train": ("round1_routes", "arm", "search_run")}[args.stage]
+        if any(not getattr(args, name) for name in needed):
+            parser.error(f"The {args.stage} stage needs " + ", ".join("--" + n.replace("_", "-") for n in needed))
+        if args.stage == "search":
+            require_final_checkpoint(args.livr_checkpoint, 2, config)
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (settings["pool_split"], settings["heldout_split"])}
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("Round 2 requires a Stage 2 checkpoint")
+        base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                    "fresh_manifests": fresh}
+        evaluator = ReferenceEvaluator(args.data_root)
+        if args.stage == "search":
+            round2.run_search(model, processor, evaluator, args.data_root, args.output, settings,
+                              base | {"livr_checkpoint": str(args.livr_checkpoint)}, args.round1_routes,
+                              args.round1_greedy)
+            del model
+            torch.cuda.empty_cache()
+            model, processor = load_model(config, args.livr_checkpoint, device="cuda")
+            model.requires_grad_(False)
+            round2.livr_greedy(model, processor, evaluator, args.data_root, args.output, settings)
+        else:
+            round2.run_arm(model, processor, evaluator, config, args.data_root, args.output, settings, args.arm,
+                           args.round1_routes, args.search_run, base)
+    elif args.command == "detour-scaling":
+        from .detour_scaling import run_arm
+        from .evaluation import ReferenceEvaluator
+        recipe = json.loads(Path(args.recipe).read_text(encoding="utf-8"))
+        if args.arm not in recipe["arms"]:
+            parser.error(f"--arm must be one of {sorted(recipe['arms'])}")
+        if not args.checkpoint:
+            parser.error("The scaling check starts from the final Stage 2 LIVR checkpoint")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("The scaling check requires Stage 2")
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (recipe["heldout_split"], recipe["pool_split"], *recipe["other_fresh"])}
+        run_arm(model, processor, ReferenceEvaluator(args.data_root), config, args.data_root, args.output, args.arm,
+                recipe, manifest(config, model, processor, args.data_root)
+                | {"checkpoint": str(args.checkpoint), "fresh_manifests": fresh})
+    elif args.command == "battery":
+        from .latent_battery import run_battery
+        if not args.checkpoint:
+            parser.error("The latent battery requires a final Stage 2 LIVR checkpoint")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        run_battery(model, processor, config, args.data_root, args.output,
+                    manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)},
+                    limit=args.limit, max_new_tokens=args.max_new_tokens)
     else:
         from .benchmark import run_benchmark
         if not args.checkpoint:
             parser.error("Evaluation requires a final Stage 2 or text-only RL checkpoint")
         from .runtime import checkpoint_phase, require_final_rl_checkpoint
-        if checkpoint_phase(args.checkpoint) == "text-rl":
-            require_final_rl_checkpoint(args.checkpoint, config,
-                                        json.loads(Path(args.rl_config).read_text(encoding="utf-8")))
+        phase = checkpoint_phase(args.checkpoint)
+        if phase in ("text-rl", "latent-rl"):
+            rl = json.loads(Path(args.rl_config).read_text(encoding="utf-8"))
+            if phase == "latent-rl":
+                # The recipe's sigma may have been set at training time with --sigma-init.
+                saved = json.loads((Path(args.checkpoint) / "complete.json").read_text())["progress"]["rl"]
+                if {k: v for k, v in saved.items() if k != "latent"} != {k: v for k, v in rl.items() if k != "latent"}:
+                    parser.error("RL recipe mismatch")
+                rl = saved
+            require_final_rl_checkpoint(args.checkpoint, config, rl, phase)
         else:
             require_final_checkpoint(args.checkpoint, 2, config)
         model, processor = load_model(config, args.checkpoint, device="cuda")
         if model.config.livr_stage != 2:
             parser.error("Benchmark evaluation requires Stage 2")
-        run_benchmark(model, processor, config, args.data_root, args.output,
-                      manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)})
+        context, mode = contextlib.nullcontext(), None
+        if phase == "latent-rl":
+            from .latent_rl import LatentAdjuster
+            adjuster, mode = LatentAdjuster(model), args.latent_mode
+            context = {"sample": adjuster.sample, "mean": adjuster.mean}.get(mode, contextlib.nullcontext)()
+        with context:
+            run_benchmark(model, processor, config, args.data_root, args.output,
+                          manifest(config, model, processor, args.data_root)
+                          | {"checkpoint": str(args.checkpoint)} | ({"latent_mode": mode} if mode else {}))
 
 
 if __name__ == "__main__":

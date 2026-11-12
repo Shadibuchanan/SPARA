@@ -1,0 +1,12 @@
+{
+  "heldout_split": "fresh/detour-heldout",
+  "pool_split": "fresh/detour-pool",
+  "other_fresh": ["fresh/probe"],
+  "extra_examples": 2000,
+  "seen_maps": 98,
+  "epochs": 1,
+  "learning_rate": 0.00001,
+  "warmup_ratio": 0.05,
+  "max_new_tokens": 128,
+  "arms": {"livr": 0, "n98": 98, "n500": 500, "n2000": 2000}
+}

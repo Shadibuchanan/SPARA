@@ -1,0 +1,60 @@
+{
+ "note": "Greedy and benchmark outcomes walked on the map. 'passes the goal': the route reaches the goal and moves on, which the reference evaluator scores as not reaching it. Benchmark: the 360 no-detour test maps; M was not benchmarked.",
+ "L": {
+  "held_out_greedy": {
+   "shortest": 40,
+   "longer": 2,
+   "hole": 192,
+   "stops short": 5,
+   "passes the goal": 1
+  },
+  "benchmark_no_detour": {
+   "shortest": 317,
+   "longer": 2,
+   "hole": 38,
+   "stops short": 1,
+   "passes the goal": 2
+  }
+ },
+ "E": {
+  "held_out_greedy": {
+   "shortest": 86,
+   "longer": 2,
+   "hole": 147,
+   "stops short": 4,
+   "passes the goal": 1
+  },
+  "benchmark_no_detour": {
+   "shortest": 298,
+   "longer": 7,
+   "hole": 48,
+   "stops short": 6,
+   "passes the goal": 1
+  }
+ },
+ "M": {
+  "held_out_greedy": {
+   "shortest": 97,
+   "longer": 0,
+   "hole": 138,
+   "stops short": 4,
+   "passes the goal": 1
+  }
+ },
+ "V500": {
+  "held_out_greedy": {
+   "shortest": 95,
+   "longer": 2,
+   "hole": 139,
+   "stops short": 3,
+   "passes the goal": 1
+  },
+  "benchmark_no_detour": {
+   "shortest": 305,
+   "longer": 5,
+   "hole": 45,
+   "stops short": 3,
+   "passes the goal": 2
+  }
+ }
+}

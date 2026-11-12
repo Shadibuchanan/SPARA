@@ -1,0 +1,18 @@
+{
+  "pool_split": "fresh/detour-pool",
+  "heldout_split": "fresh/detour-heldout",
+  "fresh_split": "fresh/probe",
+  "other_fresh": ["fresh/probe"],
+  "maps": 500,
+  "budget": 64,
+  "max_depth": 64,
+  "batch": 16,
+  "probe_tolerance": 0.01,
+  "seed": 42,
+  "extra_examples": 2000,
+  "seen_maps": 98,
+  "epochs": 1,
+  "learning_rate": 0.00001,
+  "warmup_ratio": 0.05,
+  "max_new_tokens": 128
+}

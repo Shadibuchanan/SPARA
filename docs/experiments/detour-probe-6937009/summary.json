@@ -1,0 +1,192 @@
+{
+  "validity": {
+    "argmax_matches_greedy": 1.0,
+    "training_released_move_median": 0.8246404617943313,
+    "training_maps": 98,
+    "valid": false,
+    "canonical_test_completions": 1.0
+  },
+  "primary": {
+    "points": 52,
+    "within_reach": 0.40384615384615385,
+    "median_p_optimal": 0.007575998871899442,
+    "zero_under_sampling": 0.8653846153846154,
+    "rank_best_optimal": {
+      "1": 0,
+      "2": 27,
+      "3": 22,
+      "4": 3
+    },
+    "by_split": {
+      "fresh/probe": {
+        "points": 31,
+        "within_reach": 0.45161290322580644,
+        "median_p_optimal": 0.00982034733418069,
+        "zero_under_sampling": 0.9032258064516129,
+        "rank_best_optimal": {
+          "1": 0,
+          "2": 14,
+          "3": 15,
+          "4": 2
+        }
+      },
+      "test": {
+        "points": 21,
+        "within_reach": 0.3333333333333333,
+        "median_p_optimal": 0.0075750682986838735,
+        "zero_under_sampling": 0.8095238095238095,
+        "rank_best_optimal": {
+          "1": 0,
+          "2": 13,
+          "3": 7,
+          "4": 1
+        }
+      }
+    },
+    "by_size": {
+      "4": {
+        "points": 3,
+        "within_reach": 0.0,
+        "median_p_optimal": 0.0017937527970847411,
+        "zero_under_sampling": 1.0,
+        "rank_best_optimal": {
+          "1": 0,
+          "2": 1,
+          "3": 1,
+          "4": 1
+        }
+      },
+      "5": {
+        "points": 6,
+        "within_reach": 0.5,
+        "median_p_optimal": 0.011689270959318638,
+        "zero_under_sampling": 0.8333333333333334,
+        "rank_best_optimal": {
+          "1": 0,
+          "2": 4,
+          "3": 2,
+          "4": 0
+        }
+      },
+      "6": {
+        "points": 23,
+        "within_reach": 0.391304347826087,
+        "median_p_optimal": 0.0075750682986838735,
+        "zero_under_sampling": 0.8695652173913043,
+        "rank_best_optimal": {
+          "1": 0,
+          "2": 13,
+          "3": 9,
+          "4": 1
+        }
+      },
+      "7": {
+        "points": 8,
+        "within_reach": 0.375,
+        "median_p_optimal": 0.007777922290793209,
+        "zero_under_sampling": 0.875,
+        "rank_best_optimal": {
+          "1": 0,
+          "2": 3,
+          "3": 4,
+          "4": 1
+        }
+      },
+      "8": {
+        "points": 12,
+        "within_reach": 0.5,
+        "median_p_optimal": 0.011064673615115095,
+        "zero_under_sampling": 0.8333333333333334,
+        "rank_best_optimal": {
+          "1": 0,
+          "2": 6,
+          "3": 6,
+          "4": 0
+        }
+      }
+    }
+  },
+  "reading": "withheld: the measurement failed a validity check",
+  "kinds": {
+    "fresh/probe": {
+      "forced": 48,
+      "deviation": 104,
+      "stopped": 41,
+      "chosen": 0
+    },
+    "test": {
+      "forced": 37,
+      "deviation": 43,
+      "stopped": 2,
+      "chosen": 0
+    }
+  },
+  "forced_points_taken_optimal": {
+    "points": 33,
+    "within_reach": 1.0,
+    "median_p_optimal": 0.8930305641650307,
+    "zero_under_sampling": 0.0,
+    "rank_best_optimal": {
+      "1": 31,
+      "2": 2,
+      "3": 0,
+      "4": 0
+    }
+  },
+  "deviation": {
+    "points": 147,
+    "within_reach": 0.7142857142857143,
+    "median_p_optimal": 0.08509204536676407,
+    "zero_under_sampling": 0.6326530612244898,
+    "rank_best_optimal": {
+      "1": 6,
+      "2": 124,
+      "3": 11,
+      "4": 3
+    },
+    "detour_maps": {
+      "points": 12,
+      "within_reach": 0.6666666666666666,
+      "median_p_optimal": 0.1810958935288296,
+      "zero_under_sampling": 0.5,
+      "rank_best_optimal": {
+        "1": 0,
+        "2": 8,
+        "3": 2,
+        "4": 2
+      }
+    },
+    "no_detour_maps": {
+      "points": 135,
+      "within_reach": 0.7185185185185186,
+      "median_p_optimal": 0.08504799224873238,
+      "zero_under_sampling": 0.6444444444444445,
+      "rank_best_optimal": {
+        "1": 6,
+        "2": 116,
+        "3": 9,
+        "4": 1
+      }
+    },
+    "taken_into_hole": 0.6870748299319728
+  },
+  "stopped": {
+    "points": 43,
+    "median_p_end": 0.9859203696250916,
+    "median_p_optimal": 0.0032626736731694583
+  },
+  "chosen": {
+    "points": 0,
+    "within_reach": null,
+    "median_p_optimal": null,
+    "zero_under_sampling": null,
+    "rank_best_optimal": {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0
+    }
+  },
+  "seconds": 64.78065276145935,
+  "peak_gpu_gib": 20.433202266693115
+}

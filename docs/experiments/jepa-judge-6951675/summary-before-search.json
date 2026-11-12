@@ -1,0 +1,364 @@
+{
+  "layer": 28,
+  "layer_selection": {
+    "12": {
+      "validation": {
+        "epoch": 39,
+        "outcome": 0.4616038501262665,
+        "prediction": 0.0031022645998746157
+      },
+      "epochs": 40
+    },
+    "20": {
+      "validation": {
+        "epoch": 20,
+        "outcome": 0.37993109226226807,
+        "prediction": 0.009470193646848202
+      },
+      "epochs": 26
+    },
+    "28": {
+      "validation": {
+        "epoch": 4,
+        "outcome": 0.338522732257843,
+        "prediction": 0.04434735327959061
+      },
+      "epochs": 10
+    },
+    "35": {
+      "validation": {
+        "epoch": 10,
+        "outcome": 0.34827369451522827,
+        "prediction": 0.016036875545978546
+      },
+      "epochs": 16
+    }
+  },
+  "checks": {
+    "disjoint": {
+      "shared_layouts": {
+        "train": 0,
+        "test": 0,
+        "fresh/detour-heldout": 0,
+        "fresh/probe": 0
+      },
+      "valid": true
+    },
+    "state_alignment_min_cosine": 0.9997297525405884,
+    "probe_points": 52,
+    "probe_max_difference": 4.97696275911646e-07
+  },
+  "judge_accuracy": {
+    "jepa": {
+      "all": {
+        "pairs": 26560,
+        "dead": 5375,
+        "not_dead": 21185,
+        "miss_rate": 0.7568372093023256,
+        "false_alarm_rate": 0.022091102194949256,
+        "done_missed": 115,
+        "done_false": 43,
+        "done": 335,
+        "accuracy": 0.8239457831325301
+      },
+      "by_population": {
+        "heldout": {
+          "pairs": 17425,
+          "dead": 3665,
+          "not_dead": 13760,
+          "miss_rate": 0.7519781718963165,
+          "false_alarm_rate": 0.023546511627906976,
+          "done_missed": 72,
+          "done_false": 25,
+          "done": 231,
+          "accuracy": 0.8184218077474893
+        },
+        "search": {
+          "pairs": 9135,
+          "dead": 1710,
+          "not_dead": 7425,
+          "miss_rate": 0.7672514619883041,
+          "false_alarm_rate": 0.019393939393939394,
+          "done_missed": 43,
+          "done_false": 18,
+          "done": 104,
+          "accuracy": 0.8344827586206897
+        }
+      },
+      "by_size": {
+        "3": {
+          "pairs": 501,
+          "dead": 128,
+          "not_dead": 373,
+          "miss_rate": 0.40625,
+          "false_alarm_rate": 0.032171581769437,
+          "done_missed": 1,
+          "done_false": 3,
+          "done": 17,
+          "accuracy": 0.8702594810379242
+        },
+        "4": {
+          "pairs": 2532,
+          "dead": 578,
+          "not_dead": 1954,
+          "miss_rate": 0.6695501730103807,
+          "false_alarm_rate": 0.016888433981576252,
+          "done_missed": 6,
+          "done_false": 6,
+          "done": 41,
+          "accuracy": 0.8297788309636651
+        },
+        "5": {
+          "pairs": 6851,
+          "dead": 1345,
+          "not_dead": 5506,
+          "miss_rate": 0.7063197026022305,
+          "false_alarm_rate": 0.025608427170359608,
+          "done_missed": 16,
+          "done_false": 12,
+          "done": 89,
+          "accuracy": 0.8378338928623559
+        },
+        "6": {
+          "pairs": 12879,
+          "dead": 2619,
+          "not_dead": 10260,
+          "miss_rate": 0.7972508591065293,
+          "false_alarm_rate": 0.02300194931773879,
+          "done_missed": 74,
+          "done_false": 15,
+          "done": 153,
+          "accuracy": 0.813028961875922
+        },
+        "7": {
+          "pairs": 1844,
+          "dead": 320,
+          "not_dead": 1524,
+          "miss_rate": 0.846875,
+          "false_alarm_rate": 0.015748031496062992,
+          "done_missed": 8,
+          "done_false": 2,
+          "done": 18,
+          "accuracy": 0.8351409978308026
+        },
+        "8": {
+          "pairs": 1953,
+          "dead": 385,
+          "not_dead": 1568,
+          "miss_rate": 0.8311688311688312,
+          "false_alarm_rate": 0.01403061224489796,
+          "done_missed": 10,
+          "done_false": 5,
+          "done": 17,
+          "accuracy": 0.8172043010752689
+        }
+      }
+    },
+    "probe": {
+      "all": {
+        "pairs": 26560,
+        "dead": 5375,
+        "not_dead": 21185,
+        "miss_rate": 0.7750697674418605,
+        "false_alarm_rate": 0.020863818739674297,
+        "done_missed": 104,
+        "done_false": 56,
+        "done": 335,
+        "accuracy": 0.8216490963855422
+      },
+      "by_population": {
+        "heldout": {
+          "pairs": 17425,
+          "dead": 3665,
+          "not_dead": 13760,
+          "miss_rate": 0.7702592087312414,
+          "false_alarm_rate": 0.023328488372093024,
+          "done_missed": 65,
+          "done_false": 27,
+          "done": 231,
+          "accuracy": 0.8153228120516499
+        },
+        "search": {
+          "pairs": 9135,
+          "dead": 1710,
+          "not_dead": 7425,
+          "miss_rate": 0.7853801169590643,
+          "false_alarm_rate": 0.016296296296296295,
+          "done_missed": 39,
+          "done_false": 29,
+          "done": 104,
+          "accuracy": 0.8337164750957854
+        }
+      },
+      "by_size": {
+        "3": {
+          "pairs": 501,
+          "dead": 128,
+          "not_dead": 373,
+          "miss_rate": 0.4453125,
+          "false_alarm_rate": 0.032171581769437,
+          "done_missed": 3,
+          "done_false": 2,
+          "done": 17,
+          "accuracy": 0.8582834331337326
+        },
+        "4": {
+          "pairs": 2532,
+          "dead": 578,
+          "not_dead": 1954,
+          "miss_rate": 0.6920415224913494,
+          "false_alarm_rate": 0.017400204708290685,
+          "done_missed": 6,
+          "done_false": 9,
+          "done": 41,
+          "accuracy": 0.8234597156398105
+        },
+        "5": {
+          "pairs": 6851,
+          "dead": 1345,
+          "not_dead": 5506,
+          "miss_rate": 0.7338289962825278,
+          "false_alarm_rate": 0.025608427170359608,
+          "done_missed": 12,
+          "done_false": 10,
+          "done": 89,
+          "accuracy": 0.8333090059845278
+        },
+        "6": {
+          "pairs": 12879,
+          "dead": 2619,
+          "not_dead": 10260,
+          "miss_rate": 0.8132875143184422,
+          "false_alarm_rate": 0.020857699805068228,
+          "done_missed": 67,
+          "done_false": 19,
+          "done": 153,
+          "accuracy": 0.8124077956363072
+        },
+        "7": {
+          "pairs": 1844,
+          "dead": 320,
+          "not_dead": 1524,
+          "miss_rate": 0.825,
+          "false_alarm_rate": 0.013779527559055118,
+          "done_missed": 7,
+          "done_false": 7,
+          "done": 18,
+          "accuracy": 0.838937093275488
+        },
+        "8": {
+          "pairs": 1953,
+          "dead": 385,
+          "not_dead": 1568,
+          "miss_rate": 0.8519480519480519,
+          "false_alarm_rate": 0.012755102040816327,
+          "done_missed": 9,
+          "done_false": 9,
+          "done": 17,
+          "accuracy": 0.8136200716845878
+        }
+      }
+    },
+    "oracle_taken_moves": {
+      "pairs": 7710,
+      "dead": 609,
+      "not_dead": 7101,
+      "miss_rate": 0.9655172413793104,
+      "false_alarm_rate": 0.0023940290099985916,
+      "done_missed": 80,
+      "done_false": 29,
+      "done": 313,
+      "accuracy": 0.9075226977950713
+    },
+    "jepa_taken_moves": {
+      "pairs": 7710,
+      "dead": 609,
+      "not_dead": 7101,
+      "miss_rate": 0.7848932676518884,
+      "false_alarm_rate": 0.02506689198704408,
+      "done_missed": 102,
+      "done_false": 16,
+      "done": 313,
+      "accuracy": 0.8998702983138781
+    }
+  },
+  "imagination": {
+    "1": {
+      "imagined": {
+        "pairs": 6522,
+        "dead": 490,
+        "not_dead": 6032,
+        "miss_rate": 0.8795918367346939,
+        "false_alarm_rate": 0.06581564986737401,
+        "done_missed": 189,
+        "done_false": 32,
+        "done": 313,
+        "accuracy": 0.844066237350506
+      },
+      "true_state": {
+        "pairs": 6522,
+        "dead": 490,
+        "not_dead": 6032,
+        "miss_rate": 0.8877551020408163,
+        "false_alarm_rate": 0.014754641909814323,
+        "done_missed": 102,
+        "done_false": 16,
+        "done": 313,
+        "accuracy": 0.9018705918429929
+      }
+    },
+    "2": {
+      "imagined": {
+        "pairs": 5453,
+        "dead": 409,
+        "not_dead": 5044,
+        "miss_rate": 0.8704156479217604,
+        "false_alarm_rate": 0.09952418715305313,
+        "done_missed": 219,
+        "done_false": 74,
+        "done": 313,
+        "accuracy": 0.796809095910508
+      },
+      "true_state": {
+        "pairs": 5453,
+        "dead": 409,
+        "not_dead": 5044,
+        "miss_rate": 0.8899755501222494,
+        "false_alarm_rate": 0.01506740681998414,
+        "done_missed": 102,
+        "done_false": 16,
+        "done": 313,
+        "accuracy": 0.8980377773702549
+      }
+    },
+    "3": {
+      "imagined": {
+        "pairs": 4465,
+        "dead": 322,
+        "not_dead": 4143,
+        "miss_rate": 0.860248447204969,
+        "false_alarm_rate": 0.1243060584117789,
+        "done_missed": 250,
+        "done_false": 79,
+        "done": 313,
+        "accuracy": 0.7603583426651735
+      },
+      "true_state": {
+        "pairs": 4465,
+        "dead": 322,
+        "not_dead": 4143,
+        "miss_rate": 0.9192546583850931,
+        "false_alarm_rate": 0.015206372194062274,
+        "done_missed": 102,
+        "done_false": 14,
+        "done": 313,
+        "accuracy": 0.8940649496080627
+      }
+    }
+  },
+  "timing": {
+    "states": 733.6451399326324,
+    "training": 97.03133487701416
+  },
+  "seconds": 853.1207594871521
+}

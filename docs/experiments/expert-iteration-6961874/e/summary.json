@@ -1,0 +1,42 @@
+{
+  "arm": "search",
+  "distinct": 326,
+  "checks": {
+    "labels_accepted": [
+      2200,
+      2200
+    ],
+    "shared_layouts": {
+      "fresh/detour-heldout|fresh/detour-pool": 0,
+      "fresh/detour-heldout|fresh/probe": 0,
+      "fresh/detour-heldout|train": 0,
+      "fresh/detour-heldout|test": 0,
+      "fresh/detour-pool|fresh/probe": 0,
+      "fresh/detour-pool|train": 0,
+      "fresh/detour-pool|test": 0
+    },
+    "valid": true
+  },
+  "training": {
+    "seconds": 791.8043432235718,
+    "optimizer_steps": 375,
+    "mean_loss": 0.09552553448521557,
+    "last_quarter_loss": 0.04174167752867155
+  },
+  "greedy": {
+    "heldout": [
+      73,
+      200
+    ],
+    "test_detour": [
+      15,
+      40
+    ],
+    "seen": [
+      60,
+      98
+    ]
+  },
+  "seconds": 1064.1585714817047,
+  "peak_gpu_gib": 55.14134168624878
+}

@@ -56,8 +56,12 @@ def prepare(root):
 
 
 def records(root, split):
+    """Rows of the released train or test split, or of a generated set "fresh/<name>"
+    (spara.fresh_maps)."""
+    if split.startswith(FRESH):
+        return fresh_records(root, split)
     if split not in ARCHIVES:
-        raise ValueError("Use the original train or test split")
+        raise ValueError("Use the original train or test split, or a fresh/<name> set")
     path = Path(root) / split / f"{split}_direct.jsonl"
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     if len(rows) != ARCHIVES[split][2]:
@@ -65,10 +69,33 @@ def records(root, split):
     return rows
 
 
+FRESH = "fresh/"
+
+
+def released_layouts(root):
+    return {layout_key(row) for split in ARCHIVES for row in records(root, split)}
+
+
+def fresh_records(root, split):
+    folder = Path(root) / split
+    manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+    path = folder / "maps.jsonl"
+    if sha256(path) != manifest["jsonl_sha256"]:
+        raise ValueError(f"{split} records do not match their manifest")
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    keys = [layout_key(row) for row in rows]
+    if len(rows) != manifest["count"] or len(set(keys)) != len(keys):
+        raise ValueError(f"{split} has the wrong count or repeated layouts")
+    if set(keys) & released_layouts(root):
+        raise ValueError(f"{split} shares a layout with the released train or test split")
+    return rows
+
+
 def image_path(root, split, row):
     # The original paths are relative to Mirage's repo; extraction is split-local.
+    # Generated sets store paths relative to their own folder, under img/.
     parts = Path(row["image_input"].replace("\\", "/")).parts
-    marker = "img" if split == "train" else "imgs_test"
+    marker = "imgs_test" if split == "test" else "img"
     if marker not in parts:
         raise ValueError(f"Unexpected released image path: {row['image_input']}")
     base = (Path(root) / split).resolve()

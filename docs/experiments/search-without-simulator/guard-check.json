@@ -1,0 +1,699 @@
+{
+ "what": "Step 1a\u2033 variants on CPU with the toward-goal prior, a per-transition noisy judge (both error types, seeds 0-4), budget 64, depth 64: maps solved under each expansion guard against the sweep's per-seed within-64 counts (50,000 guard), and distinct prefixes expanded per map (one LIVR pass each in the JEPA job)",
+ "guard_1280_by_variant": {
+  "soft10+reopen@0": {
+   "guard_1280": [
+    97
+   ],
+   "sweep_50000": [
+    97
+   ],
+   "match": true,
+   "stops": {
+    "solved": 97
+   }
+  },
+  "soft10+reopen@0.02": {
+   "guard_1280": [
+    91,
+    94,
+    95,
+    89,
+    91
+   ],
+   "sweep_50000": [
+    91,
+    95,
+    95,
+    89,
+    91
+   ],
+   "match": false,
+   "stops": {
+    "solved": 460,
+    "budget": 23,
+    "expansions": 2
+   }
+  },
+  "soft10+reopen@0.05": {
+   "guard_1280": [
+    85,
+    87,
+    90,
+    85,
+    88
+   ],
+   "sweep_50000": [
+    85,
+    87,
+    90,
+    86,
+    88
+   ],
+   "match": false,
+   "stops": {
+    "solved": 435,
+    "budget": 44,
+    "expansions": 6
+   }
+  },
+  "soft10+reopen@0.1": {
+   "guard_1280": [
+    71,
+    69,
+    80,
+    77,
+    74
+   ],
+   "sweep_50000": [
+    71,
+    70,
+    80,
+    77,
+    75
+   ],
+   "match": false,
+   "stops": {
+    "solved": 371,
+    "budget": 102,
+    "expansions": 12
+   }
+  },
+  "reopen@0": {
+   "guard_1280": [
+    97
+   ],
+   "sweep_50000": [
+    97
+   ],
+   "match": true,
+   "stops": {
+    "solved": 97
+   }
+  },
+  "reopen@0.02": {
+   "guard_1280": [
+    92,
+    95,
+    94,
+    90,
+    91
+   ],
+   "sweep_50000": [
+    92,
+    95,
+    94,
+    90,
+    91
+   ],
+   "match": true,
+   "stops": {
+    "solved": 462,
+    "budget": 18,
+    "frontier": 5
+   }
+  },
+  "reopen@0.05": {
+   "guard_1280": [
+    83,
+    86,
+    88,
+    85,
+    85
+   ],
+   "sweep_50000": [
+    83,
+    86,
+    88,
+    85,
+    85
+   ],
+   "match": true,
+   "stops": {
+    "solved": 427,
+    "budget": 36,
+    "frontier": 22
+   }
+  },
+  "reopen@0.1": {
+   "guard_1280": [
+    69,
+    66,
+    71,
+    73,
+    65
+   ],
+   "sweep_50000": [
+    69,
+    66,
+    71,
+    73,
+    65
+   ],
+   "match": true,
+   "stops": {
+    "solved": 344,
+    "budget": 78,
+    "frontier": 62,
+    "expansions": 1
+   }
+  },
+  "soft10@0": {
+   "guard_1280": [
+    97
+   ],
+   "sweep_50000": [
+    97
+   ],
+   "match": true,
+   "stops": {
+    "solved": 97
+   }
+  },
+  "soft10@0.02": {
+   "guard_1280": [
+    92,
+    95,
+    94,
+    90,
+    91
+   ],
+   "sweep_50000": [
+    92,
+    95,
+    94,
+    90,
+    91
+   ],
+   "match": true,
+   "stops": {
+    "solved": 462,
+    "frontier": 23
+   }
+  },
+  "soft10@0.05": {
+   "guard_1280": [
+    89,
+    93,
+    89,
+    84,
+    86
+   ],
+   "sweep_50000": [
+    89,
+    93,
+    89,
+    84,
+    86
+   ],
+   "match": true,
+   "stops": {
+    "solved": 441,
+    "frontier": 44
+   }
+  },
+  "soft10@0.1": {
+   "guard_1280": [
+    76,
+    79,
+    84,
+    75,
+    71
+   ],
+   "sweep_50000": [
+    76,
+    79,
+    84,
+    75,
+    71
+   ],
+   "match": true,
+   "stops": {
+    "solved": 385,
+    "frontier": 100
+   }
+  }
+ },
+ "soft10_reopen_by_guard": {
+  "1280@0": {
+   "solved": [
+    97
+   ],
+   "sweep": [
+    97
+   ],
+   "match": true,
+   "stops": {
+    "solved": 97
+   },
+   "passes_per_map_mean": 10.8,
+   "passes_p90": 18,
+   "passes_max": 31
+  },
+  "1280@0.05": {
+   "solved": [
+    85,
+    87,
+    90,
+    85,
+    88
+   ],
+   "sweep": [
+    85,
+    87,
+    90,
+    86,
+    88
+   ],
+   "match": false,
+   "stops": {
+    "solved": 435,
+    "budget": 44,
+    "expansions": 6
+   },
+   "passes_per_map_mean": 14.0,
+   "passes_p90": 24,
+   "passes_max": 119
+  },
+  "1280@0.1": {
+   "solved": [
+    71,
+    69,
+    80,
+    77,
+    74
+   ],
+   "sweep": [
+    71,
+    70,
+    80,
+    77,
+    75
+   ],
+   "match": false,
+   "stops": {
+    "solved": 371,
+    "budget": 102,
+    "expansions": 12
+   },
+   "passes_per_map_mean": 18.3,
+   "passes_p90": 34,
+   "passes_max": 117
+  },
+  "1280@0.3": {
+   "solved": [
+    37,
+    42,
+    35,
+    37,
+    39
+   ],
+   "sweep": [
+    37,
+    42,
+    37,
+    37,
+    39
+   ],
+   "match": false,
+   "stops": {
+    "solved": 190,
+    "budget": 266,
+    "expansions": 29
+   },
+   "passes_per_map_mean": 27.7,
+   "passes_p90": 49,
+   "passes_max": 130
+  },
+  "1280@0.5": {
+   "solved": [
+    19,
+    18,
+    17,
+    18,
+    18
+   ],
+   "sweep": [
+    21,
+    18,
+    18,
+    18,
+    18
+   ],
+   "match": false,
+   "stops": {
+    "solved": 90,
+    "budget": 335,
+    "expansions": 60
+   },
+   "passes_per_map_mean": 35.7,
+   "passes_p90": 58,
+   "passes_max": 155
+  },
+  "2560@0": {
+   "solved": [
+    97
+   ],
+   "sweep": [
+    97
+   ],
+   "match": true,
+   "stops": {
+    "solved": 97
+   },
+   "passes_per_map_mean": 10.8,
+   "passes_p90": 18,
+   "passes_max": 31
+  },
+  "2560@0.05": {
+   "solved": [
+    85,
+    87,
+    90,
+    85,
+    88
+   ],
+   "sweep": [
+    85,
+    87,
+    90,
+    86,
+    88
+   ],
+   "match": false,
+   "stops": {
+    "solved": 435,
+    "budget": 46,
+    "expansions": 4
+   },
+   "passes_per_map_mean": 14.0,
+   "passes_p90": 24,
+   "passes_max": 122
+  },
+  "2560@0.1": {
+   "solved": [
+    71,
+    69,
+    80,
+    77,
+    74
+   ],
+   "sweep": [
+    71,
+    70,
+    80,
+    77,
+    75
+   ],
+   "match": false,
+   "stops": {
+    "solved": 371,
+    "budget": 107,
+    "expansions": 7
+   },
+   "passes_per_map_mean": 18.5,
+   "passes_p90": 34,
+   "passes_max": 121
+  },
+  "2560@0.3": {
+   "solved": [
+    37,
+    42,
+    36,
+    37,
+    39
+   ],
+   "sweep": [
+    37,
+    42,
+    37,
+    37,
+    39
+   ],
+   "match": false,
+   "stops": {
+    "solved": 191,
+    "budget": 272,
+    "expansions": 22
+   },
+   "passes_per_map_mean": 28.1,
+   "passes_p90": 49,
+   "passes_max": 136
+  },
+  "2560@0.5": {
+   "solved": [
+    20,
+    18,
+    18,
+    18,
+    18
+   ],
+   "sweep": [
+    21,
+    18,
+    18,
+    18,
+    18
+   ],
+   "match": false,
+   "stops": {
+    "solved": 92,
+    "budget": 349,
+    "expansions": 44
+   },
+   "passes_per_map_mean": 36.8,
+   "passes_p90": 59,
+   "passes_max": 197
+  },
+  "5120@0": {
+   "solved": [
+    97
+   ],
+   "sweep": [
+    97
+   ],
+   "match": true,
+   "stops": {
+    "solved": 97
+   },
+   "passes_per_map_mean": 10.8,
+   "passes_p90": 18,
+   "passes_max": 31
+  },
+  "5120@0.05": {
+   "solved": [
+    85,
+    87,
+    90,
+    85,
+    88
+   ],
+   "sweep": [
+    85,
+    87,
+    90,
+    86,
+    88
+   ],
+   "match": false,
+   "stops": {
+    "solved": 435,
+    "budget": 47,
+    "expansions": 3
+   },
+   "passes_per_map_mean": 14.0,
+   "passes_p90": 24,
+   "passes_max": 130
+  },
+  "5120@0.1": {
+   "solved": [
+    71,
+    70,
+    80,
+    77,
+    75
+   ],
+   "sweep": [
+    71,
+    70,
+    80,
+    77,
+    75
+   ],
+   "match": true,
+   "stops": {
+    "solved": 373,
+    "budget": 109,
+    "expansions": 3
+   },
+   "passes_per_map_mean": 18.6,
+   "passes_p90": 34,
+   "passes_max": 128
+  },
+  "5120@0.3": {
+   "solved": [
+    37,
+    42,
+    37,
+    37,
+    39
+   ],
+   "sweep": [
+    37,
+    42,
+    37,
+    37,
+    39
+   ],
+   "match": true,
+   "stops": {
+    "solved": 192,
+    "budget": 277,
+    "expansions": 16
+   },
+   "passes_per_map_mean": 28.3,
+   "passes_p90": 49,
+   "passes_max": 136
+  },
+  "5120@0.5": {
+   "solved": [
+    21,
+    18,
+    18,
+    18,
+    18
+   ],
+   "sweep": [
+    21,
+    18,
+    18,
+    18,
+    18
+   ],
+   "match": true,
+   "stops": {
+    "solved": 93,
+    "budget": 356,
+    "expansions": 36
+   },
+   "passes_per_map_mean": 37.4,
+   "passes_p90": 59,
+   "passes_max": 230
+  },
+  "50000@0": {
+   "solved": [
+    97
+   ],
+   "sweep": [
+    97
+   ],
+   "match": true,
+   "stops": {
+    "solved": 97
+   },
+   "passes_per_map_mean": 10.8,
+   "passes_p90": 18,
+   "passes_max": 31
+  },
+  "50000@0.05": {
+   "solved": [
+    85,
+    87,
+    90,
+    86,
+    88
+   ],
+   "sweep": [
+    85,
+    87,
+    90,
+    86,
+    88
+   ],
+   "match": true,
+   "stops": {
+    "solved": 436,
+    "budget": 47,
+    "expansions": 2
+   },
+   "passes_per_map_mean": 14.4,
+   "passes_p90": 24,
+   "passes_max": 236
+  },
+  "50000@0.1": {
+   "solved": [
+    71,
+    70,
+    80,
+    77,
+    75
+   ],
+   "sweep": [
+    71,
+    70,
+    80,
+    77,
+    75
+   ],
+   "match": true,
+   "stops": {
+    "solved": 373,
+    "budget": 111,
+    "expansions": 1
+   },
+   "passes_per_map_mean": 18.8,
+   "passes_p90": 34,
+   "passes_max": 157
+  },
+  "50000@0.3": {
+   "solved": [
+    37,
+    42,
+    37,
+    37,
+    39
+   ],
+   "sweep": [
+    37,
+    42,
+    37,
+    37,
+    39
+   ],
+   "match": true,
+   "stops": {
+    "solved": 192,
+    "budget": 282,
+    "expansions": 11
+   },
+   "passes_per_map_mean": 29.5,
+   "passes_p90": 49,
+   "passes_max": 230
+  },
+  "50000@0.5": {
+   "solved": [
+    21,
+    18,
+    18,
+    18,
+    18
+   ],
+   "sweep": [
+    21,
+    18,
+    18,
+    18,
+    18
+   ],
+   "match": true,
+   "stops": {
+    "solved": 93,
+    "budget": 373,
+    "expansions": 19
+   },
+   "passes_per_map_mean": 39.1,
+   "passes_p90": 60,
+   "passes_max": 288
+  }
+ }
+}

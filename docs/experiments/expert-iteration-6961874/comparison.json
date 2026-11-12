@@ -1,0 +1,379 @@
+{
+ "validity": {
+  "search": {
+   "batch": 1,
+   "probe_points": 52,
+   "probe_max_difference": 4.97696275911646e-07,
+   "single_max_difference": null,
+   "batched_failed": {
+    "probe_max_difference": 0.048834167345245705,
+    "single_max_difference": 0.05914157774735429
+   },
+   "policy_agrees": true,
+   "valid": true
+  },
+  "set_checks": {
+   "search": true,
+   "shortest": true
+  },
+  "valid": true
+ },
+ "primary": {
+  "maps": 240,
+  "first": 88,
+  "second": 42,
+  "only_first": 50,
+  "only_second": 4,
+  "p": 3.8029690507812575e-11,
+  "by_population": {
+   "heldout": {
+    "maps": 200,
+    "first": 73,
+    "second": 34,
+    "only_first": 42,
+    "only_second": 3,
+    "p": 8.654978955746628e-10
+   },
+   "test_detour": {
+    "maps": 40,
+    "first": 15,
+    "second": 8,
+    "only_first": 8,
+    "only_second": 1,
+    "p": 0.0390625
+   }
+  },
+  "by_size": {
+   "3": {
+    "maps": 11,
+    "first": 8,
+    "second": 5,
+    "only_first": 3,
+    "only_second": 0,
+    "p": 0.25
+   },
+   "4": {
+    "maps": 36,
+    "first": 21,
+    "second": 11,
+    "only_first": 10,
+    "only_second": 0,
+    "p": 0.001953125
+   },
+   "5": {
+    "maps": 73,
+    "first": 32,
+    "second": 18,
+    "only_first": 17,
+    "only_second": 3,
+    "p": 0.0025768280029296875
+   },
+   "6": {
+    "maps": 120,
+    "first": 27,
+    "second": 8,
+    "only_first": 20,
+    "only_second": 1,
+    "p": 2.09808349609375e-05
+   }
+  },
+  "reading": "expert iteration helps"
+ },
+ "secondary": {
+  "maps": 240,
+  "first": 88,
+  "second": 97,
+  "only_first": 16,
+  "only_second": 25,
+  "p": 0.21102359760880063,
+  "by_population": {
+   "heldout": {
+    "maps": 200,
+    "first": 73,
+    "second": 82,
+    "only_first": 13,
+    "only_second": 22,
+    "p": 0.17546524899080396
+   },
+   "test_detour": {
+    "maps": 40,
+    "first": 15,
+    "second": 15,
+    "only_first": 3,
+    "only_second": 3,
+    "p": 1.0
+   }
+  },
+  "by_size": {
+   "3": {
+    "maps": 11,
+    "first": 8,
+    "second": 9,
+    "only_first": 0,
+    "only_second": 1,
+    "p": 1.0
+   },
+   "4": {
+    "maps": 36,
+    "first": 21,
+    "second": 23,
+    "only_first": 0,
+    "only_second": 2,
+    "p": 0.5
+   },
+   "5": {
+    "maps": 73,
+    "first": 32,
+    "second": 36,
+    "only_first": 6,
+    "only_second": 10,
+    "p": 0.454498291015625
+   },
+   "6": {
+    "maps": 120,
+    "first": 27,
+    "second": 29,
+    "only_first": 10,
+    "only_second": 12,
+    "p": 0.8318119049072266
+   }
+  },
+  "reading": "no detectable difference between found routes and labels"
+ },
+ "descriptive": {
+  "held_out_success": {
+   "search": 88,
+   "shortest": 97,
+   "livr": 42,
+   "n500": 97
+  },
+  "search_vs_n500": {
+   "maps": 240,
+   "first": 88,
+   "second": 97,
+   "only_first": 19,
+   "only_second": 28,
+   "p": 0.24296021728332562,
+   "by_population": {
+    "heldout": {
+     "maps": 200,
+     "first": 73,
+     "second": 78,
+     "only_first": 17,
+     "only_second": 22,
+     "p": 0.5223973804968409
+    },
+    "test_detour": {
+     "maps": 40,
+     "first": 15,
+     "second": 19,
+     "only_first": 2,
+     "only_second": 6,
+     "p": 0.2890625
+    }
+   },
+   "by_size": {
+    "3": {
+     "maps": 11,
+     "first": 8,
+     "second": 9,
+     "only_first": 0,
+     "only_second": 1,
+     "p": 1.0
+    },
+    "4": {
+     "maps": 36,
+     "first": 21,
+     "second": 24,
+     "only_first": 1,
+     "only_second": 4,
+     "p": 0.375
+    },
+    "5": {
+     "maps": 73,
+     "first": 32,
+     "second": 32,
+     "only_first": 10,
+     "only_second": 10,
+     "p": 1.0
+    },
+    "6": {
+     "maps": 120,
+     "first": 27,
+     "second": 32,
+     "only_first": 8,
+     "only_second": 13,
+     "p": 0.38331031799316406
+    }
+   }
+  },
+  "shortest_vs_n500": {
+   "maps": 240,
+   "first": 97,
+   "second": 97,
+   "only_first": 21,
+   "only_second": 21,
+   "p": 1.0,
+   "by_population": {
+    "heldout": {
+     "maps": 200,
+     "first": 82,
+     "second": 78,
+     "only_first": 19,
+     "only_second": 15,
+     "p": 0.6075913612730801
+    },
+    "test_detour": {
+     "maps": 40,
+     "first": 15,
+     "second": 19,
+     "only_first": 2,
+     "only_second": 6,
+     "p": 0.2890625
+    }
+   },
+   "by_size": {
+    "3": {
+     "maps": 11,
+     "first": 9,
+     "second": 9,
+     "only_first": 0,
+     "only_second": 0,
+     "p": 1.0
+    },
+    "4": {
+     "maps": 36,
+     "first": 23,
+     "second": 24,
+     "only_first": 2,
+     "only_second": 3,
+     "p": 1.0
+    },
+    "5": {
+     "maps": 73,
+     "first": 36,
+     "second": 32,
+     "only_first": 10,
+     "only_second": 6,
+     "p": 0.454498291015625
+    },
+    "6": {
+     "maps": 120,
+     "first": 29,
+     "second": 32,
+     "only_first": 9,
+     "only_second": 12,
+     "p": 0.6636238098144531
+    }
+   }
+  },
+  "seen": {
+   "search": {
+    "trained": 60,
+    "untrained": 0
+   },
+   "shortest": {
+    "trained": 58,
+    "untrained": 2
+   },
+   "livr": {
+    "trained": 22,
+    "untrained": 0
+   },
+   "n500": {
+    "trained": 50,
+    "untrained": 12
+   },
+   "maps": {
+    "trained": 62,
+    "untrained": 36
+   }
+  },
+  "benchmark_vs_livr": {
+   "all": {
+    "maps": 400,
+    "first": 320,
+    "second": 328,
+    "only_first": 15,
+    "only_second": 23,
+    "p": 0.2558750795433298
+   },
+   "detour": {
+    "maps": 40,
+    "first": 15,
+    "second": 9,
+    "only_first": 6,
+    "only_second": 0,
+    "p": 0.03125
+   },
+   "no_detour": {
+    "maps": 360,
+    "first": 305,
+    "second": 319,
+    "only_first": 9,
+    "only_second": 23,
+    "p": 0.020061607006937265
+   }
+  },
+  "routes": {
+   "maps": 500,
+   "solved": 326,
+   "by_size": {
+    "3": [
+     11,
+     11
+    ],
+    "4": [
+     57,
+     70
+    ],
+    "5": [
+     105,
+     161
+    ],
+    "6": [
+     153,
+     258
+    ]
+   },
+   "stops": {
+    "solved": 326,
+    "budget": 174
+   },
+   "policy_calls_median": 26.0,
+   "policy_calls_median_solved": 13.0,
+   "equal_to_label": 212,
+   "longer_than_label": 33,
+   "rejected": 4086,
+   "cost": {
+    "sequences": 17032,
+    "forward_passes": 17032,
+    "seconds": 1246.9041204452515
+   }
+  },
+  "training": {
+   "search": {
+    "seconds": 791.8043432235718,
+    "optimizer_steps": 375,
+    "mean_loss": 0.09552553448521557,
+    "last_quarter_loss": 0.04174167752867155
+   },
+   "shortest": {
+    "seconds": 746.6938860416412,
+    "optimizer_steps": 375,
+    "mean_loss": 0.09286009112504554,
+    "last_quarter_loss": 0.04015897048339446
+   }
+  }
+ },
+ "seconds_in_jobs": {
+  "routes": 1877.520132303238,
+  "search": 1064.1585714817047,
+  "shortest": 882.2436726093292
+ },
+ "slurm_gpu_seconds": {
+  "routes": 2144,
+  "search": 1304,
+  "shortest": 955
+ }
+}

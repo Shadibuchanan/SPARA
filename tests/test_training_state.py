@@ -27,6 +27,24 @@ def test_same_stage_resume_and_fresh_stage_optimizer(tiny_model, tiny_batch, tmp
     assert not make_optimizer(tiny_model, config).state
 
 
+
+def test_prefix_learning_rates_add_groups_without_changing_the_default_two(tiny_model):
+    config = read_config("configs/livr.json")
+    default = make_optimizer(tiny_model, config)
+    assert [g["weight_decay"] for g in default.param_groups] == [config["weight_decay"], 0.0]
+    names = [n for n, p in tiny_model.named_parameters() if p.requires_grad]
+    prefix = names[-1].rsplit(".", 1)[0] + "."
+    split = make_optimizer(tiny_model, config, {prefix: 1e-3})
+    scheduler = get_cosine_schedule_with_warmup(split, 2, 10)
+    assert all(g["lr"] == 0.0 for g in split.param_groups)  # warmup starts every group at zero
+    split.step(); scheduler.step()
+    assert [g["initial_lr"] for g in split.param_groups] == [config["learning_rate"]] * 2 + [1e-3] * 2
+    assert scheduler.get_last_lr()[-1] / scheduler.get_last_lr()[0] == pytest.approx(1e-3 / config["learning_rate"])
+    by_id = {id(p): n for n, p in tiny_model.named_parameters()}
+    moved = {by_id[id(p)] for g in split.param_groups[2:] for p in g["params"]}
+    assert moved == {n for n in names if n.startswith(prefix)} and moved
+    assert sum(len(g["params"]) for g in split.param_groups) == sum(len(g["params"]) for g in default.param_groups)
+
 def test_mid_epoch_resume_matches_uninterrupted_training(tiny_model, tiny_batch, tmp_path, monkeypatch):
     from spara import training
     from spara.model import LivrQwen, freeze_vision

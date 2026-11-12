@@ -1,0 +1,49 @@
+{
+  "rows": 100,
+  "draws": 2,
+  "layer": 16,
+  "base_success_rate": 0.94,
+  "sigmas": {
+    "0.01": {
+      "route_change_rate": 0.005,
+      "rows_with_any_change": 1,
+      "success_rate": 0.94
+    },
+    "0.02": {
+      "route_change_rate": 0.005,
+      "rows_with_any_change": 1,
+      "success_rate": 0.94
+    },
+    "0.05": {
+      "route_change_rate": 0.005,
+      "rows_with_any_change": 1,
+      "success_rate": 0.94
+    },
+    "0.1": {
+      "route_change_rate": 0.005,
+      "rows_with_any_change": 1,
+      "success_rate": 0.94
+    },
+    "0.2": {
+      "route_change_rate": 0.01,
+      "rows_with_any_change": 1,
+      "success_rate": 0.94
+    },
+    "0.5": {
+      "route_change_rate": 0.01,
+      "rows_with_any_change": 2,
+      "success_rate": 0.94
+    },
+    "1.0": {
+      "route_change_rate": 0.04,
+      "rows_with_any_change": 5,
+      "success_rate": 0.93
+    },
+    "2.0": {
+      "route_change_rate": 0.355,
+      "rows_with_any_change": 45,
+      "success_rate": 0.64
+    }
+  },
+  "chosen_sigma": null
+}

@@ -1,0 +1,7 @@
+{
+  "method": "step grounding: at each move of the teacher-forced released answer, predict the agent's cell and each move's outcome (safe, hole, edge, goal) from one layer's hidden state; docs/STEP_GROUNDING_SPEC.md",
+  "layer": 20,
+  "weight": 1.0,
+  "head_learning_rate": 0.001,
+  "labels": "map layout (map_desc) and released answer of each training row; never a model input"
+}

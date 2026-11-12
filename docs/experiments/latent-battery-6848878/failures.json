@@ -1,0 +1,512 @@
+{
+  "primary_layer": 12,
+  "permutations": 20000,
+  "layers": {
+    "4": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 36,
+      "fatal_read_safe_rate": 0.5454545454545454,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 36,
+        "expected_read_safe": 30.432803067245803,
+        "p_one_sided": 0.01904780120998271
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 36,
+        "expected_read_safe": 31.461972733669967,
+        "p_one_sided": 0.1565070824833952,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 29
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 36
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 49
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 54
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 7.027777777777778,
+        "mean_misread_solved": 4.420731707317073,
+        "difference": 2.6070460704607044,
+        "p_one_sided_within_size_and_holes": 0.6065196740162991,
+        "auc": 0.7175220189701897
+      }
+    },
+    "8": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 33,
+      "fatal_read_safe_rate": 0.5,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 33,
+        "expected_read_safe": 30.46136157444207,
+        "p_one_sided": 0.20783593737071093
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 33,
+        "expected_read_safe": 28.012568148055145,
+        "p_one_sided": 0.1262888740418764,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 16
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 32
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 43
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 51
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 5.444444444444445,
+        "mean_misread_solved": 2.9878048780487805,
+        "difference": 2.456639566395664,
+        "p_one_sided_within_size_and_holes": 0.7464626768661566,
+        "auc": 0.7141556571815718
+      }
+    },
+    "12": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 24,
+      "fatal_read_safe_rate": 0.36363636363636365,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 24,
+        "expected_read_safe": 20.706972765796298,
+        "p_one_sided": 0.16287114493754773
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 24,
+        "expected_read_safe": 24.231060375708374,
+        "p_one_sided": 0.5718178498473114,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 12
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 22
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 42
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 44
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 4.513888888888889,
+        "mean_misread_solved": 2.347560975609756,
+        "difference": 2.166327913279133,
+        "p_one_sided_within_size_and_holes": 0.45307734613269335,
+        "auc": 0.7166327913279132
+      }
+    },
+    "16": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 24,
+      "fatal_read_safe_rate": 0.36363636363636365,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 24,
+        "expected_read_safe": 25.60953188967895,
+        "p_one_sided": 0.7777403547761798
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 24,
+        "expected_read_safe": 24.40938075798252,
+        "p_one_sided": 0.5884845063412019,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 16
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 36
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 39
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 42
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 4.916666666666667,
+        "mean_misread_solved": 2.4146341463414633,
+        "difference": 2.5020325203252036,
+        "p_one_sided_within_size_and_holes": 0.07964601769911504,
+        "auc": 0.7455115176151762
+      }
+    },
+    "20": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 27,
+      "fatal_read_safe_rate": 0.4090909090909091,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 27,
+        "expected_read_safe": 28.73514400975701,
+        "p_one_sided": 0.7518005313862878
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 27,
+        "expected_read_safe": 25.940545239725594,
+        "p_one_sided": 0.440283967907497,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 17
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 45
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 46
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 42
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 4.611111111111111,
+        "mean_misread_solved": 2.5365853658536586,
+        "difference": 2.074525745257452,
+        "p_one_sided_within_size_and_holes": 0.32193390330483473,
+        "auc": 0.7263084349593496
+      }
+    },
+    "24": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 33,
+      "fatal_read_safe_rate": 0.5,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 33,
+        "expected_read_safe": 35.5207333387287,
+        "p_one_sided": 0.8078101112291624
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 33,
+        "expected_read_safe": 33.55540668221476,
+        "p_one_sided": 0.6052519712144329,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 18
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 42
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 60
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 58
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 5.958333333333333,
+        "mean_misread_solved": 3.25,
+        "difference": 2.708333333333333,
+        "p_one_sided_within_size_and_holes": 0.6056697165141743,
+        "auc": 0.7232384823848238
+      }
+    },
+    "28": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 34,
+      "fatal_read_safe_rate": 0.5151515151515151,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 34,
+        "expected_read_safe": 37.97398246318525,
+        "p_one_sided": 0.900576586901221
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 34,
+        "expected_read_safe": 35.64974163696441,
+        "p_one_sided": 0.7075709746570459,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 19
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 48
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 64
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 61
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 6.763888888888889,
+        "mean_misread_solved": 3.701219512195122,
+        "difference": 3.0626693766937674,
+        "p_one_sided_within_size_and_holes": 0.5863706814659267,
+        "auc": 0.7298018292682927
+      }
+    },
+    "32": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 37,
+      "fatal_read_safe_rate": 0.5606060606060606,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 37,
+        "expected_read_safe": 41.87481602504822,
+        "p_one_sided": 0.9389791294929275
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 37,
+        "expected_read_safe": 37.40908044451923,
+        "p_one_sided": 0.5931172584521,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 23
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 48
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 78
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 60
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 7.430555555555555,
+        "mean_misread_solved": 4.048780487804878,
+        "difference": 3.3817750677506773,
+        "p_one_sided_within_size_and_holes": 0.3167841607919604,
+        "auc": 0.7454903455284553
+      }
+    },
+    "36": {
+      "fatal_holes": 66,
+      "fatal_read_safe": 41,
+      "fatal_read_safe_rate": 0.6212121212121212,
+      "fatal_by_size": {
+        "3": 7,
+        "4": 7,
+        "5": 15,
+        "6": 37
+      },
+      "position_matched": {
+        "fatal_holes": 66,
+        "read_safe": 41,
+        "expected_read_safe": 44.30603883990104,
+        "p_one_sided": 0.8682673739369765
+      },
+      "avoided_size_matched": {
+        "fatal_holes": 66,
+        "read_safe": 41,
+        "expected_read_safe": 40.97797016794123,
+        "p_one_sided": 0.5528940942119116,
+        "avoided_by_size": [
+          {
+            "size": 3,
+            "holes": 68,
+            "read_safe": 28
+          },
+          {
+            "size": 4,
+            "holes": 111,
+            "read_safe": 59
+          },
+          {
+            "size": 5,
+            "holes": 122,
+            "read_safe": 82
+          },
+          {
+            "size": 6,
+            "holes": 99,
+            "read_safe": 65
+          }
+        ]
+      },
+      "maps": {
+        "failed": 72,
+        "solved": 328,
+        "mean_misread_failed": 7.625,
+        "mean_misread_solved": 3.9634146341463414,
+        "difference": 3.6615853658536586,
+        "p_one_sided_within_size_and_holes": 0.036498175091245436,
+        "auc": 0.7527523712737128
+      }
+    }
+  },
+  "outcomes_by_size": {
+    "3": {
+      "goal": 93,
+      "hole": 7
+    },
+    "4": {
+      "goal": 93,
+      "hole": 7
+    },
+    "5": {
+      "goal": 81,
+      "hole": 15,
+      "short": 4
+    },
+    "6": {
+      "goal": 61,
+      "hole": 37,
+      "short": 2
+    }
+  }
+}

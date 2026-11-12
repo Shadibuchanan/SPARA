@@ -45,12 +45,14 @@ def require_final_checkpoint(path, stage, config):
             raise ValueError(f"Checkpoint recipe mismatch: {key}")
 
 
-def require_final_rl_checkpoint(path, config, rl):
+def require_final_rl_checkpoint(path, config, rl, phase="text-rl"):
+    """Completed RL from the LIVR checkpoint: text-only ("text-rl") or latent ("latent-rl")."""
     progress = json.loads((Path(path) / "complete.json").read_text())["progress"]
     expected_steps = rl["epochs"] * ((1000 + rl["prompts_per_step"] - 1) // rl["prompts_per_step"])
-    if (progress.get("pilot") or progress.get("phase") != "text-rl" or progress.get("epoch") != rl["epochs"]
+    if (progress.get("pilot") or progress.get("phase") != phase or progress.get("epoch") != rl["epochs"]
             or progress.get("next_row") != 0 or progress.get("optimizer_steps") != expected_steps):
-        raise ValueError("Expected completed text-only RL, not an intermediate checkpoint")
+        label = "text-only" if phase == "text-rl" else "latent"
+        raise ValueError(f"Expected completed {label} RL, not an intermediate checkpoint")
     for key, value in config.items():
         if key not in {"local_model_path", "checkpoint_every_steps"} and progress["config"].get(key) != value:
             raise ValueError(f"Checkpoint recipe mismatch: {key}")
@@ -127,14 +129,19 @@ def manifest(config, model, processor, data_root):
     }
 
 
-def make_optimizer(model, config):
-    decay, no_decay = [], []
+def make_optimizer(model, config, rates=None):
+    """AdamW without decay on biases and norms. `rates` maps a parameter-name prefix to
+    its own learning rate; those groups follow the two default ones."""
+    rates = rates or {}
+    groups = {(prefix, decay): [] for prefix in (None, *rates) for decay in (True, False)}
     for name, parameter in model.named_parameters():
         if parameter.requires_grad:
-            (no_decay if name.endswith("bias") or "norm" in name.lower() else decay).append(parameter)
+            prefix = next((p for p in rates if name.startswith(p)), None)
+            groups[prefix, not (name.endswith("bias") or "norm" in name.lower())].append(parameter)
     return torch.optim.AdamW([
-        {"params": decay, "weight_decay": config["weight_decay"]},
-        {"params": no_decay, "weight_decay": 0.0}], lr=config["learning_rate"],
+        {"params": params, "weight_decay": config["weight_decay"] if decay else 0.0}
+        | ({} if prefix is None else {"lr": rates[prefix]})
+        for (prefix, decay), params in groups.items()], lr=config["learning_rate"],
         betas=tuple(config["betas"]), eps=config["epsilon"],
         fused=next(model.parameters()).device.type == "cuda")
 

@@ -1250,3 +1250,691 @@ None
 ### Folders created
 
 - docs/experiments/multisample-6267411/ - per-map multi-sample evidence.
+
+## 2026-10-27 — Diagnose and fix Scaffolding RL, rerun on PACE-ICE
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Check the Scaffolding Minds baseline RL results on PACE-ICE, delete the duplicate checkpoint, evaluate the run, and then fix the RL without a hyperparameter sweep.
+**AI contribution:** Diagnosed the paper-settings RL run (job 6523751): the summed latent log-probability carried nearly all of the gradient, and the σ = 0.05 adjustment rarely changed a route. Added a latent-sensitivity probe and a latent-mode override for evaluation, chose mean reduction and σ_init 1.0 by a rule fixed before the probe ran, and reran RL from the same Stage 1 checkpoint. Submitted the probe (job 6623151), the rerun with its sampled-Δ evaluation (6623191), and evaluations of the first run (6623076, and 6623192 with Δ = 0) and of the rerun with Δ = 0 (6625890), and recorded paired results in the baseline specification, including that the Gaussian heads still barely moved. Deleted the duplicate 38 GB `stage2-rl/step-500` checkpoint of run `scaffolding-linear-6273886` on PACE scratch at the user's request, and copied this task's files into the PACE checkout.
+**Contribution type:** Debugging, generation and analysis.
+**Initial state:** Local `main` at 4b41fc0, with untracked `.DS_Store`, `spara_results/` and `docs/related_literature/2610.26845v1.pdf` not from this task. The PACE checkout was also at 4b41fc0, with uncommitted edits of unknown authorship to `AGENT_USAGE.MD`, `configs/scaffolding.json`, `scripts/pace/pace.conf` and `src/spara/scaffolding/training.py`, and an untracked `scripts/pace/scaffolding-variants.sbatch`; these were left untouched.
+**Unfinished work:** Changes are uncommitted. Which Scaffolding RL result to report is open. A head-specific learning rate and a text-only GRPO control from the same Stage 1 checkpoint were not run.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked to check the Scaffolding Minds baseline RL results on PACE-ICE through the open SSH connection, without logging yet | Read the run's logs and step records and found the latent term dominating the gradient |
+| 2 | User message | Asked to delete the duplicate checkpoint and run the evaluation, and asked whether the result would do as a baseline, given no time for a hyperparameter sweep | Deleted the step-500 checkpoint, evaluated the RL checkpoint and advised one corrected rerun |
+| 3 | User message | Asked to try the fix and allowed the work to be logged | Ran the probe, wrote the rerun recipe, reran RL, evaluated both runs with Δ = 0 and updated the specification |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/scaffolding/decoding.py | modified | Moved lockstep latent-block decoding into `decode_block`, shared by `sample_group` and the probe |
+| src/spara/scaffolding/probe.py | created | Latent-sensitivity probe: greedy route changes, success and first-token KL per σ |
+| src/spara/scaffolding/cli.py | modified | `probe` command and an `--evaluation-latent` override for `evaluate` |
+| tests/test_scaffolding_model.py | modified | Probe test: exact at zero scale, routes change at large scale |
+| configs/scaffolding-rlfix.json | created | Rerun recipe: mean reduction, σ_init 1.0, σ ceiling 4 |
+| scripts/pace/scaffolding-rl-fix.sbatch | created | PACE job for the probe, the RL rerun and latent-mode evaluation |
+| docs/SCAFFOLDING_BASELINE_SPEC.md | modified | Results for both RL runs and the probe, rerun settings, commands, cost and open items |
+
+### Folders created
+
+- None
+
+## 2026-11-06 — Latent battery on the LIVR checkpoint
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Begin the latent work (condition C and JEPA-style objectives) with GPU hours as the scarce resource, measure the LIVR latents on PACE-ICE first, transfer the user's copy of the LIVR checkpoint to PACE, and identify who produced the checkpoint that condition C needs.
+**AI contribution:** Designed and implemented a measurement battery that answers every test map greedily under unmasked and bottleneck attention with the map's own, another map's, the training-mean or no latent states, saves probe features, and an offline analysis with ridge probes, collapse statistics and image-cell distinguishability. Transferred the user-supplied LIVR `6189457` Stage 2 checkpoint to PACE scratch with hash verification and deleted the local zip copies at the user's request, then ran a pilot (job 6848180) and the full battery (job 6848878, 2,305 H100-seconds in total) and the analysis as CPU jobs (6850819, 6850902); rewrote the analysis ridge solver as a thin SVD after estimating that the dual form would be too slow for the cell probes. Wrote the results report and evidence bundle: the answer follows swapped latents in 351 of 400 maps even with the image visible, and the latents encode goal and start nearly perfectly but holes only partly. Identified from git history that the LIVR rerun `6253300`, condition B's starting point, came from Akash Singirikonda's commit 09ef203.
+**Contribution type:** Generation, analysis and advice.
+**Initial state:** Local `main` at 4b41fc0, with uncommitted changes from earlier Scaffolding RL tasks (including `src/spara/runtime.py`, `src/spara/scaffolding/training.py` and their tests) and untracked `.DS_Store`, `spara_results/` and `docs/related_literature/2610.26845v1.pdf`, none from this task. The PACE checkout's uncommitted edits of unknown authorship were left untouched; this task's battery files were copied into it.
+**Unfinished work:** Changes are uncommitted. Results are for checkpoint `6189457`; condition C needs `6253300` from Akash Singirikonda, or condition B rerun from `6189457`, which is the user's decision. No GPU-hour ceiling has been set for the next phases. The terms latent battery, bottleneck mode and latent swap are not in GLOSSARY.md.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Proposed starting with condition C while also pursuing JEPA-style latent work, which they judged more impactful than changing LIVR's latents | Planned a measurement phase whose results inform both directions |
+| 2 | User message | Said GPU hours, not code, are the main constraint | Kept the GPU work to one pilot and one full pass, with all analysis on CPU |
+| 3 | User message | Asked to proceed and noted an open PACE-ICE connection for submissions | Implemented the battery and submitted the jobs through that connection |
+| 4 | User message | Said they do not have the LIVR checkpoints; someone else does | Stopped searching PACE for checkpoints |
+| 5 | User message | Asked whether Phase 1 could proceed with or without the checkpoint | Explained which steps need it |
+| 6 | User-provided file | Copied the LIVR `6189457` checkpoint to the Mac as a zip and asked for it to be moved to PACE and deleted locally | Transferred and verified it, deleted the local copies, and ran the battery on it |
+| 7 | User message | Asked who made the commit for the LIVR model condition C needs | Identified commit 09ef203 by Akash Singirikonda (job 6253300) |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/latent_battery.py | created | Latent replacement hooks; own, swap, mean and removed conditions under both attention modes; identity check; probe-feature pass; summary |
+| src/spara/cli.py | modified | `battery` command with `--limit` and `--max-new-tokens` |
+| scripts/pace/latent-battery.sbatch | created | PACE job for the battery |
+| scripts/analyze_latent_battery.py | created | CPU analysis: ridge probes, collapse statistics and image-cell distinguishability |
+| tests/test_latent_battery.py | created | Tests for latent replacement, bottleneck swap, cell weights, donor choice, McNemar, probe layers and probe targets |
+| docs/LATENT_BATTERY_RESULTS.md | created | Phase 0 results, caveats and implications |
+| docs/experiments/latent-battery-6848878/README.md | created | Guide to the evidence bundle |
+| docs/experiments/latent-battery-6848878/summary.json | created | Per-condition results from the battery run |
+| docs/experiments/latent-battery-6848878/rows.jsonl | created | Per-map answers under every condition |
+| docs/experiments/latent-battery-6848878/identity.json | created | Own-state re-insertion check |
+| docs/experiments/latent-battery-6848878/probes.json | created | Probe, collapse and cell results |
+| docs/experiments/latent-battery-6848878/manifest.json | created | Run provenance and swap-donor assignment, with the checkpoint path made relative |
+
+### Folders created
+
+- docs/experiments/latent-battery-6848878/ - evidence bundle for the battery run.
+
+## 2026-11-08 — Test whether LIVR failures follow missing hole information
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Run the proposed CPU-only check of whether LIVR's route failures follow the latent hole probe's errors.
+**AI contribution:** Advised that the latent battery shows the latents control the answer but not that better hole encoding would reduce failures, and proposed a CPU-only test. Wrote an analysis with its predictions and primary layer fixed before it ran: it walks each route with the reference rules, compares how often the hole probe reads the holes the model entered as safe against position- and size-matched base rates, and compares per-map misreads within grid size and hole count. Ran it as CPU Slurm job 6878532 on the 6189457 battery features; the prediction was not supported (24 of 66 fatal holes read as safe against 20.7 and 24.2 expected; map-level p = 0.45), and the results report was revised accordingly. Made the new walk test use the checksum-verified reference evaluator and skip without data after finding the PACE checkout has no reference source.
+**Contribution type:** Generation, analysis and advice.
+**Initial state:** As at the end of the 2026-11-06 latent battery entry; no other changes.
+**Unfinished work:** Changes are uncommitted. Whether failures start in the latents' map content or in the planning at the same positions is open.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked whether the latent battery results were good for the project | Explained what the results do and do not show and proposed a CPU-only test of whether failures follow missing hole information |
+| 2 | User message | Agreed to the proposed test | Implemented and ran the analysis and recorded the result |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| scripts/analyze_battery_failures.py | created | Pre-specified failure analysis: fatal-hole and map-level tests against matched base rates |
+| tests/test_latent_battery.py | modified | Tests that the route walk matches the reference evaluator and that the exact and permutation statistics are correct |
+| docs/LATENT_BATTERY_RESULTS.md | modified | Failure-analysis section; revised summary and implications |
+| docs/experiments/latent-battery-6848878/failures.json | created | Output of the failure analysis |
+| docs/experiments/latent-battery-6848878/README.md | modified | Describes failures.json |
+
+### Folders created
+
+- None
+
+## 2026-11-08 — Transfer and verify the LIVR 6253300 checkpoint on PACE-ICE
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Move the user-supplied zip of the LIVR baseline run 6253300 to PACE-ICE, test it, and delete it from the Mac.
+**AI contribution:** Confirmed from the zip that it is run 6253300: its evaluation summary (328/400) and its Stage 1 and Stage 2 step logs are byte-identical to the copies in docs/experiments/livr-6253300. Checked the scratch quota, copied the 30 GB zip to PACE scratch and, in CPU Slurm job 6878780, matched its SHA-256 to the local copy, extracted it with CRC checks, checked both final checkpoints against the recipe, their recorded byte counts and shard index, and loaded Stage 2 to greedy-decode one test map per grid size (3 of 4 solved; the miss also failed in the run's own evaluation) and teacher-force the run's evaluation answers (mean NLL 0.00 to 0.16). Deleted the zip from the Mac and the redundant zip from PACE scratch, leaving the extracted run at `results/baseline-6253300`; the test scripts were kept on PACE scratch outside the repository.
+**Contribution type:** Verification and data handling.
+**Initial state:** As at the end of the preceding entry. PACE scratch held 222.5 of 300 GB before the transfer and 250.5 GB after.
+**Unfinished work:** Condition C from this checkpoint has not been started, and no GPU-hour ceiling for it has been set.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User-provided file | Supplied the LIVR 6253300 run directory as a zip (run by Akash Singirikonda) and asked for it to be moved to PACE-ICE, tested and removed from the Mac | Verified, extracted and tested it on PACE, then deleted the zip copies |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-08 — Implement and run latent RL (condition C)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Try condition C from the LIVR rerun 6253300 within about 1.5 GPU-hours, after agreeing that LIVR's latents carry both map and planning content.
+**AI contribution:** Implemented condition C as an optional latent policy in condition B's GRPO loop. Hooks replace LIVR's four latent states at decoder layer 16 with Gaussian-adjusted ones from Scaffolding's heads, and Scaffolding's latent term is added to B's unchanged text loss. Also added a σ probe, latent evaluation modes, a recipe, a PACE script, tests and a specification with pre-declared comparisons; the latent-scale measurement from the battery features set the probe grid and the heads' normalised input. Ran two probes (jobs 6879148 and 6879676; the first grid had no qualifying σ, so a finer grid kept the same rule and chose 1.6), a 10-step pilot and the full run (job 6879761), 4,266 H200-seconds in total. Moved the primary comparison from sampled δ to δ = μ before any C evaluation, and recorded why. Result: 323/400 with δ = μ against B's 326/400 (McNemar p = 0.63), with more informative training groups than B (16.8% against 9.9%, paired p = 4e-10). Earlier in the task, corrected the latent battery report's wording so that map reading and planning both sit at the latent positions.
+**Contribution type:** Generation, analysis and advice.
+**Initial state:** As at the end of the preceding entry. The PACE copies of the modified source files matched the local versions before this task's edits; no edits of unknown authorship were overwritten.
+**Unfinished work:** Changes are uncommitted. C's final weights (15 GB) remain on PACE scratch, which is at about 265 of 300 GB. The robustness probe of C's weights and the follow-up options in the results report have not been run.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Pointed out that the latents should encode both the stored map and some planning | Agreed, corrected the battery report's framing, and proposed ways to separate the map and planning stages |
+| 2 | User message | Proposed simply trying condition C | Recommended C with design notes and a budget of about 1.5 GPU-hours |
+| 3 | User message | Agreed to the plan and budget | Implemented, tested and ran C, and reported the result |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/latent_rl.py | created | Latent adjustment hooks, Gaussian heads setup, latent objective, σ rule and σ probe |
+| src/spara/text_rl.py | modified | Optional latent policy in the GRPO loop; B's path unchanged |
+| src/spara/model.py | modified | LivrQwen rebuilds latent heads from its config on load |
+| src/spara/runtime.py | modified | RL checkpoint contract takes a phase, so it covers latent RL |
+| src/spara/cli.py | modified | `latent-probe`; latent options for `train-rl`; `--latent-mode` for `evaluate` |
+| configs/latent_rl.json | created | Condition C recipe: B's settings plus the latent policy (σ_init 1.6) |
+| scripts/pace/latent_rl.sbatch | created | PACE job for the probe and pilot, and for the full run with evaluations |
+| tests/test_latent_rl.py | created | Zero/nonzero adjustment, cached-rollout replay, checkpointing gradients, heads save/load, σ rule, probe, and the full loop |
+| docs/LATENT_RL_SPEC.md | created | Method, settings and sources, probe and pilot, budget and pre-declared comparisons |
+| docs/LATENT_RL_RESULTS.md | created | Condition C results |
+| docs/LATENT_BATTERY_RESULTS.md | modified | Map reading and planning both described as at the latent positions |
+| docs/experiments/latent-rl-6879761/README.md | created | Guide to the evidence bundle |
+| docs/experiments/latent-rl-6879761/evaluation-outcomes-mean.jsonl | created | Per-map outcomes with δ = μ |
+| docs/experiments/latent-rl-6879761/evaluation-outcomes-sample.jsonl | created | Per-map outcomes with sampled δ |
+| docs/experiments/latent-rl-6879761/evaluation-outcomes-zero.jsonl | created | Per-map outcomes with δ = 0 |
+| docs/experiments/latent-rl-6879761/evaluation-summary-mean.json | created | Success counts with δ = μ |
+| docs/experiments/latent-rl-6879761/evaluation-summary-sample.json | created | Success counts with sampled δ |
+| docs/experiments/latent-rl-6879761/evaluation-summary-zero.json | created | Success counts with δ = 0 |
+| docs/experiments/latent-rl-6879761/steps.jsonl | created | Training step log |
+| docs/experiments/latent-rl-6879761/rollouts.jsonl | created | Per-group training rewards |
+| docs/experiments/latent-rl-6879761/probe-6879148-summary.json | created | First σ probe |
+| docs/experiments/latent-rl-6879761/probe-6879676-summary.json | created | Second σ probe |
+| docs/experiments/latent-rl-6879761/pilot-6879676-steps.jsonl | created | Pilot step log |
+
+### Folders created
+
+- docs/experiments/latent-rl-6879761/ - evidence bundle for the condition C run.
+
+## 2026-11-08 — Plan structured exploration and a harder training set
+
+**Agent/tool:** Claude Code (Opus 5.5)
+**User request:** Follow up on condition C; the user considers both structured latent exploration and a harder training set worth pursuing.
+**AI contribution:** Paired B's and C's training rollouts map by map. Isotropic latent noise moved groups in both directions about equally: 19 of B's 38 all-fail maps gained some success under C, while 18 maps B solved at least once became all-fail. Confirmed that gymnasium 1.0.0's FrozenLake renderer reproduces all 1,400 Mirage map images pixel for pixel, and that the released layouts fit independent holes at about 20% with solvable start–goal pairs. Proposed a staged plan (CPU map generator, a gating GPU probe, then matched B′ and C′ runs) for the user's approval. No GPU job was submitted.
+**Contribution type:** advice
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Said structured exploration and a harder training set both potentially make sense | Checked feasibility of both and proposed one staged plan covering them |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-08 — Planning probe: latent headroom and state tracking
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Look at fixes aimed at planning rather than perception by building and running the two cheap diagnostics proposed earlier: a latent headroom test and a state-tracking probe.
+**AI contribution:** Wrote a specification with reading rules fixed before any run. Implemented one GPU job on the LIVR rerun 6253300 covering both tests:
+- **Headroom:** for each failed test map, the four layer-16 latent states are optimised within the exploration probe's structured basis, with the change capped per slot at four radii. The optimisation targets the most likely correct shortest route, with a one-move-wrong control route.
+- **State tracking:** ridge probes, fitted on training maps, read the agent's cell and the neighbouring holes from the hidden state before each move of the model's own routes.
+
+A separate advisor model reviewed the design before implementation. Its suggestions were adopted: train the hole probe only on directions other than the next move (to avoid a shortcut), report fatal first moves separately, and exclude the model's own route from the controls.
+
+Ran it as PACE job 6887458 (1,831 H200-seconds) and wrote up the pre-declared readings:
+- **Headroom:** absent, with 7 of 73 failed maps fixed at r = 8. The write-up records that the radii were too small to test headroom beyond natural-sized changes, and that the control routes were never difficulty-matched.
+- **State tracking:** "intact" on the test maps (on the boundary) and "contributes" on the fresh maps, from a weak position probe.
+
+Added a CPU script of post-hoc checks. It shows the agent's offset from the start decoded on almost every step, including fatal ones, while the start location is only partly present at the writing position.
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entry, plus this session's structured-exploration work: the fresh map generator, the exploration probe and job 6884608. That work was done earlier without a log entry, at the user's request. The PACE copy of src/spara/cli.py matched the local version before this task's edits.
+**Unfinished work:** Changes are uncommitted. The run's hidden-state features (190 MB) remain on PACE scratch. A headroom rerun at larger radii (16, 32, 64) has been proposed but not run.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked whether the JEPA component could be the missing piece | Led to the proposal of the headroom and state-tracking tests (about 15 to 25 GPU-minutes) |
+| 2 | User message | Agreed to look at the planning (not perception) fixes | Wrote the specification, implemented and tested both diagnostics, and submitted the job |
+| 3 | User message | Asked for this log entry because code was written | This entry, written while the job ran and updated after the results |
+| 4 | User message | Said deletions need not be logged | No entry for the earlier scratch cleanup |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/PLANNING_PROBE_SPEC.md | created | Rationale, setup, both tests, reading rules fixed before the run, budget and commands; after the run, the status, a results section and a corrected description of the radius units |
+| src/spara/planning_probe.py | created | Route and move-token alignment, per-move hidden states, ridge position and hole-ahead probes with the tracking test, headroom optimisation and summaries; CPU re-analysis entry point |
+| src/spara/cli.py | modified | `planning-probe` command (this task's change only) |
+| tests/test_planning_probe.py | created | Token alignment, route walking, shortest routes and controls, tracking rule, synthetic state probe, padded scoring, bounded optimisation, and an end-to-end tiny-model run |
+| scripts/pace/planning_probe.sbatch | created | PACE job for the planning probe |
+| scripts/analyze_planning_probe.py | created | Post-hoc CPU checks: feature alignment, offset from the start, start cell, MLP position probe, fatal-step controls, hole-ahead within the direction taken, headroom bounds |
+| docs/experiments/planning-probe-6887458/README.md | created | Guide to the evidence, the pre-declared results and the post-hoc checks |
+| docs/experiments/planning-probe-6887458/summary.json | created | Pre-declared results from the run |
+| docs/experiments/planning-probe-6887458/routes.jsonl | created | Every map's route and outcome |
+| docs/experiments/planning-probe-6887458/steps.jsonl | created | Per-step decoded cells and hole-ahead scores |
+| docs/experiments/planning-probe-6887458/headroom.jsonl | created | Per-map headroom optimisation results |
+| docs/experiments/planning-probe-6887458/exploratory.json | created | Output of the post-hoc script |
+| docs/experiments/planning-probe-6887458/manifest.json | created | Run manifest, with PACE paths made relative |
+
+### Folders created
+
+- docs/experiments/planning-probe-6887458/ - evidence bundle for the planning probe run.
+
+## 2026-11-09 — Design and implement step grounding (per-move cell and outcome prediction)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Follow the direction recommended after the planning probe: design a per-step grounding objective, starting with CPU work, before any GPU run.
+**AI contribution:** Wrote a specification for *LIVR + step grounding*, with reading rules fixed before any run.
+- **Recipe:** Stage 2 is retrained from the LIVR rerun's Stage 1 weights with the released recipe, plus one auxiliary loss.
+- **The loss:** at each move of the teacher-forced answer, a zero-initialised linear head on the layer-20 hidden state predicts the agent's cell and the outcome of each possible move (safe, hole, off the grid, goal). Labels come from the map layout.
+- **Primary comparison:** benchmark success against the LIVR rerun, with the state probe rerun as a check of whether position became decodable on test maps.
+
+Implemented:
+- the objective, as an optional hook in the Stage 2 training loop;
+- a headroom-free mode for the planning probe;
+- a comparison script;
+- a PACE job;
+- a glossary entry.
+
+Also confirmed that LIVR's greedy routes on the 400 fresh maps (from the exploration probe) pair with a new run's, so that comparison needs no extra GPU time.
+
+A separate advisor model reviewed the plan before implementation. Its suggestions were adopted:
+- reuse the probe's decision-state and layer definitions, with a test that the training-side states equal the probe's;
+- check that a zero-weight loss reproduces plain Stage 2;
+- state a rule for the loss weight;
+- make the sampled benchmark the primary comparison;
+- use the state probe on test and fresh maps as the manipulation check.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entry. Before syncing, the PACE copies of src/spara/training.py (identical to HEAD), src/spara/cli.py, src/spara/planning_probe.py and tests/test_planning_probe.py differed from the local files only by this task's edits.
+**Unfinished work:**
+- The GPU run (about 1.1 GPU-hours) was submitted with the user's approval. The first attempt, PACE job 6911236, stopped after 4 seconds on a shell syntax error in the job script, before training. The corrected script was resubmitted as job 6926184.
+- Whether layout-derived per-step labels fit the project's scope needs the team's confirmation.
+- Changes are uncommitted.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Agreed with the recommended direction: design the per-step grounding objective next, starting on CPU | Wrote the specification, implemented and tested the objective, and prepared the PACE job |
+| 2 | User message | Approved submitting the step-grounding job | Synced the remaining local change to PACE and submitted job 6911236; after it failed on a syntax error, fixed the script and resubmitted it as job 6926184 |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/STEP_GROUNDING_SPEC.md | created | Rationale, objective, training setup, scope assumption, reading rules fixed before the run, budget and commands |
+| src/spara/grounding.py | created | Per-move labels from the layout and the reference walk, decision-state selection shared with the planning probe, the zero-initialised head, the loss, and saving and loading the head |
+| src/spara/training.py | modified | Optional step-grounding loss in `train_stage`: hidden states, the head's parameter group, clipping, logging and the saved head |
+| src/spara/cli.py | modified | `train --grounding`; `planning-probe --radii none` with `--basis` optional (this task's change only) |
+| src/spara/planning_probe.py | modified | Skips the headroom test and the basis when no radii are given |
+| configs/step_grounding.json | created | Layer 20, weight 1, head learning rate 1e-3 |
+| scripts/analyze_step_grounding.py | created | Pre-declared comparisons with LIVR: benchmark and greedy McNemar tests, failure types, training fit, the manipulation check and the trained head's readout; a note to run it with one thread on login nodes |
+| scripts/pace/step_grounding.sbatch | created | PACE job: Stage 2 with step grounding, benchmark, state probe without headroom, comparisons (an apostrophe in an error message, which broke the shell parse, was later removed) |
+| tests/test_step_grounding.py | created | Targets, decision tokens, equality with the probe's states, masked logits, gradients stopping at the layer, zero-weight equivalence, settings and the saved head |
+| tests/test_planning_probe.py | modified | The planning probe without headroom needs no basis |
+| GLOSSARY.md | modified | *Step grounding* entry |
+
+### Folders created
+
+- None
+
+## 2026-11-10 — Design and implement the detour reach check
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Pursue policy improvement through exploration without helper images, keeping JEPA as a candidate. Approved a cheap reach check, a spec, and a GitHub issue.
+**AI contribution:** Wrote a spec for detour learning:
+- the problem evidence across conditions;
+- a three-step direction: a reach check, expert iteration with simulator-pruned search on generated maps, and JEPA as a transition model;
+- scope questions for the team;
+- the reach check's design, with reading and validity rules fixed before the run.
+
+Implemented the reach check:
+- a module that finds the first decision point on each recorded greedy route;
+- one teacher-forced pass per point, reading each move's probability raw and under the RL rollout settings, with Hugging Face's logits processors applied in `generate`'s order;
+- a CLI command, tests and a PACE job.
+
+Opened GitHub issue #8 with the proposal and the questions for the team.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entry. Before syncing, the PACE copy of src/spara/cli.py differed from the local file only by this task's edits.
+**Unfinished work:**
+- The reach check's reading is withheld by its own validity rule, pending the team's decision recorded in issue #8.
+- Steps 1 and 2 are sketches and are not approved.
+- The scope questions are open.
+- Changes are uncommitted.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Proposed improving the policy through exploration without helper images, and said the JEPA ideas could still be useful | Set the direction; JEPA was placed as a transition model for planning |
+| 2 | User message | Approved ("sgtm") the reach check's GPU run, a spec and a GitHub issue | Wrote the spec and the probe, submitted the job, and opened the issue |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/DETOUR_LEARNING_SPEC.md | created | Problem evidence, direction, scope questions, and the reach check's design with rules fixed before the run |
+| src/spara/detour_probe.py | created | Decision points, token alignment, move probabilities (raw and under the RL settings), the validity pass on released training answers, and the summary |
+| src/spara/cli.py | modified | `detour-probe` command with `--test-routes`, `--fresh-routes` and `--fresh-split` |
+| tests/test_detour_probe.py | created | Decision-point kinds, alignment, top-p and repetition-penalty processing, agreement with teacher-forced log-probabilities, and an end-to-end run |
+| scripts/pace/detour_probe.sbatch | created | PACE job that runs the reach check on the LIVR rerun's checkpoint with the recorded routes |
+| GLOSSARY.md | modified | *Detour map* entry |
+
+### Folders created
+
+- None
+
+## 2026-11-10 — Build a problem-agnostic guided-search layer (step 1 of detour learning)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** After asking how adaptable the proposed direction is to other RL problems, the user asked to start on the recommended design: step 1 built around a small problem interface, with FrozenLake as the first instance.
+**AI contribution:** Implemented guided search behind a problem-agnostic interface:
+- a search environment supplies candidate actions, a step simulator, an answer writer and a verifier;
+- a policy scores candidates for a batch of requests;
+- the search expands prefixes best first by the policy's probability renormalised over viable moves, prunes dead and repeated states, skips policy calls for forced moves, and logs every transition.
+
+Also implemented:
+- FrozenLake as the first instance, LIVR's raw move probabilities as its policy, and a model-free toward-goal stand-in;
+- a pilot runner and CLI command, with a PACE job that was not submitted;
+- tests, including agreement with the reference evaluator on random maps and routes, and a second, grid-free test environment;
+- a spec and glossary entries.
+
+A CPU dry run with no model found that uniform search already solves all 97 unseen detour maps cheaply. The planned GPU pilot was therefore withdrawn from the spec before any model run, and the remaining model measurements were moved to step 1b's first round. A separate advisor model reviewed the plan and this change; its suggestions were adopted: a batch-shaped policy interface, a simulator-agreement test, a toy second environment, a BFS-label control in the spec, and withdrawing the pilot.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entry.
+**Unfinished work:**
+- Step 1b (expert iteration) is a sketch. It needs the team's answers on generated training maps and per-step simulator feedback (issue #8).
+- The two model measurements (adapter agreement with the detour probe, and departures) need a GPU run, which is not approved.
+- Showing that policy guidance makes search feasible needs either a second problem or a final-verdict-only search mode; the choice is open.
+- A comment for issue #8 was drafted but not posted.
+- Changes are uncommitted.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked how adaptable the approach is, wanting something flexible across RL problems | Answered with what transfers and what depends on the problem; recommended an environment interface with FrozenLake first |
+| 2 | User message | "lets start with this. it makes sense to me" | Built the interface, search, FrozenLake instance, tests and spec on CPU |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/search.py | created | Search-environment and policy protocols, the uniform prior, and the batched best-first search with simulator pruning and transition logs |
+| src/spara/route_search.py | created | FrozenLake environment, LIVR move policy, toward-goal stand-in, and the pilot runner (simulator and probe agreement, departures, summary) |
+| src/spara/cli.py | modified | `guided-search` command |
+| tests/test_search.py | created | Search behaviour: detour found against a toward-goal policy, forced moves, budget and depth cap, lockstep batching, rejected answers, a grid-free counting puzzle |
+| tests/test_route_search.py | created | Agreement with the reference evaluator, answer format, the LIVR policy on the tiny model, and an end-to-end pilot run |
+| scripts/search_dry_run.py | created | CPU dry run of the search with the uniform and toward-goal priors |
+| scripts/pace/guided_search.sbatch | created | PACE job for the model measurements; not submitted |
+| docs/GUIDED_SEARCH_SPEC.md | created | Interface, search, step 1a's CPU result and the withdrawn pilot, adaptability findings, and the step 1b sketch with its control |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status and step 1 link to the guided-search spec |
+| GLOSSARY.md | modified | *Step simulator*, *Search environment*, *Guided search* and *Expert iteration* entries |
+
+### Folders created
+
+- None
+
+## 2026-11-10 — Implement the detour scaling check
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Specify and run a check of whether more distinct detour layouts help LIVR generalize to unseen detour maps, before building expert iteration or a JEPA loop.
+**AI contribution:** Wrote a spec with its reading rules fixed before the run:
+- four arms, all from LIVR's final Stage 2 weights: unchanged, and one-epoch fine-tunes on the released maps plus 2,000 generated detour examples from 98, 500 or 2,000 distinct layouts, so exposure is equal and only variety differs;
+- greedy evaluation on 240 held-out detour maps;
+- a primary McNemar test, four validity checks (including that training took effect), and an interpretation table.
+
+Implemented:
+- a detour-only, labelled mode for the map generator (label tie-break chosen to reproduce 976 of the 1,000 released answers);
+- a multi-split data option for the training loop;
+- the arm runner and cross-arm comparison;
+- a CLI command, an analysis script, a PACE job script and tests.
+
+Generated the held-out (200) and pool (2,000) map sets with the pinned renderer, after confirming that it reproduces released images pixel for pixel. A separate advisor model reviewed the design. Its suggestions were adopted: the training-took check, the generator's per-attempt size draw with an attempt limit, reusing LIVR's recorded benchmark, and saving final weights only.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entry. Before syncing, the PACE copies of src/spara/cli.py, src/spara/training.py and src/spara/fresh_maps.py differed from the local files only by this task's edits.
+**Unfinished work:**
+- The four GPU jobs (6941468–6941471) were submitted with the user's approval and had not finished when this entry was written.
+- The question in issue #8 on generated training maps, and any ADR, stays open for reported conditions.
+- Changes are uncommitted.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked why the plan carries a generalization risk | Explained the train/unseen gap and proposed a scaling check as the first GPU experiment |
+| 2 | User message | "spec it and then run it" | Wrote the spec, implemented and tested the check, generated the map sets, and submitted the jobs |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/DETOUR_SCALING_SPEC.md | created | Question, maps, arms, evaluation, fixed readings and validity checks, limits, scope and budget |
+| src/spara/fresh_maps.py | modified | Detour-only mode with per-attempt size weights and an attempt limit, shortest-route labels, `is_detour`, CLI options |
+| src/spara/training.py | modified | `train_stage` accepts a list of (split, row) in place of the released split |
+| src/spara/detour_scaling.py | created | Training mix, set checks, evaluation populations, greedy evaluation, the arm runner and the cross-arm comparison |
+| src/spara/cli.py | modified | `detour-scaling` command |
+| configs/detour_scaling.json | created | Splits, extra examples, seen maps, fine-tuning recipe and arms |
+| scripts/analyze_detour_scaling.py | created | Applies the spec's rules across the four arms |
+| scripts/pace/detour_scaling.sbatch | created | PACE job script, one arm per job |
+| tests/test_detour_scaling.py | created | Training mix, set checks, populations, multi-split training, both arm types end to end, and the comparison's rules |
+| tests/test_fresh_maps.py | modified | Detour-only sets, label tie-breaking, and the attempt limit |
+
+### Folders created
+
+- data/vsp/fresh/detour-heldout/ - 200 labelled held-out detour maps (generated data)
+- data/vsp/fresh/detour-pool/ - 2,000 labelled detour maps for fine-tuning (generated data)
+
+## 2026-11-10 — Implement search without an exact step simulator (step 1a′)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Build the two CPU measurements proposed earlier: a harder FrozenLake mode in which search sees only the final verdict, and a sweep over judges that err at set rates. Together they tell how accurate a learned transition model (JEPA) would need to be.
+**AI contribution:** Added a design section to the guided-search spec, with its error rates, seeds, budgets, how each prior scores ending, and the summary number fixed before the run. Implemented:
+- a final-verdict-only search, which uses only the verifier's accept or reject;
+- a per-transition noisy judge, a FrozenLake judge that misreads the map, and a check that separates failures caused by the judge from failures caused by the search's closed set;
+- a sweep script and tests.
+
+Fixed the toward-goal stand-in so that moves off the grid leave the agent in place, which step 1a never exercised. Added an exploratory option, after the run, that rules out off-grid moves. A separate advisor model reviewed the design. Its suggestions were adopted: splitting frontier failures into blocked and poisoned, the stand-in fix with a step 1a regression check, and an anchor point from the step-grounding probe.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entries. The guided-search files touched here (src/spara/search.py, src/spara/route_search.py, the two test files, docs/GUIDED_SEARCH_SPEC.md and GLOSSARY.md) carried this session's earlier uncommitted work.
+**Unfinished work:**
+- A search that re-opens closed states after a refused answer, and a judge used as a soft penalty rather than a veto: proposed, not built.
+- The JEPA model needs GPU and separate approval.
+- Changes are uncommitted.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Earlier asked whether expert iteration and a JEPA transition model are mutually exclusive, and suggested a harder FrozenLake mode | Proposed the final-verdict-only mode and a noisy-judge sweep, on CPU first |
+| 2 | User message | "i think the harder frozenlake and noisy judge seem reasonable" | Specified, implemented and tested both, then ran them on CPU |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/search.py | modified | Shared lockstep runner, `verdict_search` with an end-the-answer candidate, `NoisyJudge`, `fixed_draw`, `surviving_route`, and a verifier-call count for the existing search |
+| src/spara/route_search.py | modified | `move` helper, `MisperceivedFrozenLake` (per-cell noise), and the toward-goal stand-in's off-grid fix and ending score |
+| scripts/search_sweep.py | created | Both modes over the fixed grid, ε₉₀, the anchor point, stop-reason split, and the exploratory off-grid variant |
+| tests/test_search.py | modified | Final-verdict-only search (no simulator use, order, budget, depth cap, puzzle with no grid); noisy-judge rates, consistency and nesting; zero-noise reproduction; budget independence; a poisoning case |
+| tests/test_route_search.py | modified | Misread-map judge and the stand-in's clipping and ending score |
+| docs/GUIDED_SEARCH_SPEC.md | modified | Step 1a′ design section with outputs fixed before the run, status, and running command |
+| GLOSSARY.md | modified | "Judge" and "Final-verdict-only search"; the guided-search entry now refers to the judge |
+
+### Folders created
+
+- None
+
+## 2026-11-11 — Implement a search that tolerates a noisy judge (step 1a″)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Build the two search changes proposed after step 1a′: re-opening closed states after a refused answer, for the judge's misses, and a soft veto, for its false alarms.
+**AI contribution:** Added a step 1a″ design section to the guided-search spec, with the variants, the guard and the rule for the setting carried into the JEPA judge, all fixed before the run. Implemented both changes in the search core:
+- re-opening: closed states remember their closing prefix; repeat children are parked with their parent and re-pushed when a refused answer re-opens their state;
+- soft veto: a move judged dead is deferred at a cost of λ nats plus its negative log-probability;
+- an expansion guard.
+
+Added a robust mode to the sweep script and tests. After the sweep, the carried-setting rule turned out to leave a three-way tie. The script was changed to report ties and to break them by the whole solved-within curve. A separate advisor model pointed out the tie and suggested that tie-break and a check of the expansion guard.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entries. The files touched here carried this session's earlier uncommitted step 1a′ work.
+**Unfinished work:**
+- Changes are uncommitted.
+- On PACE, two small stub files used for the pre-submission check remain in `scratch/spara/stub-jepa/`. Their removal was blocked by a safety check and is left to the user.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | "misses + false alarms make sense": approved building both proposed search changes | Specified, implemented and tested re-opening and the soft veto, and ran the CPU sweep |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/search.py | modified | Re-opening, soft veto (`veto`, `reopen`), expansion guard (`max_expansions`), and `verifier_calls` and `reopened` counts in each result |
+| scripts/search_sweep.py | modified | Seven variants against the hard veto (`--modes robust`), a check that each reproduces step 1a, and the carried-setting rule with tie reporting and its curve tie-break (`carried`) |
+| tests/test_search.py | modified | Re-opening changes nothing with an exact judge, undoes a poisoning case, the soft veto recovers from false alarms, budget independence, the expansion guard, and the carried-setting tie rule |
+| docs/GUIDED_SEARCH_SPEC.md | modified | Step 1a″ design section, status, running command and scope |
+
+### Folders created
+
+- None
+
+## 2026-11-11 — Implement the JEPA judge (step 2 of detour learning)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Build the JEPA transition model in LIVR's latent space, approved for GPU use, and run it as a judge for guided search.
+**AI contribution:** Wrote the JEPA judge spec, with readings, validity checks and budget fixed before the run. Implemented the pipeline, in which LIVR's weights stay frozen:
+- states read from the frozen LIVR rerun on labelled and random walks over 3,000 generated maps;
+- a predictor and outcome head trained in that latent space, with probe and oracle comparisons;
+- judge accuracy and imagination measurements;
+- three search arms on the 97 unseen detour maps, with LIVR as the policy: exact simulator, the JEPA judge, and final verdict only.
+
+Added a CLI command, a PACE job script, a settings file and tests, and generated the training maps. Before submission, the guard was raised to the sweep's after a CPU check showed it costs no extra passes, and the GPU estimate was revised. The run now writes each search arm as it finishes. A separate advisor model reviewed the design and the pre-submission checks.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entries. src/spara/cli.py and docs/DETOUR_LEARNING_SPEC.md carried this session's earlier uncommitted work.
+**Unfinished work:**
+- The GPU job (6951675) had been submitted but had not finished when this entry was written.
+- Changes are uncommitted.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Earlier asked whether expert iteration and a JEPA transition model could work together | Proposed the JEPA as a learned judge for search |
+| 2 | User message | "jepa model is approved" | Specified, implemented and tested it, then submitted one GPU job within the stated budget |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/jepa.py | created | Walks and labels, batched state reading, the JEPA, probe and oracle with training and early stopping, error rates, imagination, the cached LIVR policy, the JEPA-judged FrozenLake, the three search arms, validity checks and the full run with per-arm outputs |
+| src/spara/cli.py | modified | `jepa-judge` command |
+| scripts/pace/jepa_judge.sbatch | created | PACE job: checks inputs, then runs the command on one GPU |
+| configs/jepa_judge.json | created | Splits, layers, training settings and the search setting (soft veto λ = 10 with re-opening, guard 50,000) |
+| tests/test_jepa.py | created | Walks, batched against single passes, labels, a separable judge, error rates, a perfect learned judge searching like the simulator, imagination, and the run end to end |
+| docs/JEPA_JUDGE_SPEC.md | created | Question, model, data, training, evaluation, readings, validity, budget and running |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Step 2 status and direction now point to the JEPA judge spec |
+
+### Folders created
+
+- data/vsp/fresh/jepa-train/ - 3,000 generated training maps for the JEPA (500 per size from 3 x 3 to 8 x 8)
+
+## 2026-11-11 — Implement expert iteration with final-verdict-only search (step 1b)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** After the JEPA judge run, the user approved three next steps: a CPU threshold analysis of the judge, step 1b (expert iteration) with final-verdict-only search as the route source, and fine-tuning LIVR's encoder with the JEPA loss. This entry covers step 1b.
+**AI contribution:** Wrote the expert iteration spec, with readings, validity checks and budget fixed before the run. Implemented:
+- a batched LIVR policy that reads up to 16 requests per forward pass across maps, with checks against single passes and a fallback to one request per pass;
+- the route search over the first 500 generated detour-pool maps, which uses only the verifier;
+- two fine-tune arms, one on the found routes and one on the same maps' shortest-route labels as a matched control;
+- a comparison that applies the readings.
+
+The fine-tune arms reuse the detour-scaling recipe, whose runner now accepts supplied training data and can skip the benchmark. Added a CLI command, a settings file, a PACE job script and tests, and submitted the three jobs. A separate advisor model reviewed the plan. Its suggestions were adopted: the matched control on the solved subset, batching to save GPU time, and holding step 3 until the threshold analysis was in. After the jobs ran, fixed `compare` so its seconds-per-job output keeps the search job's entry, which the found-routes arm's entry had overwritten, and added a test for it.
+
+**Contribution type:** Generation and advice.
+**Initial state:** As at the end of the preceding entries. src/spara/cli.py, src/spara/detour_scaling.py, docs/GUIDED_SEARCH_SPEC.md and docs/DETOUR_LEARNING_SPEC.md carried this session's earlier uncommitted work.
+**Unfinished work:**
+- Jobs 6961874 (search), 6961875 and 6961876 (fine-tunes) have completed. The batched policy failed its agreement check on PACE and the search used one request per pass; the cause of the mismatch is not established.
+- Step 3, the encoder fine-tune, is not built; its cost options were put to the user.
+- Changes are uncommitted.
+- The PACE stub folder `scratch/spara/stub-jepa/` was reused for this job script's stub check and remains.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | "the three next steps sound good to me", approving the threshold analysis, step 1b with final-verdict-only search, and an encoder fine-tune | Ran the CPU analysis first; specified, built, tested and submitted step 1b; held step 3 for a cost decision |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/expert_iteration.py | created | Batched LIVR policy and its checks, route search with a rerun of the 97 detour maps, training rows from found routes or labels, the fine-tune arm, and the readings; later, the `seconds_in_jobs` key fix in `compare` |
+| src/spara/detour_scaling.py | modified | `run_arm` accepts supplied training data and its count of distinct maps, and can skip the benchmark |
+| src/spara/cli.py | modified | `expert-iteration` command with search and train stages |
+| configs/expert_iteration.json | created | Pool, budget, batch size, tolerance and the detour-scaling recipe |
+| scripts/pace/expert_iteration.sbatch | created | PACE job for the search or a fine-tune arm |
+| tests/test_expert_iteration.py | created | Batched reads against single passes across prompts, caching, point checks, the search end to end and its fallback, training rows, both arms end to end, and the readings, including the per-job seconds |
+| docs/EXPERT_ITERATION_SPEC.md | created | Question, design, arms, readings, validity, limits, budget and running |
+| docs/GUIDED_SEARCH_SPEC.md | modified | Step 1b status and a pointer from the sketch to the new spec |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status for step 1b |
+
+### Folders created
+
+- None
+
+## 2026-11-11 — Specify expert iteration round 2 on larger maps with a perception objective
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** After round 1 of expert iteration, the user asked how transferable expert iteration is, proposed trying tasks that both LIVR and Scaffolding Minds report, and then proposed combining expert iteration with stronger latent perception on bigger maps.
+**AI contribution:** Read both papers' task lists and reported that FrozenLake is the only planning task both report. The others they share (MMVP, V*, BLINK) are multiple-choice perception benchmarks, where search with a verifier reduces to fine-tuning on labels. Reviewed the project's evidence on hole perception (latent battery, step grounding) and wrote a specification for a second round of expert iteration from E's weights on 7 x 7 and 8 x 8 maps, with and without a new perception objective on the latent tokens ("map grounding"), with readings, validity checks, a CPU precondition for batched reads and a GPU budget fixed before any run. A separate advisor model reviewed the design; its suggestions were adopted: one search shared by both fine-tunes, a variety floor, an optional perception-only arm, a pre-declared manipulation check, keeping the 3–6 harm checks and excluding every existing fresh set.
+**Contribution type:** Advice and generation.
+**Initial state:** As at the end of the preceding entries; round 1 (jobs 6961874–6961876) had completed and been written up.
+**Unfinished work:**
+- Nothing is built, generated or submitted.
+- Three decisions await the user: layout-derived training targets for the perception arms, the 7–8 size range, and the GPU budget.
+- "Map grounding" is a proposed term, not yet in the glossary.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked how transferable expert iteration alone is | Assessed its requirements and limits against round 1's results |
+| 2 | User message | Proposed trying tasks that both LIVR and Scaffolding Minds report, and summarised the findings as good perception in the latents but a planning gap | Compared both papers' task lists and checked the summary against the project's evidence |
+| 3 | User message | Suggested latent perception could also be improved, given weak hole information | Reviewed the latent battery and step grounding results on holes |
+| 4 | User message | Proposed bigger maps and a combination of expert iteration with stronger perception | Wrote the round 2 specification |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/EXPERT_ITERATION_ROUND2_SPEC.md | created | Question, sets, search, arms, the map grounding objective, readings, validity, precondition, limits, scope, budget and implementation plan |
+
+### Folders created
+
+- None
+
+## 2026-11-12 — Rework expert iteration round 2 around LIVR's bottleneck and build it
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Use LIVR's bottleneck instead of layout-derived labels as round 2's perception arm, combined with expert iteration, and start on it.
+**AI contribution:** Explained from the LIVR paper how its Stage 1 attention mask improves perception without helper images, and set it against the project's evidence: the direct fine-tuning control, latent RL, the JEPA judge, the planning probe and step grounding. Rewrote the round 2 specification around two arms from E: E2, and EB2, whose first training phase runs under the Stage 1 mask. A separate advisor model reviewed the design, and three of its suggestions were adopted: both arms share the two-phase schedule with an optimizer restart; the rows are shuffled before the split; and the gate is a hole probe on the latents rather than masked success. Implemented the round in a new module with a CLI command, a settings file, a PACE job script and CPU tests, added an option to `train_stage` not to save the first phase's weights, and generated the two new map sets with the pinned renderer.
+**Contribution type:** Advice, generation and editing.
+**Initial state:** As at the end of the preceding entry; the round 2 specification described map grounding, and nothing was built.
+**Unfinished work:**
+- No GPU job is submitted. The GPU budget is the user's decision.
+- The CPU batching check (job 6989902) was submitted on `ice-cpu`; its result decides which budget line applies.
+- The 7–8 size range was carried over from the earlier discussion without an explicit confirmation.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Noted the goal was perception without helper images and asked how LIVR improved perception without them | Explained the Stage 1 bottleneck from the paper and the project's controls; flagged that map grounding uses labels beyond the final answer |
+| 2 | User message | Asked whether latent quality can improve without search, noting that noise and the JEPA had not worked | Reviewed what those runs tested and listed label-free options |
+| 3 | User message | Asked for more detail on the bottleneck arm | Described its schedule, measures, expectations and cost, and corrected an earlier claim about which options carry to other benchmarks |
+| 4 | User message | Chose to start with the bottleneck combined with expert iteration | Rewrote the specification and built the round |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | Rewritten around E2 and EB2: the two-phase schedule, the probe gate with a bootstrap, readings, validity, precondition, budget and running commands |
+| src/spara/expert_round2.py | created | E checkpoint check, CPU batching check, search over the frontier and the new pool, two-phase arms, masked greedy, latent state dumps and the comparison |
+| src/spara/training.py | modified | `save_final` option to keep a phase's weights in memory only |
+| src/spara/cli.py | modified | `expert-round2` command with batching-check, search and train stages; the GPU-only guard exempts that CPU batching check |
+| configs/expert_round2.json | created | Round 2 settings |
+| scripts/pace/expert_round2.sbatch | created | PACE job for the CPU batching check, the search and the arms |
+| tests/test_expert_round2.py | created | CPU tests with the stand-in model |
+
+### Folders created
+
+- data/vsp/fresh/detour-heldout-78 (git-ignored): 400 generated 7 x 7 and 8 x 8 detour maps, the new held-out set.
+- data/vsp/fresh/detour-pool-78 (git-ignored): 500 generated 7 x 7 and 8 x 8 detour maps, the new search pool.

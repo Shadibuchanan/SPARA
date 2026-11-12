@@ -31,6 +31,15 @@ def bottleneck_mask(ids, padding, latent_ids, image_id, dtype, query_start=0):
 
 
 class LivrQwen(Qwen2_5_VLForConditionalGeneration):
+    def __init__(self, config):
+        super().__init__(config)
+        # Latent RL (condition C) checkpoints carry Gaussian heads; rebuild them so
+        # their saved weights load instead of being dropped.
+        heads = getattr(config, "livr_latent_heads", None)
+        if heads:
+            from .scaffolding.model import GaussianHeads
+            self.latent_heads = GaussianHeads(config.hidden_size, **heads)
+
     def prepare_inputs_for_generation(self, input_ids, **kwargs):
         result = super().prepare_inputs_for_generation(input_ids, **kwargs)
         result["livr_full_input_ids"] = input_ids

@@ -1,0 +1,64 @@
+{
+  "checks": {
+    "batch": 1,
+    "probe_points": 52,
+    "probe_max_difference": 4.97696275911646e-07,
+    "single_max_difference": null,
+    "batched_failed": {
+      "probe_max_difference": 0.048834167345245705,
+      "single_max_difference": 0.05914157774735429
+    },
+    "policy_agrees": true
+  },
+  "detour_maps": {
+    "maps": 97,
+    "solved": 55,
+    "by_size": {
+      "3": [
+        2,
+        2
+      ],
+      "4": [
+        9,
+        10
+      ],
+      "5": [
+        11,
+        14
+      ],
+      "6": [
+        23,
+        36
+      ],
+      "7": [
+        7,
+        18
+      ],
+      "8": [
+        3,
+        17
+      ]
+    },
+    "stops": {
+      "solved": 55,
+      "budget": 42
+    },
+    "policy_calls_median": 47,
+    "policy_calls_median_solved": 15,
+    "equal_to_label": 0,
+    "longer_than_label": 0,
+    "rejected": 934,
+    "cost": {
+      "sequences": 3799,
+      "forward_passes": 3799,
+      "seconds": 307.83788299560547
+    },
+    "reproduction": {
+      "maps": 97,
+      "recorded": 97,
+      "same_outcome_and_route": 97,
+      "solved": 55,
+      "recorded_solved": 55
+    }
+  }
+}
