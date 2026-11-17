@@ -16,6 +16,8 @@ def encode(processor, root, split, row, training=True, latents=LATENT_TOKENS):
     before, after = text.split("<image>")
     with Image.open(image_path(root, split, row)) as source:
         picture = source.convert("RGB")
+    if row.get("blank_image"):  # the text-only ceiling (docs/PERCEPTION_CEILING_SPEC.md): same size, no map
+        picture = Image.new("RGB", picture.size, "white")
     messages = [{"role": "user", "content": [
         {"type": "text", "text": before}, {"type": "image", "image": picture},
         {"type": "text", "text": after}]}]

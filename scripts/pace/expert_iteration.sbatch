@@ -25,15 +25,23 @@ done
 mkdir -p "$ROOT/results"
 case "$STAGE" in
   search)
+    # Recorded probe points and the JEPA run's searches belong to the LIVR rerun 6253300. For
+    # another checkpoint set both to "none": batched reads are then checked against single passes.
     POINTS="${SPARA_PROBE_POINTS:-$ROOT/results/detour-probe-6937009/points.jsonl}"
     REFERENCE="${SPARA_REFERENCE:-$ROOT/results/jepa-judge-6951675/searches-verdict_only.jsonl}"
-    for file in "$POINTS" "$REFERENCE"; do
-      [ -f "$file" ] || { echo "Missing input: $file" >&2; exit 1; }
-    done
+    INPUTS=()
+    if [ "$POINTS" != none ]; then
+      [ -f "$POINTS" ] || { echo "Missing input: $POINTS" >&2; exit 1; }
+      INPUTS+=(--probe-points "$POINTS")
+    fi
+    if [ "$REFERENCE" != none ]; then
+      [ -f "$REFERENCE" ] || { echo "Missing input: $REFERENCE" >&2; exit 1; }
+      INPUTS+=(--reference "$REFERENCE")
+    fi
     nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
     "$PYTHON" -m spara.cli expert-iteration --stage search --settings configs/expert_iteration.json \
-      --config configs/livr.json --data-root "$DATA" --checkpoint "$CHECKPOINT" --probe-points "$POINTS" \
-      --reference "$REFERENCE" --output "$ROOT/results/expert-routes-$SLURM_JOB_ID"
+      --config configs/livr.json --data-root "$DATA" --checkpoint "$CHECKPOINT" ${INPUTS[@]+"${INPUTS[@]}"} \
+      --output "$ROOT/results/expert-routes-$SLURM_JOB_ID"
     ;;
   train)
     LABELS="${SPARA_LABELS:?set SPARA_LABELS to search or shortest}"

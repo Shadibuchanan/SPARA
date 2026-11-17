@@ -3,7 +3,13 @@
   "heldout_split": "fresh/detour-heldout-78",
   "round1_pool_split": "fresh/detour-pool",
   "round1_heldout_split": "fresh/detour-heldout",
-  "other_fresh": ["fresh/probe", "fresh/detour-pool", "fresh/detour-heldout", "fresh/jepa-train"],
+  "frontier_split": "fresh/detour-pool",
+  "other_fresh": [
+    "fresh/probe",
+    "fresh/detour-pool",
+    "fresh/detour-heldout",
+    "fresh/jepa-train"
+  ],
   "maps": 500,
   "budget": 64,
   "max_depth": 64,
@@ -12,18 +18,24 @@
   "check_maps": 52,
   "seed": 42,
   "loading_agreement": 228,
-  "round1_steps": 375,
+  "base_steps": 375,
   "extra_new": 1000,
   "extra_old": 1000,
   "variety_floor": 100,
   "phase_one_rows": 1496,
   "seen_maps": 98,
   "epochs": 1,
-  "learning_rate": 0.00001,
+  "learning_rate": 1e-05,
   "warmup_ratio": 0.05,
   "max_new_tokens": 128,
-  "state_layers": [12, 20, 28],
+  "state_layers": [
+    12,
+    20,
+    28
+  ],
   "probe_layer": 12,
   "took_margin": 0.05,
-  "bootstrap": 2000
+  "bootstrap": 2000,
+  "save_arm_weights": false,
+  "ceiling_margin": 40
 }

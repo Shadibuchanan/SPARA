@@ -207,21 +207,28 @@ def run_search(model, processor, evaluator, data_root, output, settings, run_man
     rng = random.Random(settings["seed"])
 
     # Validity: the batched policy reads what single passes read. If it does not, fall back
-    # to one row per pass, which is the JEPA run's policy.
+    # to one row per pass, which is the JEPA run's policy. Recorded probe points belong to one
+    # checkpoint; without them, cached reads are checked against single passes in this job.
+    tolerance = settings["probe_tolerance"]
     checks = {"batch": settings["batch"]}
-    points = point_differences(policy, detours, probe_points)
+    points = point_differences(policy, detours, probe_points) if probe_points else None
     detour_rows, detour_cost = searched(env, policy, detours, settings)
     singles = single_differences(policy, detours, rng)
-    checks |= {"probe_points": len(points), "probe_max_difference": max(points) if points else None,
+    checks |= {"probe_points": len(points) if points is not None else None,
+               "probe_max_difference": max(points) if points else None,
                "single_max_difference": max(singles) if singles else None}
-    agrees = bool(points) and max(points) <= settings["probe_tolerance"] and max(singles) <= settings["probe_tolerance"]
+    points_agree = points is None or (bool(points) and max(points) <= tolerance)
+    agrees = points_agree and bool(singles) and max(singles) <= tolerance
     if not agrees and settings["batch"] > 1:
         checks["batched_failed"] = {k: checks[k] for k in ("probe_max_difference", "single_max_difference")}
         policy.reset(1)
-        points = point_differences(policy, detours, probe_points)
+        points = point_differences(policy, detours, probe_points) if probe_points else None
         detour_rows, detour_cost = searched(env, policy, detours, settings)
-        checks |= {"batch": 1, "probe_max_difference": max(points) if points else None, "single_max_difference": None}
-        agrees = bool(points) and max(points) <= settings["probe_tolerance"]
+        singles = single_differences(policy, detours, rng)
+        checks |= {"batch": 1, "probe_max_difference": max(points) if points else None,
+                   "single_max_difference": max(singles) if singles else None}
+        points_agree = points is None or (bool(points) and max(points) <= tolerance)
+        agrees = points_agree and bool(singles) and max(singles) <= tolerance
     checks["policy_agrees"] = agrees
     with (output / "detour-searches.jsonl").open("w", encoding="utf-8") as log:
         log.writelines(json.dumps(r) + "\n" for r in detour_rows)
@@ -269,16 +276,17 @@ def training_rows(data_root, recipe, routes, labels):
 def run_train(model, processor, evaluator, config, data_root, output, recipe, labels, routes_path, run_manifest):
     routes = jsonl(routes_path)
     data, distinct = training_rows(data_root, recipe, routes, labels)
+    # Round 2 starts from E's weights; the label control's are not used again.
     return run_arm(model, processor, evaluator, config, data_root, output, labels, recipe,
                    run_manifest | {"labels": labels, "routes": str(routes_path)}, data=data, distinct=distinct,
-                   benchmark=labels == "search")
+                   benchmark=labels == "search", save_final=labels == "search")
 
 
 # Readings ------------------------------------------------------------------------------------
 
 def compare(runs, search_run, livr_outcomes):
-    """`runs`: name -> run directory with greedy.jsonl, for search, shortest, livr and n500
-    (the last two from the detour scaling check). `search_run`: the route search's run.
+    """`runs`: name -> run directory with greedy.jsonl, for search, shortest, livr and optionally
+    n500 (the last two from the detour scaling check). `search_run`: the route search's run.
     `livr_outcomes`: LIVR's per-map benchmark outcomes, for the harm check."""
     greedy = {name: {(r["population"], r["row_index"]): r for r in jsonl(Path(run) / "greedy.jsonl")}
               for name, run in runs.items()}
@@ -317,7 +325,8 @@ def compare(runs, search_run, livr_outcomes):
             "no detectable difference between found routes and labels")},
         "descriptive": {
             "held_out_success": {name: sum(success[name][k] for k in held) for name in runs},
-            "search_vs_n500": compared("search", "n500"), "shortest_vs_n500": compared("shortest", "n500"),
+            **({"search_vs_n500": compared("search", "n500"), "shortest_vs_n500": compared("shortest", "n500")}
+               if "n500" in runs else {}),
             "seen": {name: {"trained": sum(success[name][k] for k in trained), "untrained":
                             sum(success[name][k] for k in seen if k not in trained)} for name in runs}
             | {"maps": {"trained": len(trained), "untrained": len(seen) - len(trained)}},

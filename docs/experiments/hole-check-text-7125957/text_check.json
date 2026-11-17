@@ -1,0 +1,384 @@
+{
+ "validity": {
+  "s3t": true,
+  "o3": true,
+  "rows_replay": true,
+  "same_rows": true,
+  "same_maps": true,
+  "zero_shot_agree": [
+   400,
+   400
+  ],
+  "same_base": true,
+  "capped": 0,
+  "cap_ok": true,
+  "valid": true
+ },
+ "primary": {
+  "maps": 400,
+  "first": 70,
+  "second": 92,
+  "only_first": 18,
+  "only_second": 40,
+  "p": 0.005354859650800292,
+  "by_size": {
+   "7": {
+    "maps": 198,
+    "first": 40,
+    "second": 56,
+    "only_first": 10,
+    "only_second": 26,
+    "p": 0.011330984183587134
+   },
+   "8": {
+    "maps": 202,
+    "first": 30,
+    "second": 36,
+    "only_first": 8,
+    "only_second": 14,
+    "p": 0.28627872467041016
+   }
+  },
+  "reading": "the check harms even when the map is exact",
+  "next": "the model cannot place itself or its neighbours from an exact text map: report and hold"
+ },
+ "lines_read_the_text": {
+  "start_right": 0.9225,
+  "hole_directions_listed": 0.3336439888164026,
+  "threshold": 0.9,
+  "reads": false
+ },
+ "descriptive": {
+  "held_out_success": {
+   "s3t": 70,
+   "o3": 92,
+   "s3": 65,
+   "eb3": 83
+  },
+  "s3t_vs_s3": {
+   "maps": 400,
+   "first": 70,
+   "second": 65,
+   "only_first": 19,
+   "only_second": 14,
+   "p": 0.48685024166479707,
+   "by_size": {
+    "7": {
+     "maps": 198,
+     "first": 40,
+     "second": 39,
+     "only_first": 10,
+     "only_second": 9,
+     "p": 1.0
+    },
+    "8": {
+     "maps": 202,
+     "first": 30,
+     "second": 26,
+     "only_first": 9,
+     "only_second": 5,
+     "p": 0.4239501953125
+    }
+   }
+  },
+  "o3_vs_eb3": {
+   "maps": 400,
+   "first": 92,
+   "second": 83,
+   "only_first": 21,
+   "only_second": 12,
+   "p": 0.16275565745308995,
+   "by_size": {
+    "7": {
+     "maps": 198,
+     "first": 56,
+     "second": 51,
+     "only_first": 10,
+     "only_second": 5,
+     "p": 0.3017578125
+    },
+    "8": {
+     "maps": 202,
+     "first": 36,
+     "second": 32,
+     "only_first": 11,
+     "only_second": 7,
+     "p": 0.480682373046875
+    }
+   }
+  },
+  "s3t_vs_eb3": {
+   "maps": 400,
+   "first": 70,
+   "second": 83,
+   "only_first": 19,
+   "only_second": 32,
+   "p": 0.09191454981585423,
+   "by_size": {
+    "7": {
+     "maps": 198,
+     "first": 40,
+     "second": 51,
+     "only_first": 8,
+     "only_second": 19,
+     "p": 0.052238985896110535
+    },
+    "8": {
+     "maps": 202,
+     "first": 30,
+     "second": 32,
+     "only_first": 11,
+     "only_second": 13,
+     "p": 0.8388197422027588
+    }
+   }
+  },
+  "round1_heldout_s3t_vs_o3": {
+   "maps": 240,
+   "first": 87,
+   "second": 110,
+   "only_first": 16,
+   "only_second": 39,
+   "p": 0.002667262382859803
+  },
+  "fatal_moves": {
+   "missed": 285,
+   "lost": 34
+  },
+  "format": {
+   "follows": 399,
+   "answers": 400
+  },
+  "line_reading": {
+   "s3t": {
+    "answers": 400,
+    "first_line_offset": {
+     "0,0": 369,
+     "0,-1": 25,
+     "0,1": 6
+    },
+    "lines": {
+     "right_cell": 1285,
+     "right_cell_exact": 603,
+     "right_cell_dash_baseline": 482,
+     "hole_directions": 1073,
+     "hole_directions_listed": 358,
+     "directions_invented": 177,
+     "wrong_cell": 108,
+     "wrong_cell_matches_true_cell": 39,
+     "wrong_cell_matches_named_cell": 41
+    },
+    "by_direction": {
+     "U": {
+      "holes": 280,
+      "listed": 94,
+      "safe": 1005,
+      "invented": 69
+     },
+     "D": {
+      "holes": 277,
+      "listed": 71,
+      "safe": 1008,
+      "invented": 39
+     },
+     "L": {
+      "holes": 239,
+      "listed": 87,
+      "safe": 1046,
+      "invented": 36
+     },
+     "R": {
+      "holes": 277,
+      "listed": 106,
+      "safe": 1008,
+      "invented": 33
+     }
+    },
+    "by_line": {
+     "first": {
+      "holes": 373,
+      "listed": 158
+     },
+     "later": {
+      "holes": 700,
+      "listed": 200
+     }
+    }
+   },
+   "s3": {
+    "answers": 400,
+    "first_line_offset": {
+     "0,0": 269,
+     "0,1": 35,
+     "1,0": 35,
+     "0,-1": 26,
+     "-1,0": 20,
+     "1,1": 8,
+     "-1,1": 2,
+     "-1,-1": 2,
+     "1,-1": 2,
+     "0,-2": 1
+    },
+    "lines": {
+     "wrong_cell": 442,
+     "wrong_cell_matches_true_cell": 206,
+     "wrong_cell_matches_named_cell": 148,
+     "right_cell": 959,
+     "right_cell_exact": 451,
+     "right_cell_dash_baseline": 370,
+     "hole_directions": 797,
+     "hole_directions_listed": 277,
+     "directions_invented": 149
+    },
+    "by_direction": {
+     "U": {
+      "holes": 194,
+      "listed": 57,
+      "safe": 765,
+      "invented": 52
+     },
+     "D": {
+      "holes": 225,
+      "listed": 63,
+      "safe": 734,
+      "invented": 33
+     },
+     "L": {
+      "holes": 173,
+      "listed": 74,
+      "safe": 786,
+      "invented": 36
+     },
+     "R": {
+      "holes": 205,
+      "listed": 83,
+      "safe": 754,
+      "invented": 28
+     }
+    },
+    "by_line": {
+     "first": {
+      "holes": 292,
+      "listed": 132
+     },
+     "later": {
+      "holes": 505,
+      "listed": 145
+     }
+    }
+   }
+  },
+  "failures": {
+   "s3t": {
+    "stops short": 11,
+    "hole": 319,
+    "shortest": 69,
+    "longer": 1
+   },
+   "o3": {
+    "stops short": 20,
+    "hole": 288,
+    "shortest": 89,
+    "longer": 3
+   },
+   "s3": {
+    "hole": 322,
+    "shortest": 65,
+    "stops short": 13
+   },
+   "eb3": {
+    "stops short": 24,
+    "hole": 292,
+    "shortest": 81,
+    "longer": 2,
+    "passes the goal": 1
+   }
+  },
+  "zero_shot": {
+   "s3t": 71,
+   "o3": 71
+  },
+  "new_tokens": {
+   "median": 64,
+   "max": 114
+  },
+  "training": {
+   "s3t": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 7.505771100521088,
+     "mean_loss": 0.5069101728314663,
+     "last_quarter_loss": 0.16096673555591184,
+     "seconds": 405.1818859577179,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.14094456657767296,
+     "mean_loss": 0.13420030988531156,
+     "last_quarter_loss": 0.1006226480784925,
+     "seconds": 395.54882168769836,
+     "stage": 2
+    }
+   },
+   "o3": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 0.06459366153285373,
+     "mean_loss": 0.09492762639668541,
+     "last_quarter_loss": 0.0730914080857983,
+     "seconds": 401.4205675125122,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.05372077774700301,
+     "mean_loss": 0.08846081255688312,
+     "last_quarter_loss": 0.06183600170732249,
+     "seconds": 392.6954290866852,
+     "stage": 2
+    }
+   },
+   "s3": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 7.642801523208618,
+     "mean_loss": 0.5263720249986266,
+     "last_quarter_loss": 0.18346371698071776,
+     "seconds": 454.9499123096466,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.14878878323361278,
+     "mean_loss": 0.14914843396090485,
+     "last_quarter_loss": 0.10921025230484877,
+     "seconds": 446.9738664627075,
+     "stage": 2
+    }
+   },
+   "eb3": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 0.06325065271812491,
+     "mean_loss": 0.09940255652181446,
+     "last_quarter_loss": 0.07574011686883578,
+     "seconds": 423.8057601451874,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.04299157439618284,
+     "mean_loss": 0.08675738305560679,
+     "last_quarter_loss": 0.06532349636769924,
+     "seconds": 408.35549116134644,
+     "stage": 2
+    }
+   }
+  }
+ },
+ "seconds_in_jobs": {
+  "s3t": 2218.3993768692017,
+  "o3": 1377.5995557308197
+ }
+}
