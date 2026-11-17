@@ -7,6 +7,7 @@ routes it finds. `run_train` fine-tunes LIVR on them, or, as the matched control
 same maps' shortest-route labels, with the detour-scaling recipe and evaluation.
 `compare` applies the readings fixed in the specification.
 """
+import contextlib
 import json
 import math
 import random
@@ -41,8 +42,29 @@ def route_of(answer):
 
 # LIVR as a batched policy ------------------------------------------------------------------
 
+PRECISIONS = ("bf16", "tf32")
+
+
+@contextlib.contextmanager
+def read_precision(device, precision):
+    """bf16: autocast, as every other pass (round 1's reads). tf32: the FP32 weights with
+    TF32 matmuls, whose rounding is finer, for batched reads (docs/EXPERT_ITERATION_ROUND2_SPEC.md)."""
+    if precision not in PRECISIONS:
+        raise ValueError(f"precision must be one of {PRECISIONS}")
+    if precision == "bf16":
+        with amp(device):
+            yield
+        return
+    previous = torch.get_float32_matmul_precision()
+    torch.set_float32_matmul_precision("high")
+    try:
+        yield
+    finally:
+        torch.set_float32_matmul_precision(previous)
+
+
 @torch.no_grad()
-def batched_decide(model, tokenizer, prompts, prefixes):
+def batched_decide(model, tokenizer, prompts, prefixes, precision="bf16"):
     """LIVR's raw move and ending probabilities after each prefix, as `jepa.decide` computes
     them, for rows with different prompts in one right-padded forward pass. Stage 2
     attention is causal, so padding after a row's last token does not change the row."""
@@ -61,7 +83,7 @@ def batched_decide(model, tokenizer, prompts, prefixes):
     batch = {"input_ids": ids.to(device), "attention_mask": mask.to(device),
              "pixel_values": torch.cat([p["pixel_values"].cpu() for p in prompts]).to(device),
              "image_grid_thw": torch.cat([p["image_grid_thw"].cpu() for p in prompts]).to(device)}
-    with amp(device):
+    with read_precision(device, precision):
         logits = model(**batch, use_cache=False).logits
     out = []
     for i, (length, at, split, tokens, end_token, continue_token) in enumerate(reads):
@@ -80,8 +102,9 @@ class BatchedLivr:
     cached per (problem, prefix). Uncached requests are read `batch` rows per forward pass,
     rows from different maps together."""
 
-    def __init__(self, model, processor, data_root, batch):
+    def __init__(self, model, processor, data_root, batch, precision="bf16"):
         self.model, self.processor, self.data_root, self.batch = model, processor, data_root, batch
+        self.precision = precision
         self.prompts, self.cache = {}, {}
         self.sequences = self.forward_passes = 0
 
@@ -98,7 +121,7 @@ class BatchedLivr:
         for start in range(0, len(missing), self.batch):
             chunk = missing[start:start + self.batch]
             probs = batched_decide(self.model, self.processor.tokenizer, [self.prompt(problems[i]) for i, _ in chunk],
-                                   [prefix for _, prefix in chunk])
+                                   [prefix for _, prefix in chunk], self.precision)
             self.cache.update(zip(chunk, probs))
             self.sequences += len(chunk)
             self.forward_passes += 1
@@ -112,8 +135,9 @@ class BatchedLivr:
     def probabilities(self, problem, actions):
         return self.many([(problem, "".join(actions))])[0]
 
-    def reset(self, batch):
+    def reset(self, batch, precision=None):
         self.batch, self.cache = batch, {}
+        self.precision = precision or self.precision
 
 
 def point_differences(policy, problems, probe_points):

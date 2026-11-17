@@ -1,0 +1,6 @@
+{
+  "swap": {"sizes": [7, 8], "maps_per_size": 50, "reproduce": 0.95, "seed": 42},
+  "uses_change": 0.3,
+  "uses_donor": 0.3,
+  "reproduce": 0.95
+}

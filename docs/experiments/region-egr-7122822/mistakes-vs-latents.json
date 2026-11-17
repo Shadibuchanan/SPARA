@@ -1,0 +1,48 @@
+{
+ "egr": {
+  "hole_recall_all_cells": 0.8905660377358491,
+  "greedy": {
+   "toward": {
+    "maps": 89,
+    "flagged": 75
+   },
+   "forced": {
+    "maps": 117,
+    "flagged": 99
+   }
+  },
+  "masked": {
+   "toward": {
+    "maps": 87,
+    "flagged": 77
+   },
+   "forced": {
+    "maps": 136,
+    "flagged": 110
+   }
+  }
+ },
+ "eb2": {
+  "hole_recall_all_cells": 0.4949685534591195,
+  "greedy": {
+   "toward": {
+    "maps": 80,
+    "flagged": 32
+   },
+   "forced": {
+    "maps": 128,
+    "flagged": 56
+   }
+  },
+  "masked": {
+   "toward": {
+    "maps": 81,
+    "flagged": 34
+   },
+   "forced": {
+    "maps": 135,
+    "flagged": 55
+   }
+  }
+ }
+}

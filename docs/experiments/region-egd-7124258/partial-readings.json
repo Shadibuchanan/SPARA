@@ -1,0 +1,51 @@
+{
+ "masked vs egr": {
+  "first": 78,
+  "second": 68,
+  "only_first": 21,
+  "only_second": 11,
+  "p": 0.11018416518345475
+ },
+ "masked vs eb2": {
+  "first": 78,
+  "second": 73,
+  "only_first": 19,
+  "only_second": 14,
+  "p": 0.48685024166479707
+ },
+ "greedy vs egr": {
+  "first": 78,
+  "second": 75,
+  "only_first": 21,
+  "only_second": 18,
+  "p": 0.7492586247608415
+ },
+ "greedy vs eb2": {
+  "first": 78,
+  "second": 78,
+  "only_first": 17,
+  "only_second": 17,
+  "p": 1.0
+ },
+ "greedy vs e2": {
+  "first": 78,
+  "second": 84,
+  "only_first": 18,
+  "only_second": 24,
+  "p": 0.44079906734259566
+ },
+ "masked_hidden_solved": 63,
+ "block_probe": 0.9455584061574094,
+ "similarity": {
+  "7": {
+   "similarity": -0.033857185393571854,
+   "own_block": 0.7442739866673946,
+   "other_blocks": 0.13796149753034115
+  },
+  "8": {
+   "similarity": -0.029387803748250008,
+   "own_block": 0.7025348916649818,
+   "other_blocks": 0.10019004950299859
+  }
+ }
+}

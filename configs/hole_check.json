@@ -15,6 +15,7 @@
   "budget": 64,
   "max_depth": 64,
   "batch": 16,
+  "read_precision": "bf16",
   "probe_tolerance": 0.01,
   "check_maps": 52,
   "seed": 42,

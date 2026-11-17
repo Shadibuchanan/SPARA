@@ -244,3 +244,25 @@ def test_compare_applies_the_fixed_rules(tmp_path, monkeypatch):
     assert result["seconds_in_jobs"] == {"routes": 3.0, "search": 2.0, "shortest": 2.0}
     (search / "summary.json").write_text(json.dumps({"checks": {"valid": False}, "pool": {}, "seconds": 3.0}))
     assert compare(runs, search, outcomes)["primary"]["reading"].startswith("withheld")
+
+
+def test_reads_take_a_precision_and_restore_matmul_settings(tiny_model, tiny_batch, monkeypatch):
+    model = tiny(tiny_model)
+    before = torch.get_float32_matmul_precision()
+    prompts, prefixes = [prompt_of(tiny_batch), wide_prompt(tiny_batch)], ["R", ""]
+    default = batched_decide(model, Tokenizer(), prompts, prefixes)
+    finer = batched_decide(model, Tokenizer(), prompts, prefixes, "tf32")
+    assert torch.get_float32_matmul_precision() == before
+    assert all(abs(a[k] - b[k]) < 1e-5 for a, b in zip(default, finer) for k in a)  # CPU: both FP32
+    with pytest.raises(ValueError, match="precision"):
+        batched_decide(model, Tokenizer(), prompts, prefixes, "fp16")
+    seen = []
+    monkeypatch.setattr(expert_iteration, "batched_decide",
+                        lambda model, tokenizer, ps, xs, precision: seen.append(precision) or [{}] * len(ps))
+    monkeypatch.setattr(expert_iteration, "encode", lambda *args, training=True: prompt_of(tiny_batch))
+    policy = BatchedLivr(model, Processor(), "unused", batch=2, precision="tf32")
+    policy.many([({"id": "a", "split": "s", "row": {}}, "")])
+    policy.reset(1, "bf16")
+    policy.many([({"id": "a", "split": "s", "row": {}}, "")])
+    policy.reset(1)
+    assert seen == ["tf32", "bf16"] and policy.precision == "bf16"

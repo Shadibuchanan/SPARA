@@ -1,0 +1,84 @@
+{
+  "stage": 2,
+  "epoch": 1,
+  "next_row": 0,
+  "optimizer_steps": 188,
+  "config": {
+    "model_id": "Qwen/Qwen2.5-VL-3B-Instruct",
+    "model_revision": "66285546d2b821cf421d4f5eb2576359d3770cd3",
+    "seed": 42,
+    "epochs_per_stage": 1,
+    "microbatch": 1,
+    "gradient_accumulation": 8,
+    "learning_rate": 1e-05,
+    "weight_decay": 0.01,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "epsilon": 1e-08,
+    "warmup_ratio": 0.05,
+    "max_grad_norm": 1.0,
+    "precision": "bf16-mixed-fp32-parameters",
+    "attention_backend": "sdpa",
+    "gradient_checkpointing": true,
+    "generation": {
+      "do_sample": true,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "max_new_tokens": 1024
+    }
+  },
+  "source_checkpoint": null,
+  "grounding": {
+    "context_layer": 12,
+    "target_layers": [
+      4,
+      8,
+      12,
+      16
+    ],
+    "separates": 0.95,
+    "dim": 256,
+    "width": 1024,
+    "predictor_width": 512,
+    "dropout": 0.1,
+    "frequencies": 8,
+    "sigreg_weight": 0.02,
+    "directions": 256,
+    "queue_context": 512,
+    "queue_target": 1024,
+    "shuffle_pool": 64,
+    "head_learning_rate": 0.0001,
+    "head_weight_decay": 0.01,
+    "warm_start": {
+      "epochs": 30,
+      "maps_per_batch": 32,
+      "learning_rate": 0.001
+    },
+    "validation_maps": 128,
+    "monitor_maps": 32,
+    "pilot_rows": 16,
+    "beta_bounds": [
+      0.01,
+      100.0
+    ],
+    "swap_maps_per_size": 100,
+    "swap_follows": 0.5,
+    "max_new_tokens": 128,
+    "seed": 42,
+    "target_layer": 4,
+    "weight": 2.4749105423803934,
+    "labels": {
+      "rows": 1504,
+      "sizes": {
+        "3": 61,
+        "4": 183,
+        "5": 314,
+        "6": 426,
+        "7": 265,
+        "8": 255
+      }
+    }
+  }
+}

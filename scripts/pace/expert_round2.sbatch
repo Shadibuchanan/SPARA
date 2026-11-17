@@ -16,6 +16,8 @@
 #   SPARA_SETTINGS=configs/hole_check.json.
 # The hole check on the exact map (docs/HOLE_CHECK_TEXT_SPEC.md): SPARA_ARM=s3t or o3, with
 #   SPARA_SETTINGS=configs/hole_check_text.json. No weights are saved.
+#   SPARA_BATCH and SPARA_READ_PRECISION (bf16 or tf32) override the search's policy reads;
+#     SPARA_BATCH=1 SPARA_READ_PRECISION=bf16 gives round 1's reads.
 # Submit only within the agreed GPU budget; this script does not submit itself.
 set -euo pipefail
 module load python/3.11.9
@@ -55,6 +57,7 @@ case "$STAGE" in
     [ -f "$ROUND1_ROUTES" ] || { echo "Missing round 1 routes: $ROUND1_ROUTES" >&2; exit 1; }
     BATCH=()
     [ -n "${SPARA_BATCH:-}" ] && BATCH=(--batch "$SPARA_BATCH")
+    [ -n "${SPARA_READ_PRECISION:-}" ] && BATCH+=(--read-precision "$SPARA_READ_PRECISION")
     nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
     if [ "$STAGE" = search ]; then
       # L's answers: SPARA_LIVR_GREEDY (a livr-greedy job's output) or SPARA_LIVR_CHECKPOINT.

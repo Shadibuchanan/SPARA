@@ -1,0 +1,14 @@
+{
+  "context_layer": 12,
+  "target_layer": 4,
+  "head_learning_rate": 0.0001,
+  "head_weight_decay": 0.01,
+  "shuffle_pool": 64,
+  "monitor_maps": 32,
+  "pilot_rows": 16,
+  "beta_bounds": [0.01, 100.0],
+  "check_rows": 8,
+  "identity_tolerance": 0.0001,
+  "warm_maps": {"large": null, "middle": 100, "small": 49},
+  "seed": 42
+}

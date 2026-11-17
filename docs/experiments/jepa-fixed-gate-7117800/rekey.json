@@ -1,0 +1,11 @@
+{
+ "source": "jepa-features-7116225/features.pt",
+ "source_sha256": "90527a67147a29ada47823a7f4844a08efd50b10510fc419fb2d6afef67e6a94",
+ "maps": 2185,
+ "rows_sharing_an_id": {
+  "train": 174,
+  "fresh/detour-pool-78": 0,
+  "fresh/detour-pool": 0,
+  "fresh/detour-heldout-78": 0
+ }
+}

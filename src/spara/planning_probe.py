@@ -12,6 +12,7 @@ final LIVR checkpoint, in one model load.
 The reading rules are fixed in the specification and applied here. The state probe
 can be recomputed on CPU from a run directory: python -m spara.planning_probe RUN_DIR
 """
+import contextlib
 import json
 import random
 import sys
@@ -26,7 +27,7 @@ from .evaluation import ReferenceEvaluator
 from .latent_battery import mcnemar, moves, probe_layers
 from .latent_rl import LatentAdjuster
 from .runtime import json_write, seed_all
-from .serialization import encode
+from .serialization import encode, latent_kwargs
 from .text_rl import repeat_prompt
 from .training import amp, to_device
 
@@ -116,7 +117,8 @@ def collect(model, processor, data_root, split, rows, layers, evaluator, generat
     eos = model.generation_config.eos_token_id
     eos = set(eos if isinstance(eos, list) else [eos])
     for count, (index, row) in enumerate(rows):
-        prompt = to_device(encode(processor, data_root, split, row, training=False), model.device)
+        prompt = to_device(encode(processor, data_root, split, row, training=False, **latent_kwargs(model)),
+                           model.device)
         length = prompt["input_ids"].shape[-1]
         if generate:
             with torch.no_grad(), amp(model.device):
@@ -582,6 +584,89 @@ def planning_probe(model, processor, data_root, output, basis_path, layer, run_m
                 "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
     json_write(output / "summary.json", summary)
     print(json.dumps(summary["headroom"], indent=1), flush=True)
+    return summary
+
+
+# The state probe on a region-latent checkpoint ------------------------------------
+
+TRACKING_MODES = {"greedy": (False, False), "masked_hidden": (True, True)}  # (Stage 1 mask, globals hidden)
+
+
+def reproduction(maps, path):
+    """The share of test maps whose route equals the run's recorded route in the same mode."""
+    if path is None:
+        return None
+    recorded = {r["row_index"]: r["route"] for r in map(json.loads, Path(path).read_text().splitlines())}
+    same = sum(recorded.get(m["row_index"]) == m["route"] for m in maps)
+    return {"maps": len(maps), "recorded": len(recorded), "same": same, "share": same / len(maps) if maps else None}
+
+
+def tracking_reading(report, reproduced, reproduce, weak):
+    """S1's rule, unless the routes are not the run's own or the probe is too weak to carry a verdict."""
+    split = report["splits"].get("test")
+    if split is None:
+        return "no test steps"
+    if reproduced is not None and reproduced["share"] < reproduce:
+        return "invalid: the run's routes were not reproduced"
+    if split["solved_step_accuracy"] is None or split["solved_step_accuracy"] < weak:
+        return "inconclusive: the position probe is too weak"
+    return split["S1"]["reading"]
+
+
+def tracking(model, processor, data_root, output, run_manifest, seed, test_split, train_split,
+             modes=("greedy", "masked_hidden"), recorded=None, reproduce=0.95, weak=0.5, max_new_tokens=128):
+    """The state probe alone (S1 to S3) on a region-latent checkpoint (docs/PERCEPTION_JEPA_SPEC.md, "Position
+    tracking on EGD"), once per answer mode: "greedy" (unmasked, globals shown) and "masked_hidden" (the Stage 1
+    mask with the global latents hidden, so the answer's only map is the block latents). Greedy routes on
+    `test_split`; the released answers teacher-forced on `train_split`, in the same mode, fit the probes.
+    `recorded[mode]`: the run's own routes in that mode (jsonl with row_index and route)."""
+    from .expert_round2 import masked
+    recorded = recorded or {}
+    unknown = [m for m in modes if m not in TRACKING_MODES]
+    if unknown:
+        raise ValueError(f"Unknown modes: {unknown}")
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=False)
+    layers = probe_layers(model.config.num_hidden_layers)
+    json_write(output / "manifest.json", run_manifest | {
+        "test_split": test_split, "train_split": train_split, "modes": list(modes),
+        "recorded": {m: str(p) for m, p in recorded.items()}, "reproduce": reproduce, "weak": weak,
+        "probe_layers": [l + 1 for l in layers], "max_new_tokens": max_new_tokens, "seed": seed})
+    model.eval()
+    model.config.livr_stage = 2
+    evaluator = ReferenceEvaluator(data_root)
+    test_rows, train_rows = records(data_root, test_split), records(data_root, train_split)
+    summary, began = {"modes": {}}, time.time()
+    for mode in modes:
+        seed_all(seed)
+        use_mask, hide = TRACKING_MODES[mode]
+        flag = (lambda row: row | {"livr_hide_globals": True}) if hide else (lambda row: row)
+        folder = output / mode
+        folder.mkdir()
+        features = {"layers": layers}
+        with (folder / "routes.jsonl").open("w", encoding="utf-8") as log, \
+                (masked(model) if use_mask else contextlib.nullcontext()):
+            for name, split, rows, generate in (("test", test_split, test_rows, True),
+                                                ("train", train_split, train_rows, False)):
+                features[name] = collect(model, processor, data_root, split,
+                                         [(i, flag(r)) for i, r in enumerate(rows)], layers, evaluator, generate,
+                                         max_new_tokens, log)
+        torch.save(features, folder / "features.pt")
+        grids = {"test": [test_rows[m["row_index"]]["map_desc"] for m in features["test"]["maps"]],
+                 "train": [train_rows[m["row_index"]]["map_desc"] for m in features["train"]["maps"]]}
+        report = state_probe(features, grids, seed)
+        (folder / "steps.jsonl").write_text("".join(json.dumps(s) + "\n" for s in report.pop("steps")),
+                                            encoding="utf-8")
+        reproduced = reproduction(features["test"]["maps"], recorded.get(mode))
+        result = {"mode": mode, "solved": sum(m["success"] for m in features["test"]["maps"]),
+                  "maps": len(features["test"]["maps"]), "reproduced": reproduced, "state_probe": report,
+                  "reading": tracking_reading(report, reproduced, reproduce, weak), "seconds": time.time() - began}
+        json_write(folder / "summary.json", result)
+        summary["modes"][mode] = {k: result[k] for k in ("solved", "maps", "reproduced", "reading")}
+        print(json.dumps({mode: summary["modes"][mode]}), flush=True)
+    summary |= {"seconds": time.time() - began,
+                "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
+    json_write(output / "summary.json", summary)
     return summary
 
 

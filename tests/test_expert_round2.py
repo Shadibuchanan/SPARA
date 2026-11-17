@@ -17,7 +17,7 @@ from test_planning_probe import GRID, Processor, prompt_of
 
 SETTINGS = {"pool_split": "fresh/p78", "heldout_split": "fresh/h78", "round1_pool_split": "fresh/p",
             "round1_heldout_split": "fresh/h", "frontier_split": "fresh/p", "other_fresh": ["fresh/probe", "fresh/p", "fresh/h"],
-            "maps": 4, "budget": 12, "max_depth": 12, "batch": 4, "probe_tolerance": 0.01, "check_maps": 2,
+            "maps": 4, "budget": 12, "max_depth": 12, "batch": 4, "read_precision": "tf32", "probe_tolerance": 0.01, "check_maps": 2,
             "seed": 0, "loading_agreement": 2, "base_steps": 375, "extra_new": 6, "extra_old": 6,
             "variety_floor": 1, "phase_one_rows": 8, "seen_maps": 2, "epochs": 1, "learning_rate": 1e-5,
             "warmup_ratio": 0.05, "max_new_tokens": 12, "state_layers": [1, 2], "probe_layer": 1,
@@ -25,7 +25,8 @@ SETTINGS = {"pool_split": "fresh/p78", "heldout_split": "fresh/h78", "round1_poo
 
 
 def labelled(desc, i):
-    return {"map_id": i, "map_desc": desc, "text_output": answer_text(label_route(desc))}
+    return {"map_id": i, "map_desc": desc, "text_output": answer_text(label_route(desc)),
+            "image_input": f"img/level_{len(desc)}/{i}.png"}  # IDs repeat across levels, as in the data
 
 
 @pytest.fixture
@@ -569,3 +570,20 @@ def test_text_check_applies_the_fixed_rules(data, tmp_path, monkeypatch):
                 [{"population": "heldout78", "row_index": i, "success": 1} for i in range(4)])
     withheld = run()["primary"]
     assert withheld["reading"].startswith("withheld") and "next" not in withheld  # the jobs read different bases
+def test_run_search_falls_back_to_round_1_reads(data, tiny_model, prompts, tmp_path, monkeypatch):
+    model = tiny(tiny_model)
+    round1, old = round1_run(tmp_path, data)
+    monkeypatch.setattr(expert_round2, "evaluate", lambda *args, **kwargs: {"loading": {"valid": True}})
+    real = expert_round2.single_read
+    precisions = []
+
+    def single(policy, problem, prefix):
+        precisions.append(policy.precision)
+        probs = real(policy, problem, prefix)
+        return {k: v + 0.5 for k, v in probs.items()} if policy.precision == "tf32" else probs
+    monkeypatch.setattr(expert_round2, "single_read", single)
+    summary = run_search(model, Processor(), Evaluator(), "unused", tmp_path / "run", SETTINGS, {}, round1, old)
+    checks = summary["checks"]
+    assert checks["batched_failed"]["step_zero_max_difference"] == pytest.approx(0.5)
+    assert checks["batch"] == 1 and checks["read_precision"] == "bf16" and checks["valid"]
+    assert set(precisions) == {"tf32", "bf16"}

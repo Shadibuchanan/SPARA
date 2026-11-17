@@ -1,0 +1,17 @@
+{
+  "maps": 2185,
+  "groups": {
+    "training": 1486,
+    "pool": 500,
+    "heldout": 400,
+    "validation": 128
+  },
+  "counts": {
+    "new_maps": 201,
+    "old_maps": 373,
+    "frontier_maps": 47,
+    "rows": 3000
+  },
+  "seconds": 247.83195042610168,
+  "peak_gpu_gib": 15.152703285217285
+}

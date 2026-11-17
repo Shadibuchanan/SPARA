@@ -1,0 +1,112 @@
+{
+ "latent_spread_heldout": [
+  {
+   "latent": 0,
+   "across_map_share": 0.0002706314844544977,
+   "after_layer_norm": 0.0002619763254188001,
+   "largest_channel_mean": 44.45148468017578,
+   "median_channel_std": 0.019828511402010918
+  },
+  {
+   "latent": 1,
+   "across_map_share": 0.0003551347181200981,
+   "after_layer_norm": 0.0003328805323690176,
+   "largest_channel_mean": 54.07554626464844,
+   "median_channel_std": 0.02461913414299488
+  },
+  {
+   "latent": 2,
+   "across_map_share": 0.0003539363679010421,
+   "after_layer_norm": 0.00035193286021240056,
+   "largest_channel_mean": 41.69132995605469,
+   "median_channel_std": 0.01950979046523571
+  },
+  {
+   "latent": 3,
+   "across_map_share": 2.9159897167119198e-05,
+   "after_layer_norm": 1.1480495231808163e-05,
+   "largest_channel_mean": 284.86749267578125,
+   "median_channel_std": 0.19739606976509094
+  }
+ ],
+ "standardised_latent_spread_heldout": [
+  {
+   "latent": 0,
+   "across_map_share": 0.44952449202537537,
+   "after_layer_norm": 0.4479243755340576,
+   "largest_channel_mean": 2.198657274246216,
+   "median_channel_std": 0.8165296316146851
+  },
+  {
+   "latent": 1,
+   "across_map_share": 0.5693347454071045,
+   "after_layer_norm": 0.5613209009170532,
+   "largest_channel_mean": 1.9547995328903198,
+   "median_channel_std": 0.8264634013175964
+  },
+  {
+   "latent": 2,
+   "across_map_share": 0.4475470185279846,
+   "after_layer_norm": 0.44562289118766785,
+   "largest_channel_mean": 2.4544124603271484,
+   "median_channel_std": 0.6610409617424011
+  },
+  {
+   "latent": 3,
+   "across_map_share": 0.4558226466178894,
+   "after_layer_norm": 0.46058493852615356,
+   "largest_channel_mean": 2.041076421737671,
+   "median_channel_std": 0.9438264966011047
+  }
+ ],
+ "standardised_gate": {
+  "reading": "gate 3c failed: the warm-started predictions do not depend enough on the latents (the linear ceiling fails too: E's latents carry too little cell content); stop",
+  "latent_dependence": {
+   "7": {
+    "unexplained": 0.8734073042869568,
+    "shuffled_gap": 0.2591901421546936,
+    "holes_from_predictions": 0.5168585641716482,
+    "within_position_share": 0.9451508918370287
+   },
+   "8": {
+    "unexplained": 0.9867461323738098,
+    "shuffled_gap": 0.037664711475372314,
+    "holes_from_predictions": 0.5,
+    "within_position_share": 0.9430810405546509
+   }
+  },
+  "linear_ceiling": {
+   "7": {
+    "unexplained": 0.84465491771698,
+    "shuffled_gap": 0.7770290374755859,
+    "holes_from_predictions": 0.5367400110390764
+   },
+   "8": {
+    "unexplained": 0.9340302348136902,
+    "shuffled_gap": 0.67253178358078,
+    "holes_from_predictions": 0.5311378427270511
+   }
+  },
+  "warm_start": {
+   "best_epoch": 23,
+   "best_validation_error": 0.9439876675605774,
+   "start_validation_error": 1.0028884410858154,
+   "seconds": 250.82629108428955,
+   "validation_maps": 128
+  }
+ },
+ "hole_direction": {
+  "7": {
+   "hole_label_share": 0.8616877794265747,
+   "gate_heads": -0.00011718273162841797,
+   "standardised_heads": 0.10666543245315552,
+   "linear_ceiling": 0.12108570337295532
+  },
+  "8": {
+   "hole_label_share": 0.8654403686523438,
+   "gate_heads": -0.0007625818252563477,
+   "standardised_heads": 0.007568657398223877,
+   "linear_ceiling": 0.06138598918914795
+  }
+ }
+}

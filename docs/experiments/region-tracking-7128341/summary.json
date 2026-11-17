@@ -1,0 +1,28 @@
+{
+  "modes": {
+    "greedy": {
+      "solved": 78,
+      "maps": 400,
+      "reproduced": {
+        "maps": 400,
+        "recorded": 400,
+        "same": 400,
+        "share": 1.0
+      },
+      "reading": "inconclusive: the position probe is too weak"
+    },
+    "masked_hidden": {
+      "solved": 63,
+      "maps": 400,
+      "reproduced": {
+        "maps": 400,
+        "recorded": 400,
+        "same": 400,
+        "share": 1.0
+      },
+      "reading": "inconclusive: the position probe is too weak"
+    }
+  },
+  "seconds": 738.5080893039703,
+  "peak_gpu_gib": 15.002305030822754
+}

@@ -1,0 +1,100 @@
+{
+ "valid": true,
+ "uses_block_latents": true,
+ "swap": {
+  "settings": {
+   "sizes": [
+    7,
+    8
+   ],
+   "maps_per_size": 50,
+   "reproduce": 0.95,
+   "seed": 42,
+   "hide_globals": true,
+   "conditions": [
+    "block_swap",
+    "block_mean"
+   ]
+  },
+  "maps": 100,
+  "seconds": 233.96451020240784,
+  "identity": [
+   true,
+   true,
+   true,
+   true
+  ],
+  "conditions": {
+   "own": {
+    "maps": 100,
+    "solved": 15
+   },
+   "block_swap": {
+    "maps": 100,
+    "solved": 0,
+    "unchanged": 0,
+    "donor_route": 98
+   },
+   "block_mean": {
+    "maps": 100,
+    "solved": 0,
+    "unchanged": 0
+   }
+  },
+  "reproduced": {
+   "same_route": 100,
+   "maps": 100,
+   "share": 1.0
+  },
+  "reading": "the answer reads the block latents, but their content does not shape its moves",
+  "peak_gpu_gib": 15.48949909210205
+ },
+ "tests": {
+  "masked": {
+   "egr": {
+    "maps": 400,
+    "first": 78,
+    "second": 68,
+    "only_first": 21,
+    "only_second": 11,
+    "p": 0.11018416518345475
+   },
+   "eb2": {
+    "maps": 400,
+    "first": 78,
+    "second": 73,
+    "only_first": 19,
+    "only_second": 14,
+    "p": 0.48685024166479707
+   }
+  },
+  "greedy": {
+   "egr": {
+    "maps": 400,
+    "first": 78,
+    "second": 75,
+    "only_first": 21,
+    "only_second": 18,
+    "p": 0.7492586247608415
+   },
+   "eb2": {
+    "maps": 400,
+    "first": 78,
+    "second": 78,
+    "only_first": 17,
+    "only_second": 17,
+    "p": 1.0
+   },
+   "e2": {
+    "maps": 400,
+    "first": 78,
+    "second": 84,
+    "only_first": 18,
+    "only_second": 24,
+    "p": 0.44079906734259566
+   }
+  }
+ },
+ "masked_hidden_solved": 63,
+ "reading": "reading the map from the latents does not fix the policy; the limit is the decision process"
+}

@@ -42,6 +42,14 @@ come from the map layout and are used in training only, never as model input.
 *LIVR + step grounding* retrains LIVR's Stage 2 with it. It is a separate condition,
 not one of A, B or C. See docs/STEP_GROUNDING_SPEC.md.
 
+**Latent JEPA**:
+An auxiliary training objective for LIVR's latent tokens. Through a small predictor,
+the four latents predict an embedding of each map cell's image tokens, with LeJEPA's
+SIGReg against collapse. The targets come from the image itself: no layout labels
+and no helper images. *EJ2* is round 2's EB2 trained with it. *EJF* is the retry with
+fixed targets: E's cell states, centred per position and projected once by a frozen
+PCA, with no SIGReg. See docs/PERCEPTION_JEPA_SPEC.md.
+
 **Map layout**:
 The arrangement of safe tiles, holes, the start, and the goal, independent of
 how that arrangement is rendered as an image.

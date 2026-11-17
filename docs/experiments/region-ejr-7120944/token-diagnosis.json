@@ -1,0 +1,58 @@
+{
+ "EB2": {
+  "7": {
+   "tokens": 4,
+   "between_token_similarity": 0.862,
+   "mean_cell_corr": 0.36
+  },
+  "8": {
+   "tokens": 4,
+   "between_token_similarity": 0.852,
+   "mean_cell_corr": 0.283
+  },
+  "ceiling": {
+   "7": {
+    "unexplained": 0.8244836330413818,
+    "shuffled_gap": 0.7793456315994263,
+    "holes_from_predictions": 0.5479083055017635,
+    "hole_direction_share": 0.16101253032684326
+   },
+   "8": {
+    "unexplained": 0.9173383712768555,
+    "shuffled_gap": 0.6720229387283325,
+    "holes_from_predictions": 0.5347453463345547,
+    "hole_direction_share": 0.09422731399536133
+   }
+  }
+ },
+ "EJR": {
+  "7": {
+   "tokens": 16,
+   "between_token_similarity": 0.831,
+   "mean_cell_corr": 0.386,
+   "own_block_corr": 0.436,
+   "other_blocks_corr": 0.384
+  },
+  "8": {
+   "tokens": 16,
+   "between_token_similarity": 0.829,
+   "mean_cell_corr": 0.332,
+   "own_block_corr": 0.358,
+   "other_blocks_corr": 0.33
+  },
+  "ceiling": {
+   "7": {
+    "unexplained": 0.783673882484436,
+    "shuffled_gap": 0.8328602313995361,
+    "holes_from_predictions": 0.5475931539015652,
+    "hole_direction_share": 0.20021456480026245
+   },
+   "8": {
+    "unexplained": 0.8806336522102356,
+    "shuffled_gap": 0.7247580885887146,
+    "holes_from_predictions": 0.5537157145073648,
+    "hole_direction_share": 0.13993340730667114
+   }
+  }
+ }
+}

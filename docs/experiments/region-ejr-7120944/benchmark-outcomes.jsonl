@@ -1,0 +1,400 @@
+{"row_index": 0, "grid_size": 3, "success": true, "extracted_answer": "DOWN, LEFT, LEFT, UP"}
+{"row_index": 1, "grid_size": 3, "success": true, "extracted_answer": "UP"}
+{"row_index": 2, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, RIGHT, RIGHT, DOWN, RIGHT, DOWN"}
+{"row_index": 3, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN"}
+{"row_index": 4, "grid_size": 4, "success": true, "extracted_answer": "DOWN, RIGHT"}
+{"row_index": 5, "grid_size": 3, "success": true, "extracted_answer": "LEFT, UP"}
+{"row_index": 6, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 7, "grid_size": 4, "success": true, "extracted_answer": "UP"}
+{"row_index": 8, "grid_size": 5, "success": true, "extracted_answer": "UP"}
+{"row_index": 9, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 10, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT, LEFT, LEFT"}
+{"row_index": 11, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT, RIGHT"}
+{"row_index": 12, "grid_size": 4, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 13, "grid_size": 6, "success": true, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 14, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 15, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN, DOWN, RIGHT"}
+{"row_index": 16, "grid_size": 6, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 17, "grid_size": 6, "success": true, "extracted_answer": "DOWN, DOWN, RIGHT, RIGHT"}
+{"row_index": 18, "grid_size": 4, "success": true, "extracted_answer": "LEFT, LEFT, LEFT"}
+{"row_index": 19, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, UP, RIGHT"}
+{"row_index": 20, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, RIGHT, DOWN, DOWN, LEFT, DOWN"}
+{"row_index": 21, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, UP, RIGHT, RIGHT"}
+{"row_index": 22, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 23, "grid_size": 3, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 24, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 25, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, UP"}
+{"row_index": 26, "grid_size": 5, "success": true, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN, DOWN, LEFT"}
+{"row_index": 27, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT, LEFT, LEFT"}
+{"row_index": 28, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, RIGHT, RIGHT, UP, UP, RIGHT, RIGHT, DOWN"}
+{"row_index": 29, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, UP, RIGHT, RIGHT, RIGHT, RIGHT"}
+{"row_index": 30, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, DOWN, DOWN, RIGHT, RIGHT, UP, RIGHT"}
+{"row_index": 31, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 32, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 33, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN, DOWN, RIGHT"}
+{"row_index": 34, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 35, "grid_size": 4, "success": true, "extracted_answer": "DOWN, LEFT, DOWN"}
+{"row_index": 36, "grid_size": 3, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 37, "grid_size": 3, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 38, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, UP, LEFT"}
+{"row_index": 39, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 40, "grid_size": 5, "success": false, "extracted_answer": "UP, UP, RIGHT"}
+{"row_index": 41, "grid_size": 4, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 42, "grid_size": 4, "success": true, "extracted_answer": "LEFT, LEFT, DOWN"}
+{"row_index": 43, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 44, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 45, "grid_size": 3, "success": false, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 46, "grid_size": 6, "success": false, "extracted_answer": "UP, UP, LEFT, UP, UP"}
+{"row_index": 47, "grid_size": 3, "success": true, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 48, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 49, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 50, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN, DOWN, LEFT, DOWN"}
+{"row_index": 51, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 52, "grid_size": 3, "success": true, "extracted_answer": "DOWN, LEFT"}
+{"row_index": 53, "grid_size": 5, "success": false, "extracted_answer": "UP, RIGHT, UP, UP, LEFT, LEFT, LEFT, DOWN"}
+{"row_index": 54, "grid_size": 6, "success": false, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN, DOWN"}
+{"row_index": 55, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 56, "grid_size": 3, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 57, "grid_size": 4, "success": false, "extracted_answer": "UP, UP, UP, RIGHT"}
+{"row_index": 58, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN, LEFT, LEFT, UP, UP"}
+{"row_index": 59, "grid_size": 3, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 60, "grid_size": 3, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 61, "grid_size": 3, "success": true, "extracted_answer": "LEFT, LEFT, DOWN, DOWN"}
+{"row_index": 62, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN, RIGHT, RIGHT, UP"}
+{"row_index": 63, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, UP, LEFT, UP"}
+{"row_index": 64, "grid_size": 3, "success": true, "extracted_answer": "UP"}
+{"row_index": 65, "grid_size": 4, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 66, "grid_size": 5, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 67, "grid_size": 3, "success": true, "extracted_answer": "LEFT, DOWN, DOWN"}
+{"row_index": 68, "grid_size": 3, "success": true, "extracted_answer": "UP"}
+{"row_index": 69, "grid_size": 6, "success": false, "extracted_answer": "UP, RIGHT, RIGHT, RIGHT"}
+{"row_index": 70, "grid_size": 3, "success": false, "extracted_answer": "UP, RIGHT, UP, UP, LEFT, LEFT, DOWN"}
+{"row_index": 71, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 72, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 73, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 74, "grid_size": 4, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 75, "grid_size": 6, "success": true, "extracted_answer": "DOWN, DOWN, RIGHT"}
+{"row_index": 76, "grid_size": 4, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 77, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 78, "grid_size": 6, "success": false, "extracted_answer": "UP, LEFT"}
+{"row_index": 79, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 80, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 81, "grid_size": 4, "success": true, "extracted_answer": "DOWN, RIGHT, DOWN, DOWN"}
+{"row_index": 82, "grid_size": 3, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 83, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN, DOWN, DOWN, LEFT"}
+{"row_index": 84, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 85, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, UP"}
+{"row_index": 86, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN"}
+{"row_index": 87, "grid_size": 5, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 88, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 89, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 90, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 91, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 92, "grid_size": 6, "success": true, "extracted_answer": "LEFT, LEFT, UP, LEFT, LEFT, LEFT"}
+{"row_index": 93, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, UP, UP, UP, LEFT, LEFT"}
+{"row_index": 94, "grid_size": 5, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 95, "grid_size": 5, "success": false, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN"}
+{"row_index": 96, "grid_size": 5, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 97, "grid_size": 6, "success": true, "extracted_answer": "LEFT, DOWN, DOWN"}
+{"row_index": 98, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 99, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT, LEFT, DOWN"}
+{"row_index": 100, "grid_size": 4, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 101, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, LEFT, LEFT"}
+{"row_index": 102, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 103, "grid_size": 4, "success": false, "extracted_answer": "RIGHT, RIGHT, DOWN, DOWN, DOWN"}
+{"row_index": 104, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN, LEFT"}
+{"row_index": 105, "grid_size": 5, "success": false, "extracted_answer": "LEFT, DOWN, DOWN, DOWN"}
+{"row_index": 106, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN, LEFT"}
+{"row_index": 107, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 108, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN"}
+{"row_index": 109, "grid_size": 4, "success": true, "extracted_answer": "LEFT, UP, UP, RIGHT"}
+{"row_index": 110, "grid_size": 6, "success": false, "extracted_answer": "LEFT, LEFT, DOWN"}
+{"row_index": 111, "grid_size": 5, "success": true, "extracted_answer": "UP"}
+{"row_index": 112, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 113, "grid_size": 4, "success": true, "extracted_answer": "UP"}
+{"row_index": 114, "grid_size": 6, "success": false, "extracted_answer": "LEFT, UP, LEFT, LEFT, DOWN, DOWN"}
+{"row_index": 115, "grid_size": 5, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 116, "grid_size": 6, "success": true, "extracted_answer": "UP, RIGHT, RIGHT"}
+{"row_index": 117, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 118, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 119, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 120, "grid_size": 5, "success": false, "extracted_answer": "DOWN, LEFT, LEFT, UP, UP, RIGHT"}
+{"row_index": 121, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN, RIGHT, DOWN, DOWN"}
+{"row_index": 122, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN, DOWN"}
+{"row_index": 123, "grid_size": 5, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 124, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, RIGHT, RIGHT, RIGHT, RIGHT"}
+{"row_index": 125, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 126, "grid_size": 4, "success": true, "extracted_answer": "UP, LEFT, LEFT, LEFT"}
+{"row_index": 127, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN, DOWN, DOWN"}
+{"row_index": 128, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT, RIGHT, RIGHT, DOWN"}
+{"row_index": 129, "grid_size": 5, "success": true, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN"}
+{"row_index": 130, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT, RIGHT, UP"}
+{"row_index": 131, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 132, "grid_size": 4, "success": true, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 133, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 134, "grid_size": 3, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 135, "grid_size": 6, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 136, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 137, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, DOWN, DOWN, RIGHT, DOWN, RIGHT, RIGHT, UP"}
+{"row_index": 138, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 139, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, LEFT, LEFT"}
+{"row_index": 140, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN"}
+{"row_index": 141, "grid_size": 6, "success": false, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN, DOWN, LEFT"}
+{"row_index": 142, "grid_size": 6, "success": false, "extracted_answer": "UP, LEFT, LEFT, LEFT, LEFT, DOWN"}
+{"row_index": 143, "grid_size": 6, "success": false, "extracted_answer": "DOWN, LEFT, LEFT, UP, UP, UP"}
+{"row_index": 144, "grid_size": 4, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 145, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 146, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 147, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 148, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT, DOWN"}
+{"row_index": 149, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, RIGHT, RIGHT, DOWN, DOWN, DOWN, DOWN, DOWN"}
+{"row_index": 150, "grid_size": 5, "success": false, "extracted_answer": "DOWN, RIGHT, RIGHT, UP"}
+{"row_index": 151, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 152, "grid_size": 3, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 153, "grid_size": 3, "success": true, "extracted_answer": "LEFT, DOWN, DOWN"}
+{"row_index": 154, "grid_size": 5, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 155, "grid_size": 6, "success": true, "extracted_answer": "LEFT, DOWN, DOWN"}
+{"row_index": 156, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, RIGHT, DOWN, DOWN, DOWN"}
+{"row_index": 157, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN"}
+{"row_index": 158, "grid_size": 6, "success": false, "extracted_answer": "LEFT, UP, LEFT"}
+{"row_index": 159, "grid_size": 5, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 160, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 161, "grid_size": 4, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 162, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 163, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, UP"}
+{"row_index": 164, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 165, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN, DOWN"}
+{"row_index": 166, "grid_size": 4, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 167, "grid_size": 4, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 168, "grid_size": 3, "success": false, "extracted_answer": "DOWN, LEFT, LEFT, UP"}
+{"row_index": 169, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 170, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, UP, LEFT, LEFT"}
+{"row_index": 171, "grid_size": 4, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 172, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 173, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT, LEFT, UP, UP"}
+{"row_index": 174, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 175, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 176, "grid_size": 3, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 177, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 178, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 179, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 180, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 181, "grid_size": 4, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 182, "grid_size": 3, "success": true, "extracted_answer": "LEFT, UP, LEFT"}
+{"row_index": 183, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 184, "grid_size": 3, "success": true, "extracted_answer": "LEFT, LEFT, DOWN"}
+{"row_index": 185, "grid_size": 3, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 186, "grid_size": 6, "success": false, "extracted_answer": "LEFT, LEFT, DOWN, DOWN, LEFT, DOWN, LEFT, DOWN"}
+{"row_index": 187, "grid_size": 6, "success": false, "extracted_answer": "UP, RIGHT, UP, UP, LEFT, UP"}
+{"row_index": 188, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 189, "grid_size": 5, "success": false, "extracted_answer": "UP, LEFT, UP, LEFT, UP, LEFT, UP"}
+{"row_index": 190, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 191, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, UP, UP, UP, LEFT, UP"}
+{"row_index": 192, "grid_size": 4, "success": false, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 193, "grid_size": 3, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 194, "grid_size": 3, "success": true, "extracted_answer": "DOWN, LEFT, LEFT"}
+{"row_index": 195, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN, RIGHT"}
+{"row_index": 196, "grid_size": 5, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 197, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN, LEFT"}
+{"row_index": 198, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 199, "grid_size": 6, "success": true, "extracted_answer": "DOWN, LEFT, LEFT"}
+{"row_index": 200, "grid_size": 6, "success": false, "extracted_answer": "LEFT, LEFT, UP, LEFT, LEFT, LEFT, DOWN"}
+{"row_index": 201, "grid_size": 3, "success": false, "extracted_answer": "RIGHT, DOWN, RIGHT"}
+{"row_index": 202, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN, DOWN, LEFT"}
+{"row_index": 203, "grid_size": 3, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 204, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT, RIGHT"}
+{"row_index": 205, "grid_size": 3, "success": true, "extracted_answer": "UP, UP, RIGHT"}
+{"row_index": 206, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, UP, RIGHT"}
+{"row_index": 207, "grid_size": 4, "success": true, "extracted_answer": "UP"}
+{"row_index": 208, "grid_size": 4, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 209, "grid_size": 5, "success": false, "extracted_answer": "DOWN, LEFT"}
+{"row_index": 210, "grid_size": 4, "success": false, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 211, "grid_size": 5, "success": true, "extracted_answer": "DOWN, LEFT"}
+{"row_index": 212, "grid_size": 3, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 213, "grid_size": 3, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 214, "grid_size": 5, "success": true, "extracted_answer": "DOWN, LEFT, LEFT, DOWN"}
+{"row_index": 215, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 216, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, UP, UP, RIGHT, RIGHT"}
+{"row_index": 217, "grid_size": 4, "success": true, "extracted_answer": "LEFT, UP, UP, RIGHT"}
+{"row_index": 218, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 219, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN, LEFT"}
+{"row_index": 220, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT, UP, UP, RIGHT, RIGHT, RIGHT"}
+{"row_index": 221, "grid_size": 6, "success": false, "extracted_answer": "UP, RIGHT, RIGHT, UP, RIGHT, RIGHT"}
+{"row_index": 222, "grid_size": 4, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 223, "grid_size": 6, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 224, "grid_size": 3, "success": false, "extracted_answer": "UP, UP, RIGHT, RIGHT"}
+{"row_index": 225, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 226, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, DOWN, DOWN"}
+{"row_index": 227, "grid_size": 6, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 228, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 229, "grid_size": 3, "success": false, "extracted_answer": "UP, UP, RIGHT"}
+{"row_index": 230, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, LEFT, LEFT, DOWN"}
+{"row_index": 231, "grid_size": 5, "success": false, "extracted_answer": "UP, UP, RIGHT, RIGHT, RIGHT, RIGHT"}
+{"row_index": 232, "grid_size": 5, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 233, "grid_size": 6, "success": false, "extracted_answer": "UP, UP, RIGHT, RIGHT"}
+{"row_index": 234, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, RIGHT, UP, UP, LEFT, LEFT"}
+{"row_index": 235, "grid_size": 6, "success": true, "extracted_answer": "LEFT, DOWN, DOWN, DOWN"}
+{"row_index": 236, "grid_size": 5, "success": true, "extracted_answer": "UP, LEFT, LEFT, LEFT"}
+{"row_index": 237, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, DOWN, DOWN, DOWN, LEFT, DOWN, DOWN"}
+{"row_index": 238, "grid_size": 6, "success": false, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN, DOWN, LEFT"}
+{"row_index": 239, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 240, "grid_size": 4, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 241, "grid_size": 5, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 242, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 243, "grid_size": 5, "success": true, "extracted_answer": "LEFT, UP, LEFT, LEFT, DOWN, DOWN, LEFT, DOWN"}
+{"row_index": 244, "grid_size": 4, "success": true, "extracted_answer": "UP, LEFT, LEFT, DOWN"}
+{"row_index": 245, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 246, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 247, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT, RIGHT"}
+{"row_index": 248, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT, LEFT, LEFT"}
+{"row_index": 249, "grid_size": 4, "success": false, "extracted_answer": "UP, RIGHT, RIGHT, DOWN, RIGHT, DOWN"}
+{"row_index": 250, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN, DOWN"}
+{"row_index": 251, "grid_size": 4, "success": false, "extracted_answer": "DOWN, DOWN, DOWN"}
+{"row_index": 252, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 253, "grid_size": 3, "success": true, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 254, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT, RIGHT, RIGHT, DOWN"}
+{"row_index": 255, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN, RIGHT"}
+{"row_index": 256, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT, LEFT, DOWN"}
+{"row_index": 257, "grid_size": 3, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 258, "grid_size": 6, "success": false, "extracted_answer": "LEFT, UP, UP, UP, RIGHT"}
+{"row_index": 259, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 260, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 261, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, UP, RIGHT, RIGHT, DOWN, DOWN"}
+{"row_index": 262, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 263, "grid_size": 3, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 264, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 265, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, RIGHT, RIGHT"}
+{"row_index": 266, "grid_size": 4, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 267, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, UP, RIGHT"}
+{"row_index": 268, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, LEFT, LEFT, LEFT"}
+{"row_index": 269, "grid_size": 6, "success": true, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN"}
+{"row_index": 270, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN, DOWN, LEFT, LEFT, UP"}
+{"row_index": 271, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, UP, UP, LEFT, LEFT"}
+{"row_index": 272, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, UP"}
+{"row_index": 273, "grid_size": 4, "success": false, "extracted_answer": "LEFT, LEFT, UP, UP, LEFT"}
+{"row_index": 274, "grid_size": 5, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 275, "grid_size": 6, "success": true, "extracted_answer": "LEFT, LEFT, DOWN"}
+{"row_index": 276, "grid_size": 4, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 277, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, UP"}
+{"row_index": 278, "grid_size": 4, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 279, "grid_size": 5, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 280, "grid_size": 4, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 281, "grid_size": 6, "success": true, "extracted_answer": "LEFT, UP, LEFT, LEFT, DOWN, DOWN"}
+{"row_index": 282, "grid_size": 5, "success": true, "extracted_answer": "UP, RIGHT, RIGHT, RIGHT, RIGHT"}
+{"row_index": 283, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 284, "grid_size": 4, "success": false, "extracted_answer": "DOWN, RIGHT, DOWN, DOWN"}
+{"row_index": 285, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 286, "grid_size": 3, "success": true, "extracted_answer": "LEFT, LEFT, DOWN, DOWN"}
+{"row_index": 287, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 288, "grid_size": 5, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 289, "grid_size": 4, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 290, "grid_size": 3, "success": true, "extracted_answer": "UP, RIGHT, RIGHT"}
+{"row_index": 291, "grid_size": 5, "success": true, "extracted_answer": "LEFT, UP, LEFT, LEFT, LEFT, DOWN"}
+{"row_index": 292, "grid_size": 4, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 293, "grid_size": 3, "success": true, "extracted_answer": "UP"}
+{"row_index": 294, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 295, "grid_size": 4, "success": true, "extracted_answer": "UP"}
+{"row_index": 296, "grid_size": 5, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 297, "grid_size": 6, "success": false, "extracted_answer": "LEFT, LEFT, LEFT, LEFT, DOWN"}
+{"row_index": 298, "grid_size": 3, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 299, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, UP, UP, UP, UP, RIGHT"}
+{"row_index": 300, "grid_size": 3, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 301, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT, DOWN, LEFT"}
+{"row_index": 302, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN, DOWN, DOWN, LEFT"}
+{"row_index": 303, "grid_size": 5, "success": true, "extracted_answer": "LEFT, LEFT, DOWN, LEFT, DOWN"}
+{"row_index": 304, "grid_size": 4, "success": true, "extracted_answer": "UP"}
+{"row_index": 305, "grid_size": 3, "success": true, "extracted_answer": "UP, UP"}
+{"row_index": 306, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, UP, LEFT, LEFT"}
+{"row_index": 307, "grid_size": 5, "success": false, "extracted_answer": "DOWN, RIGHT, DOWN, RIGHT, DOWN"}
+{"row_index": 308, "grid_size": 3, "success": true, "extracted_answer": "UP, RIGHT, RIGHT"}
+{"row_index": 309, "grid_size": 4, "success": true, "extracted_answer": "UP"}
+{"row_index": 310, "grid_size": 4, "success": false, "extracted_answer": "LEFT, LEFT"}
+{"row_index": 311, "grid_size": 6, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 312, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 313, "grid_size": 5, "success": true, "extracted_answer": "DOWN, DOWN, DOWN"}
+{"row_index": 314, "grid_size": 6, "success": true, "extracted_answer": "DOWN, RIGHT"}
+{"row_index": 315, "grid_size": 5, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 316, "grid_size": 4, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 317, "grid_size": 5, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 318, "grid_size": 4, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 319, "grid_size": 5, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 320, "grid_size": 3, "success": false, "extracted_answer": "DOWN, LEFT, DOWN"}
+{"row_index": 321, "grid_size": 4, "success": false, "extracted_answer": "RIGHT, RIGHT, DOWN, DOWN, DOWN"}
+{"row_index": 322, "grid_size": 6, "success": false, "extracted_answer": "DOWN, LEFT, DOWN, LEFT, LEFT"}
+{"row_index": 323, "grid_size": 6, "success": false, "extracted_answer": "UP, UP, RIGHT, RIGHT"}
+{"row_index": 324, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, LEFT, LEFT"}
+{"row_index": 325, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, RIGHT, DOWN, DOWN, DOWN"}
+{"row_index": 326, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 327, "grid_size": 5, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 328, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 329, "grid_size": 3, "success": true, "extracted_answer": "DOWN, RIGHT, DOWN"}
+{"row_index": 330, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, DOWN, RIGHT"}
+{"row_index": 331, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 332, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 333, "grid_size": 6, "success": false, "extracted_answer": "UP, RIGHT, RIGHT, DOWN"}
+{"row_index": 334, "grid_size": 5, "success": false, "extracted_answer": "UP, UP, RIGHT"}
+{"row_index": 335, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, UP, RIGHT, RIGHT"}
+{"row_index": 336, "grid_size": 4, "success": false, "extracted_answer": "RIGHT, UP, UP, UP, LEFT"}
+{"row_index": 337, "grid_size": 6, "success": true, "extracted_answer": "LEFT, LEFT, DOWN, DOWN"}
+{"row_index": 338, "grid_size": 6, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 339, "grid_size": 5, "success": false, "extracted_answer": "DOWN, RIGHT, RIGHT, UP, UP"}
+{"row_index": 340, "grid_size": 4, "success": true, "extracted_answer": "DOWN, RIGHT"}
+{"row_index": 341, "grid_size": 3, "success": true, "extracted_answer": "DOWN, LEFT, LEFT, DOWN"}
+{"row_index": 342, "grid_size": 6, "success": false, "extracted_answer": "UP, UP, LEFT, LEFT, UP"}
+{"row_index": 343, "grid_size": 3, "success": true, "extracted_answer": "LEFT, UP, UP"}
+{"row_index": 344, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, UP, RIGHT, RIGHT, RIGHT"}
+{"row_index": 345, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 346, "grid_size": 5, "success": true, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN, DOWN, LEFT"}
+{"row_index": 347, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 348, "grid_size": 3, "success": true, "extracted_answer": "UP, LEFT, LEFT"}
+{"row_index": 349, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN, DOWN, DOWN, LEFT"}
+{"row_index": 350, "grid_size": 5, "success": false, "extracted_answer": "DOWN, DOWN, DOWN"}
+{"row_index": 351, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 352, "grid_size": 5, "success": true, "extracted_answer": "UP, LEFT, LEFT, LEFT"}
+{"row_index": 353, "grid_size": 6, "success": true, "extracted_answer": "LEFT, LEFT, LEFT, LEFT, LEFT, DOWN"}
+{"row_index": 354, "grid_size": 6, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 355, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 356, "grid_size": 4, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 357, "grid_size": 5, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 358, "grid_size": 6, "success": false, "extracted_answer": "LEFT, DOWN, DOWN, DOWN"}
+{"row_index": 359, "grid_size": 3, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 360, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 361, "grid_size": 3, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 362, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 363, "grid_size": 5, "success": false, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 364, "grid_size": 3, "success": false, "extracted_answer": "UP, UP, RIGHT, RIGHT"}
+{"row_index": 365, "grid_size": 3, "success": true, "extracted_answer": "RIGHT"}
+{"row_index": 366, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 367, "grid_size": 3, "success": true, "extracted_answer": "DOWN, RIGHT, DOWN"}
+{"row_index": 368, "grid_size": 5, "success": false, "extracted_answer": "UP, LEFT, UP, UP, RIGHT"}
+{"row_index": 369, "grid_size": 3, "success": true, "extracted_answer": "UP"}
+{"row_index": 370, "grid_size": 6, "success": false, "extracted_answer": "UP, UP, UP, LEFT, LEFT, LEFT"}
+{"row_index": 371, "grid_size": 5, "success": true, "extracted_answer": "UP, UP, UP, LEFT, UP"}
+{"row_index": 372, "grid_size": 6, "success": true, "extracted_answer": "DOWN, RIGHT, DOWN, DOWN"}
+{"row_index": 373, "grid_size": 6, "success": false, "extracted_answer": "LEFT, LEFT, LEFT, DOWN, DOWN, LEFT, DOWN"}
+{"row_index": 374, "grid_size": 4, "success": true, "extracted_answer": "UP, UP, RIGHT, RIGHT"}
+{"row_index": 375, "grid_size": 4, "success": true, "extracted_answer": "LEFT, LEFT, DOWN, DOWN, DOWN"}
+{"row_index": 376, "grid_size": 6, "success": true, "extracted_answer": "UP, RIGHT, RIGHT"}
+{"row_index": 377, "grid_size": 5, "success": false, "extracted_answer": "DOWN, LEFT, DOWN"}
+{"row_index": 378, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, DOWN"}
+{"row_index": 379, "grid_size": 6, "success": true, "extracted_answer": "LEFT, DOWN, LEFT, LEFT, UP, UP, UP"}
+{"row_index": 380, "grid_size": 3, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 381, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 382, "grid_size": 3, "success": true, "extracted_answer": "DOWN, DOWN"}
+{"row_index": 383, "grid_size": 4, "success": false, "extracted_answer": "DOWN, RIGHT, RIGHT, UP, RIGHT"}
+{"row_index": 384, "grid_size": 6, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 385, "grid_size": 6, "success": true, "extracted_answer": "UP, UP, UP, UP, RIGHT, RIGHT"}
+{"row_index": 386, "grid_size": 4, "success": true, "extracted_answer": "UP, RIGHT"}
+{"row_index": 387, "grid_size": 5, "success": true, "extracted_answer": "RIGHT, RIGHT"}
+{"row_index": 388, "grid_size": 6, "success": true, "extracted_answer": "DOWN"}
+{"row_index": 389, "grid_size": 3, "success": true, "extracted_answer": "UP, LEFT"}
+{"row_index": 390, "grid_size": 5, "success": true, "extracted_answer": "LEFT, DOWN"}
+{"row_index": 391, "grid_size": 3, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 392, "grid_size": 4, "success": false, "extracted_answer": "DOWN, DOWN, RIGHT, RIGHT, UP, UP, RIGHT"}
+{"row_index": 393, "grid_size": 3, "success": true, "extracted_answer": "UP"}
+{"row_index": 394, "grid_size": 3, "success": true, "extracted_answer": "UP, UP, LEFT"}
+{"row_index": 395, "grid_size": 6, "success": false, "extracted_answer": "DOWN, DOWN, RIGHT, DOWN, DOWN"}
+{"row_index": 396, "grid_size": 6, "success": false, "extracted_answer": "RIGHT, DOWN, DOWN, DOWN"}
+{"row_index": 397, "grid_size": 4, "success": false, "extracted_answer": "RIGHT, RIGHT, DOWN"}
+{"row_index": 398, "grid_size": 6, "success": true, "extracted_answer": "LEFT"}
+{"row_index": 399, "grid_size": 4, "success": true, "extracted_answer": "RIGHT, DOWN, RIGHT, DOWN"}
