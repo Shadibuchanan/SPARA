@@ -5,9 +5,10 @@ import pytest
 import torch
 
 from spara import detour_scaling, expert_iteration, expert_round2, training
-from spara.expert_round2 import (balanced, batching_check, bootstrap_difference, compare, latent_states, masked,
-                                 outcome, phases, probe_predictions, probe_score, require_round1_checkpoint,
-                                 run_arm, run_search, training_rows, wall_bumps)
+from spara.expert_round2 import (balanced, batching_check, bootstrap_difference, ceiling, compare, latent_states, masked,
+                                 hole_check, hole_walks, outcome, phases, probe_predictions, probe_score,
+                                 require_base_checkpoint, round3, run_arm, run_search, text_check, training_rows,
+                                 wall_bumps, with_map_text)
 from spara.fresh_maps import answer_text, draw_detour_layouts, label_route
 from spara.runtime import read_config
 from test_detour_scaling import Evaluator, SavingProcessor
@@ -15,9 +16,9 @@ from test_expert_iteration import tiny
 from test_planning_probe import GRID, Processor, prompt_of
 
 SETTINGS = {"pool_split": "fresh/p78", "heldout_split": "fresh/h78", "round1_pool_split": "fresh/p",
-            "round1_heldout_split": "fresh/h", "other_fresh": ["fresh/probe", "fresh/p", "fresh/h"],
+            "round1_heldout_split": "fresh/h", "frontier_split": "fresh/p", "other_fresh": ["fresh/probe", "fresh/p", "fresh/h"],
             "maps": 4, "budget": 12, "max_depth": 12, "batch": 4, "probe_tolerance": 0.01, "check_maps": 2,
-            "seed": 0, "loading_agreement": 2, "round1_steps": 375, "extra_new": 6, "extra_old": 6,
+            "seed": 0, "loading_agreement": 2, "base_steps": 375, "extra_new": 6, "extra_old": 6,
             "variety_floor": 1, "phase_one_rows": 8, "seen_maps": 2, "epochs": 1, "learning_rate": 1e-5,
             "warmup_ratio": 0.05, "max_new_tokens": 12, "state_layers": [1, 2], "probe_layer": 1,
             "took_margin": 0.05, "bootstrap": 200}
@@ -36,6 +37,8 @@ def data(monkeypatch):
             "fresh/probe": [labelled(small[6], 0)],
             "fresh/h78": [labelled(d, i) for i, d in enumerate(large[:4])],
             "fresh/p78": [labelled(d, i) for i, d in enumerate(large[4:8])],
+            "fresh/p78b": [labelled(d, i) for i, d in enumerate(draw_detour_layouts(3, random.Random(2), set(),
+                                                                                    [5, 6], [1, 1])[0])],
             "train": [labelled(GRID, 0), labelled(small[7], 1)],
             "test": [labelled(GRID, 0), labelled(small[8], 1)]}
     for module in (expert_round2, detour_scaling, expert_iteration):
@@ -51,17 +54,17 @@ def prompts(tiny_batch, monkeypatch):
     monkeypatch.setattr(training, "encode", lambda *args, **kwargs: {k: v.clone() for k, v in tiny_batch.items()})
 
 
-def test_require_round1_checkpoint_checks_the_recipe(tmp_path):
+def test_require_base_checkpoint_checks_the_recipe(tmp_path):
     config = read_config("configs/livr.json")
     progress = {"stage": 2, "epoch": 1, "next_row": 0, "optimizer_steps": 375,
                 "config": config | {"epochs_per_stage": 1, "learning_rate": 1e-5, "warmup_ratio": 0.05}}
     (tmp_path / "complete.json").write_text(json.dumps({"progress": progress}))
-    require_round1_checkpoint(tmp_path, config, SETTINGS)
+    require_base_checkpoint(tmp_path, config, SETTINGS)
     for change in ({"optimizer_steps": 2500}, {"stage": 1},
                    {"config": progress["config"] | {"learning_rate": 1e-4}}):
         (tmp_path / "complete.json").write_text(json.dumps({"progress": progress | change}))
         with pytest.raises(ValueError):
-            require_round1_checkpoint(tmp_path, config, SETTINGS)
+            require_base_checkpoint(tmp_path, config, SETTINGS)
 
 
 def test_masked_restores_the_stage_after_an_error(tiny_model):
@@ -92,25 +95,51 @@ def route_rows(rows, solved):
              "answer": answer_text(label_route(r["map_desc"])) if i in solved else None} for i, r in enumerate(rows)]
 
 
+def search_run(path, settings, routes, frontier=()):
+    path.mkdir()
+    (path / "manifest.json").write_text(json.dumps({"settings": settings}))
+    write_jsonl(path / "routes.jsonl", routes)
+    write_jsonl(path / "frontier.jsonl", list(frontier))
+    return path
+
+
 def test_training_rows_draw_from_both_rounds(data, tmp_path):
     round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
-    search = tmp_path / "search"
-    search.mkdir()
-    write_jsonl(search / "routes.jsonl", route_rows(data["fresh/p78"], {1, 3}))
-    write_jsonl(search / "frontier.jsonl", [r | {"row_index": i} for i, r in
-                                            enumerate(route_rows(data["fresh/p"], {2}))][2:])
-    rows, counts = training_rows("unused", SETTINGS, round1, search)
-    assert counts == {"new_maps": 2, "old_maps": 3, "frontier_maps": 1, "rows": 2 + 12}
+    old = {k: v for k, v in SETTINGS.items() if k != "frontier_split"}  # round 2's search predates the key
+    search = search_run(tmp_path / "search", old, route_rows(data["fresh/p78"], {1, 3}),
+                        route_rows(data["fresh/p"], {2})[2:])
+    rows, counts = training_rows("unused", SETTINGS, round1, [search])
+    assert counts["new_maps"] == 2 and counts["old_maps"] == 3 and counts["rows"] == 2 + 12
+    assert list(counts["solved"].values()) == [2, 1, 2]
     assert rows[:2] == [("train", r) for r in data["train"]]
     new = [r["map_id"] for split, r in rows[2:8]]
     assert new == [1, 3, 1, 3, 1, 3] and {split for split, _ in rows[2:8]} == {"fresh/p78"}
     assert [r["map_id"] for _, r in rows[8:]] == [0, 1, 2, 0, 1, 2]
     assert all(r["text_output"] == answer_text(label_route(r["map_desc"])) for _, r in rows[2:])
     with pytest.raises(ValueError, match="variety floor"):
-        training_rows("unused", SETTINGS | {"variety_floor": 3}, round1, search)
+        training_rows("unused", SETTINGS | {"variety_floor": 3}, round1, [search])
     write_jsonl(search / "frontier.jsonl", route_rows(data["fresh/p"], {0}))
     with pytest.raises(ValueError, match="already solved"):
-        training_rows("unused", SETTINGS, round1, search)
+        training_rows("unused", SETTINGS, round1, [search])
+
+
+def test_training_rows_chain_round_3_onto_rounds_1_and_2(data, tmp_path):
+    round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
+    second = search_run(tmp_path / "second", SETTINGS, route_rows(data["fresh/p78"], {1, 3}),
+                        route_rows(data["fresh/p"], {2})[2:])
+    third_settings = SETTINGS | {"pool_split": "fresh/p78b", "frontier_split": "fresh/p78"}
+    unsolved = [r for r in route_rows(data["fresh/p78"], {0}) if r["row_index"] in (0, 2)]
+    third = search_run(tmp_path / "third", third_settings, route_rows(data["fresh/p78b"], {2}), unsolved)
+    rows, counts = training_rows("unused", third_settings | {"extra_new": 8}, round1, [second, third])
+    assert counts["new_maps"] == 4 and counts["old_maps"] == 3
+    new = [(split, r["map_id"]) for split, r in rows[2:10]]
+    assert new[:4] == [("fresh/p78", 0), ("fresh/p78", 1), ("fresh/p78", 3), ("fresh/p78b", 2)] and new[4:] == new[:4]
+    assert [r["map_id"] for _, r in rows[10:]] == [0, 1, 2, 0, 1, 2]
+    with pytest.raises(ValueError, match="variety floor"):
+        training_rows("unused", third_settings | {"variety_floor": 2}, round1, [second, third])
+    write_jsonl(third / "frontier.jsonl", route_rows(data["fresh/p78"], {1}))
+    with pytest.raises(ValueError, match="already solved"):
+        training_rows("unused", third_settings, round1, [second, third])
 
 
 def test_outcomes_and_wall_bumps():
@@ -119,6 +148,17 @@ def test_outcomes_and_wall_bumps():
     assert outcome(grid, "D") == "hole" and outcome(grid, "URRDD") == "longer"
     assert outcome(grid, "RRDDL") == "passes the goal" and outcome(grid, "") == "stops short"
     assert wall_bumps(grid, "URRDD") == 1 and wall_bumps(grid, "RRDD") == 0
+
+
+def test_hole_walks_read_the_fatal_hole_and_the_holes_passed_by():
+    # Map 0 falls into (1, 0) after starting next to it; map 1 passes (0, 1) and reaches the goal.
+    desc = {0: [[1, 0, 0], [-1, 0, 0], [0, 0, 2]], 1: [[1, -1, 0], [0, 0, 0], [0, 0, 2]]}
+    routes = {0: "D", 1: "DRRD"}
+    predicted = torch.zeros(2, 9, dtype=torch.bool)
+    predicted[1, 1] = True  # the probe reads map 1's passed hole, and misses map 0's fatal one
+    result = hole_walks({3: {"rows": [0, 1], "desc": [desc[0], desc[1]], "predicted": predicted}}, routes)
+    assert result["maps"] == 2 and result["fatal"] == {"read_as_hole": 0, "holes": 1, "share": 0.0}
+    assert result["avoided"] == {"read_as_hole": 1, "holes": 1, "share": 1.0}
 
 
 def test_balanced_accuracy_and_its_bootstrap():
@@ -229,13 +269,10 @@ def test_run_search_stops_when_e_does_not_reproduce_round_1(data, tiny_model, pr
     assert not (tmp_path / "run/routes.jsonl").exists()
 
 
-@pytest.mark.parametrize("arm", ["e2", "eb2"])
+@pytest.mark.parametrize("arm", ["e2", "eb2", "s3"])
 def test_run_arm_trains_two_phases_and_evaluates(arm, data, tiny_model, prompts, tmp_path, monkeypatch):
     round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
-    search = tmp_path / "search"
-    search.mkdir()
-    write_jsonl(search / "routes.jsonl", route_rows(data["fresh/p78"], {1, 3}))
-    write_jsonl(search / "frontier.jsonl", [])
+    search = search_run(tmp_path / "search", SETTINGS, route_rows(data["fresh/p78"], {1, 3}))
     stages, benchmarks = [], []
     train = training.train_stage
 
@@ -251,16 +288,24 @@ def test_run_arm_trains_two_phases_and_evaluates(arm, data, tiny_model, prompts,
     monkeypatch.setattr(expert_round2, "run_benchmark", benchmark)
     config = read_config("configs/livr.json") | {"gradient_checkpointing": False}
     summary = run_arm(tiny(tiny_model), SavingProcessor(), Evaluator(), config, "unused", tmp_path / arm,
-                      SETTINGS, arm, round1, search, {})
-    first_stage = 1 if arm == "eb2" else 2
+                      SETTINGS, arm, round1, [search], {})
+    first_stage = 1 if arm in ("eb2", "s3") else 2
     assert stages == [("phase1", first_stage, False, 8), ("phase2", 2, True, 6)]
     assert not (tmp_path / arm / "phase1/final").exists() and (tmp_path / arm / "phase2/final").exists()
-    steps = [json.loads(line) for line in (tmp_path / arm / "phase1/steps.jsonl").read_text().splitlines()]
+    steps =[json.loads(line) for line in (tmp_path / arm / "phase1/steps.jsonl").read_text().splitlines()]
     assert {s["stage"] for s in steps} == {first_stage} and len(steps) == 1
     assert summary["training"]["phase1"]["stage"] == first_stage and summary["training"]["phase2"]["optimizer_steps"] == 1
     assert benchmarks == [arm] and summary["counts"]["rows"] == 14
     for name in ("greedy.jsonl", "masked.jsonl", "states.pt"):
         assert (tmp_path / arm / name).exists()
+    greedy = [json.loads(line) for line in (tmp_path / arm / "greedy.jsonl").read_text().splitlines()]
+    assert all(isinstance(r["answer"], str) and 0 < r["new_tokens"] <= SETTINGS["max_new_tokens"] for r in greedy)
+    manifest = json.loads((tmp_path / arm / "manifest.json").read_text())
+    assert ("hole_check_rows" in manifest["checks"]) == (arm == "s3")
+    unsaved = tmp_path / f"{arm}-unsaved"
+    run_arm(tiny(tiny_model), SavingProcessor(), Evaluator(), config, "unused", unsaved,
+            SETTINGS | {"save_arm_weights": False}, arm, round1, [search], {})
+    assert not (unsaved / "phase2/final").exists() and (unsaved / "greedy.jsonl").exists()
 
 
 def write_run(path, data, held, masked_success, old=(1, 1, 1), seen=(1, 0), states=None, benchmark=None):
@@ -311,6 +356,7 @@ def test_compare_applies_the_fixed_rules(data, tmp_path, monkeypatch):
     assert result["descriptive"]["seen"]["maps"] == {"trained": 1, "untrained": 1}
     assert result["descriptive"]["benchmark"]["eb2"]["vs_livr"]["all"]["only_second"] == 2
     assert sum(result["descriptive"]["failures"]["eb2"].values()) == 4
+    assert result["descriptive"]["hole_walks"]["eb2"]["maps"] == 4
 
     # The gate fails when EB2's latents hold no more than E2's.
     torch.save(noisy, tmp_path / "eb2/states.pt")
@@ -320,3 +366,206 @@ def test_compare_applies_the_fixed_rules(data, tmp_path, monkeypatch):
     (search / "summary.json").write_text(json.dumps({"checks": {"valid": False}, "seconds": 3.0,
                                                      "frontier": {}, "pool": {}}))
     assert compare("unused", search, arms, livr, e, SETTINGS)["primary"]["reading"].startswith("withheld")
+
+
+def test_with_map_text_writes_the_map_after_the_image():
+    row = {"text_input": "Here is the map: <image>\n\nPlease answer.", "map_desc": GRID, "map_id": 3}
+    text = with_map_text(row)["text_input"]
+    assert text.count("<image>") == 1 and text.startswith("Here is the map: <image>\n")
+    assert "S F F\nF H F\nF F G\n" in text and text.endswith("\n\nPlease answer.")
+    assert row["text_input"].endswith("<image>\n\nPlease answer.")  # the source row is unchanged
+
+
+@pytest.mark.parametrize("arm, blank", [("o2", False), ("t2", True), ("o3", False), ("s3t", False)])
+def test_text_arms_train_and_evaluate_with_the_map_as_text(arm, blank, data, tiny_model, prompts, tmp_path,
+                                                           monkeypatch):
+    for rows in data.values():
+        for row in rows:
+            row["text_input"] = "Map: <image> Go."
+    round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
+    search = search_run(tmp_path / "search", SETTINGS, route_rows(data["fresh/p78"], {1, 3}))
+    trained, generated = [], []
+    train = training.train_stage
+
+    def tracked(model, processor, root, output, config, stage, **kwargs):
+        trained.extend(row for _, row in kwargs["data"])
+        return train(model, processor, root, output, config, stage, **kwargs)
+    monkeypatch.setattr(expert_round2, "train_stage", tracked)
+    monkeypatch.setattr(expert_round2, "run_benchmark", lambda *args: pytest.fail("no benchmark"))
+    greedy = expert_round2.greedy_eval
+
+    def seen(model, processor, evaluator, root, items, log, max_new_tokens):
+        generated.extend(row for *_, row in items)
+        return greedy(model, processor, evaluator, root, items, log, max_new_tokens)
+    monkeypatch.setattr(expert_round2, "greedy_eval", seen)
+    config = read_config("configs/livr.json") | {"gradient_checkpointing": False}
+    summary = run_arm(tiny(tiny_model), SavingProcessor(), Evaluator(), config, "unused", tmp_path / arm,
+                      SETTINGS | {"save_arm_weights": False}, arm, round1, [search], {})
+    assert len(trained) == 14 and all("The same map as text" in row["text_input"] for row in trained + generated)
+    assert {row["blank_image"] for row in trained + generated} == {blank}
+    zero_shot = [json.loads(line) for line in (tmp_path / arm / "zero-shot.jsonl").read_text().splitlines()]
+    assert {r["population"] for r in zero_shot} == {"heldout78"} and len(zero_shot) == 4
+    assert set(summary["evaluation"]["greedy"]) == {"heldout", "test_detour", "heldout78", "seen78"}
+    assert summary["training"]["phase1"]["stage"] == (1 if arm in ("o3", "s3t") else 2)
+    assert all((" hole " in row["text_output"]) == (arm == "s3t") for row in trained)
+    assert ("hole_check_rows" in summary["checks"]) == (arm == "s3t")
+    assert not (tmp_path / arm / "masked.jsonl").exists() and not (tmp_path / arm / "states.pt").exists()
+
+
+@pytest.mark.parametrize("blank", [False, True])
+def test_encode_blanks_the_image_only_when_asked(blank, tmp_path, monkeypatch):
+    from PIL import Image
+    from spara import serialization
+    Image.new("RGB", (6, 4), "black").save(tmp_path / "map.png")
+    monkeypatch.setattr(serialization, "image_path", lambda root, split, row: tmp_path / "map.png")
+    shown = []
+
+    def vision(messages):
+        shown.append(messages[0]["content"][1]["image"])
+        return [], None
+    monkeypatch.setattr(serialization, "process_vision_info", vision)
+
+    class Processor:
+        def apply_chat_template(self, messages, **kwargs):
+            return "prompt"
+
+        def __call__(self, **kwargs):
+            return {"input_ids": torch.ones(1, 3, dtype=torch.long)}
+    serialization.encode(Processor(), "root", "split", {"text_input": "A <image> B", "blank_image": blank},
+                         training=False)
+    assert shown[0].size == (6, 4) and shown[0].getpixel((0, 0)) == ((255, 255, 255) if blank else (0, 0, 0))
+
+
+def test_ceiling_applies_the_fixed_rules(data, tmp_path, monkeypatch):
+    counts = {"rows": 14}
+    write_run(tmp_path / "search", data, [0, 0, 0, 0], [0, 0, 0, 0])
+    for name, held in (("e2", [1, 1, 0, 0]), ("o2", [1, 1, 1, 1]), ("t2", [0, 0, 0, 0])):
+        write_run(tmp_path / name, data, held, [0, 0, 0, 0])
+        (tmp_path / name / "summary.json").write_text(json.dumps({"counts": counts}))
+        write_jsonl(tmp_path / name / "zero-shot.jsonl", [{"population": "heldout78", "row_index": i, "grid_size": 5,
+                                                           "route": "R", "success": i == 0} for i in range(4)])
+    run = lambda margin, t2=None: ceiling("unused", tmp_path / "search", tmp_path / "e2", tmp_path / "o2",
+                                          SETTINGS | {"ceiling_margin": margin}, t2)
+    assert run(1)["primary"]["reading"] == "no detectable difference: choosing moves limits"  # 2 maps: p = 0.5
+    assert "text_only" not in run(1)
+    monkeypatch.setattr(expert_round2, "ALPHA", 1.01)  # four maps cannot reach 0.05: direction only
+    result = run(2, tmp_path / "t2")
+    assert result["validity"]["valid"] and result["primary"]["gain"] == 2
+    assert result["primary"]["reading"] == "perfect perception helps a lot"
+    assert run(3)["primary"]["reading"] == "perfect perception helps a little"
+    assert result["text_only"]["gain"] == -2
+    assert result["text_only"]["reading"] == "the policy plans worse from the text map: the ceiling is inconclusive"
+    assert result["descriptive"]["held_out_success"] == {"e": 0, "e2": 2, "o2": 4, "t2": 0, "o2_zero_shot": 1,
+                                                         "t2_zero_shot": 1}
+    assert result["descriptive"]["t2_vs_o2"]["only_second"] == 4
+    assert sum(result["descriptive"]["failures"]["e2"].values()) == 4
+    (tmp_path / "t2/summary.json").write_text(json.dumps({"counts": {"rows": 13}}))
+    assert not run(2, tmp_path / "t2")["validity"]["valid"]
+
+
+def test_round3_applies_the_fixed_rules(data, tmp_path, monkeypatch):
+    counts = {"new_maps": 2, "old_maps": 3, "rows": 14}
+    summary = {"checks": {"valid": True}, "seconds": 2.0, "training": {}, "counts": counts,
+               "frontier": {"solved": 1}, "pool": {"solved": 2}}
+    for name, held in (("search", [0, 0, 0, 0]), ("base", [1, 0, 0, 0]), ("eb3", [1, 1, 1, 1]),
+                       ("e", [0, 0, 0, 0]), ("eb2", [1, 0, 0, 0])):
+        write_run(tmp_path / name, data, held, [0, 0, 0, 0], benchmark=[1, 0])
+        (tmp_path / name / "summary.json").write_text(json.dumps(summary))
+    write_jsonl(tmp_path / "search/routes.jsonl", [{"row_index": i, "solved": i == 0} for i in range(2)])
+    livr = write_jsonl(tmp_path / "livr.jsonl", [{"row_index": i, "success": s} for i, s in enumerate([0, 1])])
+    run = lambda: round3("unused", tmp_path / "search", tmp_path / "base", tmp_path / "eb3",
+                         {"e": tmp_path / "e", "eb2": tmp_path / "eb2"}, livr, SETTINGS)
+    result = run()
+    assert result["validity"]["valid"]
+    assert result["primary"]["only_first"] == 4 and result["primary"]["reading"] == "no detectable difference"
+    described = result["descriptive"]
+    assert described["held_out_success"] == {"b": 0, "eb3": 4, "e": 0, "eb2": 1}
+    assert described["b_rerun_same_outcome"] == 4  # the base job's answers against round 2's EB2
+    assert described["seen"]["maps"] == {"trained": 1, "untrained": 1}
+    assert described["benchmark"]["eb3_vs_livr"]["detour"]["only_second"] == 1
+    monkeypatch.setattr(expert_round2, "ALPHA", 1.01)  # four maps cannot reach 0.05: direction only
+    assert run()["primary"]["reading"] == "round 3 helps"
+    (tmp_path / "base/summary.json").write_text(json.dumps(summary | {"counts": counts | {"rows": 13}}))
+    assert run()["primary"]["reading"].startswith("withheld")  # B did not train on EB2's rows
+
+
+def test_hole_check_applies_the_fixed_rules(data, tmp_path, monkeypatch):
+    from spara.hole_check import check_lines
+    counts = {"new_maps": 2, "old_maps": 3, "rows": 14}
+    for name, held in (("s3", [1, 1, 1, 0]), ("eb3", [0, 0, 0, 0]), ("search", [0, 0, 0, 0])):
+        write_run(tmp_path / name, data, held, [0, 0, 0, 0], benchmark=[1, 0])
+        checks = {"valid": True} | ({"hole_check_rows": {"rows": 14, "replay": 14}} if name == "s3" else {})
+        (tmp_path / name / "summary.json").write_text(json.dumps({"checks": checks, "seconds": 2.0, "training": {},
+                                                                   "counts": counts}))
+    # S3's answers: three solved with right lines; map 3 lists the hole ahead and walks into it.
+    rows = [json.loads(line) for line in (tmp_path / "s3/greedy.jsonl").read_text().splitlines()]
+    for r in rows:
+        r |= {"answer": "", "new_tokens": 5}
+        if r["population"] == "heldout78":
+            desc = data["fresh/h78"][r["row_index"]]["map_desc"]
+            route = label_route(desc)
+            if not r["success"]:  # the label's route up to the first cell beside a hole, then into it
+                lines = check_lines(desc, route)
+                k, holes = next((k, line.split(" hole ")[1][0]) for k, line in enumerate(lines)
+                                if line.split(" hole ")[1][0] != "-")
+                route = route[:k] + holes
+            r |= {"route": route, "answer": "\n".join(check_lines(desc, route)) + "\n\\boxed{}"}
+    write_jsonl(tmp_path / "s3/greedy.jsonl", rows)
+    livr = write_jsonl(tmp_path / "livr.jsonl", [{"row_index": i, "success": s} for i, s in enumerate([0, 1])])
+    run = lambda: hole_check("unused", tmp_path / "s3", tmp_path / "eb3", tmp_path / "search", livr, SETTINGS)
+    result = run()
+    assert result["validity"]["valid"] and result["validity"]["capped"] == 0
+    assert result["primary"]["only_first"] == 3 and result["primary"]["reading"] == "no detectable difference"
+    assert result["descriptive"]["fatal_moves"] == {"listed and taken": 1}
+    assert result["primary"]["next"] == "train on failures as well as successes"
+    assert result["descriptive"]["format"] == {"follows": 4, "answers": 4}
+    lines = result["descriptive"]["lines"]
+    assert lines["cell_right"] == lines["lines"] == lines["holes_exact_given_cell"]
+    monkeypatch.setattr(expert_round2, "ALPHA", 1.01)  # four maps cannot reach 0.05: direction only
+    assert run()["primary"]["reading"] == "writing the check helps"
+    for r in rows:
+        r["new_tokens"] = SETTINGS["max_new_tokens"]
+    write_jsonl(tmp_path / "s3/greedy.jsonl", rows)
+    assert run()["primary"]["reading"].startswith("withheld")  # every answer reached the cap
+
+
+def test_text_check_applies_the_fixed_rules(data, tmp_path, monkeypatch):
+    from spara.hole_check import check_lines
+    counts = {"new_maps": 2, "old_maps": 3, "rows": 14}
+    for name, held in (("s3t", [1, 1, 1, 0]), ("o3", [0, 0, 0, 0]), ("s3", [0, 0, 0, 0]), ("eb3", [0, 0, 0, 0])):
+        write_run(tmp_path / name, data, held, [0, 0, 0, 0])
+        checks = {"valid": True} | ({"hole_check_rows": {"rows": 14, "replay": 14}} if name == "s3t" else {})
+        (tmp_path / name / "summary.json").write_text(json.dumps({"checks": checks, "seconds": 2.0, "training": {},
+                                                                   "counts": counts}))
+        rows = [json.loads(line) for line in (tmp_path / name / "greedy.jsonl").read_text().splitlines()]
+        for r in rows:
+            r |= {"answer": "", "new_tokens": 5}
+            if r["population"] == "heldout78" and name in ("s3t", "s3"):
+                desc = data["fresh/h78"][r["row_index"]]["map_desc"]
+                route = label_route(desc)
+                lines = check_lines(desc, route)
+                if name == "s3":  # S3 names the start one column off, and lists no holes
+                    lines = [f"0,9 hole - > {letter}" for letter in route]
+                r |= {"route": route, "answer": "\n".join(lines) + "\n\boxed{}"}
+        write_jsonl(tmp_path / name / "greedy.jsonl", rows)
+        if name in ("s3t", "o3"):
+            write_jsonl(tmp_path / name / "zero-shot.jsonl",
+                        [{"population": "heldout78", "row_index": i, "success": 0} for i in range(4)])
+    run = lambda: text_check("unused", tmp_path / "s3t", tmp_path / "o3", tmp_path / "s3", tmp_path / "eb3", SETTINGS)
+    result = run()
+    assert result["validity"]["valid"] and result["validity"]["zero_shot_agree"] == [4, 4]
+    assert result["primary"]["only_first"] == 3 and result["primary"]["reading"] == "no detectable difference"
+    assert result["lines_read_the_text"]["reads"] and result["lines_read_the_text"]["start_right"] == 1.0
+    assert result["primary"]["next"].startswith("the check does not help even when read right")
+    reading = result["descriptive"]["line_reading"]
+    assert reading["s3t"]["lines"]["right_cell"] > 0 and "right_cell" not in reading["s3"]["lines"]
+    assert result["descriptive"]["held_out_success"] == {"s3t": 3, "o3": 0, "s3": 0, "eb3": 0}
+    monkeypatch.setattr(expert_round2, "READS", 1.01)
+    assert run()["primary"]["next"].startswith("the model cannot place itself")
+    monkeypatch.setattr(expert_round2, "ALPHA", 1.01)  # four maps cannot reach 0.05: direction only
+    helped = run()["primary"]
+    assert helped["reading"] == "the check helps when the map is exact" and helped["next"].startswith("image reading")
+    write_jsonl(tmp_path / "o3/zero-shot.jsonl",
+                [{"population": "heldout78", "row_index": i, "success": 1} for i in range(4)])
+    withheld = run()["primary"]
+    assert withheld["reading"].startswith("withheld") and "next" not in withheld  # the jobs read different bases

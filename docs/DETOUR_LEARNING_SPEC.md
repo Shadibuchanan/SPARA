@@ -11,6 +11,32 @@ Status, 2026-11-11:
     [expert iteration spec](EXPERT_ITERATION_SPEC.md#result-jobs-69618746961876)).
   - **Its readings:** expert iteration helps (88 against 42 of 240 held-out maps), with
     no detectable difference between found routes and labels.
+  - **Rerun, 2026-11-14,** from LIVR 6189457: both readings replicate (92 against 39)
+    ([rerun](EXPERT_ITERATION_SPEC.md#rerun-jobs-70631567063729)).
+  - **Round 2 on 7 x 7 and 8 x 8 maps:** a second round helps (72 against 56 of 400,
+    p = 0.033). Training under LIVR's mask shows no detectable difference (76 against
+    72) ([round 2](EXPERT_ITERATION_ROUND2_SPEC.md#result-jobs-70651687065176)).
+  - **Perception ceiling, 2026-11-15:** giving the map exactly as text, with or without
+    the image, changes success by no detectable amount (77 and 69 against 72). Choosing
+    moves limits at these sizes, not perception
+    ([perception ceiling](PERCEPTION_CEILING_SPEC.md)).
+  - **Round 3, 2026-11-15:** no detectable difference (83 against 76 of 400, p = 0.37),
+    though two rounds together beat round 1 (83 against 56, p = 0.0002). The search
+    improved with the policy (228 against 199 of 500 new maps). The next lever is the
+    search or the policy's form
+    ([round 3](EXPERT_ITERATION_ROUND3_SPEC.md#result-jobs-70881347088136)).
+  - **Hole check, 2026-11-16:** writing the cell and the holes around it before each move
+    harms (65 against EB3's 83 of 400, p = 0.006). The lines list 35% of the holes next to
+    the agent and misplace the start on a third of the maps, yet no move goes into a hole
+    the model listed. This points back at reading the image, and qualifies the perception
+    ceiling's reading above
+    ([hole check](HOLE_CHECK_SPEC.md#result-job-7108600)).
+  - **Hole check on the exact map, 2026-11-16:** with the map also given as text, the
+    check still harms (70 against 92 of 400, p = 0.005), and the lines still list a third
+    of the holes next to the agent (33%, against 35% from the image). What fails is
+    working out the neighbouring cells, from pixels or from exact text, not reading the
+    image. The text map alone adds nothing detectable again (92 against 83)
+    ([hole check on the exact map](HOLE_CHECK_TEXT_SPEC.md#result-jobs-7125957-and-7125958)).
 - **Step 2:** run as a JEPA judge in LIVR's latent space (job 6951675,
   [JEPA judge spec](JEPA_JUDGE_SPEC.md#result-job-6951675)).
   - **The judge:** it hurts search, and it misses three in four holes. LIVR's frozen
