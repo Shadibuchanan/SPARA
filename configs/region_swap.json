@@ -1,0 +1,6 @@
+{
+  "sizes": [7, 8],
+  "maps_per_size": 50,
+  "reproduce": 0.95,
+  "seed": 42
+}

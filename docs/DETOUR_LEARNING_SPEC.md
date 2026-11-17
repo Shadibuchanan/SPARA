@@ -13,7 +13,12 @@ Status, 2026-11-11:
     no detectable difference between found routes and labels.
   - **Rerun, 2026-11-14,** from LIVR 6189457: both readings replicate (92 against 39)
     ([rerun](EXPERT_ITERATION_SPEC.md#rerun-jobs-70631567063729)).
-  - **Round 2 on 7 x 7 and 8 x 8 maps:** a second round helps (72 against 56 of 400,
+  - **Round 2,** on 7 x 7 and 8 x 8 maps from E's weights (jobs 6992798–6992800,
+    [round 2 spec](EXPERT_ITERATION_ROUND2_SPEC.md#result-jobs-69927986992800)):
+    - **It helps on larger maps:** 84 against E's 54 of 400 held-out maps.
+    - **LIVR's bottleneck:** in the first phase it did not change what the latents hold,
+      so it gives no reading on perception.
+  - **Round 2 rerun, 2026-11-14,** from the rerun's E: a second round helps (72 against 56 of 400,
     p = 0.033). Training under LIVR's mask shows no detectable difference (76 against
     72) ([round 2](EXPERT_ITERATION_ROUND2_SPEC.md#result-jobs-70651687065176)).
   - **Perception ceiling, 2026-11-15:** giving the map exactly as text, with or without

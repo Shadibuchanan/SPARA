@@ -1,12 +1,18 @@
 # Expert iteration round 2 on larger maps, with LIVR's bottleneck
 
-Status, 2026-11-14: run and read. See [Result](#result-jobs-70651687065176). The
-bullets below are the status as of 2026-11-12, before the run.
+Status, 2026-11-12: run as jobs 6992798 (search), 6992799 (E2) and 6992800 (EB2), after the
+CPU precondition (job 6989964). All validity checks passed, after the planned fallback
+from TF32 batched reads. Manipulation check: **the bottleneck did not take**, so the
+primary has no reading on perception (EB2 78 against E2 84 of 400, p = 0.46, descriptive).
+Secondary: **round 2 helps on larger maps** (E2 84 against E 54, p = 1.5 × 10⁻⁵). See
+[Result](#result-jobs-69927986992800).
 
-- **Sizes:** 7 x 7 and 8 x 8 only. Carried over from the 2026-11-11 discussion; the user
-  did not object, but has not confirmed it explicitly.
-- **The GPU budget** is the user's decision, after the CPU precondition below settles
-  which line of the [budget](#budget) applies.
+Rerun, 2026-11-14, from the round 1 rerun's E (jobs 7065168–7065176): run and read. Round 2
+helps again (E2 72 against E's 56 of 400, p = 0.033), and EB2 shows no detectable difference
+from E2 (76 against 72). See [Rerun](#result-jobs-70651687065176).
+
+- **Sizes:** 7 x 7 and 8 x 8 only. The user approved them and the GPU budget on
+  2026-11-12.
 - **Superseded:** the 2026-11-11 version of this spec trained the latents with
   layout-derived map labels ("map grounding"). The user chose LIVR's bottleneck instead,
   which uses no labels: SPARA's goal is perception without helper images or extra targets.
@@ -186,13 +192,14 @@ maps.
 - **GPU-seconds per job.**
 
 **Validity (the readings are withheld if any check fails):**
-1. **Policy reads.** If reads are batched, they must agree with single passes computed in
-   the same job, within 0.01.
+1. **Policy reads.** If reads are batched, they must agree with single passes at the same
+   precision, computed in the same job, within 0.01.
    - **When:** at step 0 of 52 pool maps before searching, and on 32 cached reads after
      the frontier search.
    - **Single passes are computed in the job.** Round 1's reference reads were LIVR's, so
      they don't apply to E.
-   - **Fallback:** one request per pass, as in round 1, with the frontier searched again.
+   - **Fallback:** round 1's reads, one request per pass under bfloat16 autocast, with the
+     frontier searched again.
 2. **Every accepted route** passes the reference evaluator.
 3. **Sets:** every label passes the reference evaluator, and no set pair above shares a
    layout.
@@ -227,6 +234,106 @@ different maps, sizes 3 x 3 to 8 x 8, in one batch and one at a time, twice:
 - **Full precision disagrees:** it is a bug. Fix it, and test again on CPU.
 - **Neither:** search with one request per pass, at the higher budget.
 
+### Result (CPU job 6989964, 26 minutes on one 12-core `ice-cpu` node)
+
+**The code is correct and the gap is rounding.**
+
+| | Batched against single, largest difference | Four equal-length rows, no padding |
+| --- | --- | --- |
+| Full precision | 2.4 × 10⁻⁶ | 4.8 × 10⁻⁷ |
+| bfloat16 autocast | 0.030 (one 5 x 5 request); 0.006 or less for the other 15 | 0.0028 |
+
+- **Padding does not predict the gap.** The 3 x 3 rows, the most padded, were exact under
+  bfloat16. The largest gaps fell on mid-sized maps.
+- **The full-precision fix, as written, would not pay.** True FP32 matmuls on an H200 run
+  at roughly a fifteenth of bfloat16's rate, so batches of 16 would be no faster than
+  round 1's single reads.
+
+**The fix adopted: the FP32 weights with TF32 matmuls for the search's reads.**
+- **Why TF32:** its rounding is about eight times finer than bfloat16's, at roughly half
+  bfloat16's throughput. The batched gap should therefore fall well under 0.01, but this
+  is a prediction, not a measurement.
+- **The in-job check is at the same precision.** The single-pass reference is one request
+  per pass, also in TF32.
+- **The fallback is round 1's reads:** one request per pass under bfloat16 autocast. It
+  runs if either in-job check fails. The step-0 check fails before any search; the
+  cached-read check fails after the frontier search, which is then searched again.
+- **Only the search's policy reads use TF32.** Every greedy answer, state dump and
+  training step stays under bfloat16 autocast. The settings record the read precision.
+- **The tolerance stays at 0.01.** Measuring how far single bfloat16 reads are from full
+  precision would be needed to justify any other number.
+
+## Result (jobs 6992798–6992800)
+
+Evidence: [docs/experiments/expert-round2-6992798/](experiments/expert-round2-6992798/README.md).
+8,323 GPU-seconds (139 GPU-minutes) by Slurm's elapsed time, against about 125 for the
+fallback case.
+
+**Validity: all checks passed.**
+- **TF32 batched reads failed their check by 0.0007:** 0.0107 at step 0 of the 52 maps,
+  and 0.00054 on cached reads. The job fell back to round 1's reads and searched the
+  frontier again. There, the 52 maps matched exactly.
+- **Two departures from the plan above, both costs, not validity:**
+  - **When the code acts:** it acts on the step-0 check only after the frontier search,
+    not before any search as written above. So the frontier was searched twice, about 15
+    extra GPU-minutes.
+  - **TF32 was not faster:** its frontier pass took about 15 minutes against 12 for the
+    one-at-a-time pass.
+- **Loading:** E matched round 1's outcomes on all 240 maps.
+- **Routes:** all 248 accepted routes pass the reference evaluator.
+- **Sets:** labels 900 of 900, and no shared layouts.
+
+**The search.**
+- **Frontier:** 47 of the 174 maps solved (5 of 13 at 4 x 4, 17 of 56 at 5 x 5, 25 of
+  105 at 6 x 6).
+- **New pool:** 201 of 500 solved (107 of 231 at 7 x 7, 94 of 269 at 8 x 8).
+  - **Routes:** 108 are the label, 76 are another route of the same length, and 17 are
+    longer.
+  - **Wall bumps:** 9 of the routes move into a wall.
+
+**Manipulation check: did not take.**
+- **The scores:** the hole probe at layer 12 scores 0.657 for EB2 and 0.653 for E2,
+  against 0.649 for E.
+- **The difference:** 0.004, with a 95% interval of −0.004 to 0.011. The margin was 0.05.
+
+**Primary, descriptive only:** EB2 solves 78 and E2 84 of the 400 new held-out maps (20
+only EB2, 26 only E2, p = 0.46).
+
+**Secondary: round 2 helps on larger maps.** E2 solves 84 and E 54: 39 maps only E2
+solves, 9 only E, p = 1.5 × 10⁻⁵.
+- **By size:** 51 against 35 at 7 x 7 (p = 0.0037), and 33 against 19 at 8 x 8
+  (p = 0.0026).
+- **For scale:** L solves 17.
+
+**The outcome-table rows that apply:**
+- **"Did not take":** the mask did not change what the latents hold at these sizes. The
+  next step it gives, predicting the image from the latents, is outside this spec.
+- **The secondary reading:** round 2 helps on larger maps.
+
+**Descriptive.**
+- **Masked greedy:**
+
+  | | Unmasked | Masked | Gap |
+  | --- | --- | --- | --- |
+  | E | 54 | 48 | 6 |
+  | E2 | 84 | 66 | 18 |
+  | EB2 | 78 | 73 | 5 |
+
+  EB2 practised under the mask, and the probe shows no added map content. So EB2's
+  smaller gap is not read as perception.
+- **Round 1's 240 held-out maps:** E2 102 and EB2 100, against E's 88 (p = 0.013 and
+  0.029). Round 2 did not cost the smaller maps.
+- **Benchmark against LIVR** (LIVR 328 overall, 9 on detour maps, 319 on no-detour maps):
+
+  | | Overall | Detour maps | No-detour maps |
+  | --- | --- | --- | --- |
+  | E2 | 322 (p = 0.48) | 19 (p = 0.0020) | 303 (p = 0.017) |
+  | EB2 | 325 (p = 0.73) | 17 (p = 0.0078) | 308 (p = 0.043) |
+
+  Neither arm differs detectably from E.
+- **Holes still cause most failures:** E2 walks into a hole on 295 of the 400 new
+  held-out maps.
+- **Seen maps:** both arms solve none of the 53 pool maps the search failed.
 ## Result (jobs 7065168–7065176)
 
 Evidence: [docs/experiments/expert-iteration-round2-7065168/](experiments/expert-iteration-round2-7065168/),
@@ -344,13 +451,17 @@ do.
 
 ## Budget
 
-| Job | Contents | One request per pass | Batched (if the precondition holds) |
+| Job | Contents | One request per pass | TF32 batched (if the in-job check passes) |
 | --- | --- | --- | --- |
-| Search | Loading E and L; checks; E's greedy on 738 maps and masked greedy on 400; E's states on 900 maps; search of 174 frontier maps and 500 new maps; L's greedy on 400 | about 65 minutes | about 30 minutes |
+| Search | Loading E and L; checks; E's greedy on 738 maps and masked greedy on 400; E's states on 900 maps; search of 174 frontier maps and 500 new maps; L's greedy on 400 | about 65 minutes | about 30–35 minutes |
 | E2 | Two-phase fine-tune (375 steps); greedy on 738 maps, masked greedy on 400; states on 900; benchmark | about 30 minutes | the same |
 | EB2 | The same, with the mask in phase 1 | about 30 minutes | the same |
 
-- **Total:** about 125 GPU-minutes at one request per pass, or about 90 batched.
+- **Total:** about 125 GPU-minutes at one request per pass, or about 90–95 with TF32
+  batched reads. If the in-job check fails after the frontier, the search job adds about
+  5 minutes to the higher figure.
+- **TF32 read time is a guess:** about 0.02 s per read in batches of 16, against 0.073 s
+  for round 1's single reads.
 - **The search estimate:**
   - **New pool:** assumes E solves about 35% of the 500 new maps, at a median of 15 calls,
     and the unsolved maps use all 65. That is about 23,500 reads.
@@ -365,6 +476,7 @@ do.
 ## Implementation (new code)
 
 1. **`training.train_stage`:** an option not to save the final weights (phase 1).
+   **`expert_iteration.batched_decide`:** a read precision, defaulting to round 1's.
 2. **`spara/expert_round2.py`:**
    - a check that the checkpoint is E: round 1's recipe in its `complete.json`;
    - the batching check for the precondition;
@@ -391,8 +503,9 @@ python -m spara.cli expert-round2 --stage train --arm eb2 --checkpoint /path/to/
 
 On PACE, [scripts/pace/expert_round2.sbatch](../scripts/pace/expert_round2.sbatch) with
 `SPARA_STAGE` (`batching-check`, `search` or `train`). Search needs
-`SPARA_LIVR_CHECKPOINT`; train needs `SPARA_ARM` and `SPARA_SEARCH_RUN`. `SPARA_BATCH`
-overrides the reads per pass. `expert_round2.compare` applies the readings.
+`SPARA_LIVR_CHECKPOINT`; train needs `SPARA_ARM` and `SPARA_SEARCH_RUN`. `SPARA_BATCH` and
+`SPARA_READ_PRECISION` override the search's reads; `SPARA_BATCH=1 SPARA_READ_PRECISION=bf16`
+gives round 1's. `expert_round2.compare` applies the readings.
 
 The sets were generated with the renderer pinned in `requirements/fresh-maps.txt`:
 

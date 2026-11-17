@@ -86,7 +86,8 @@ def main(run):
     run = Path(run)
     features = torch.load(run / "features.pt", weights_only=False)
     steps = [json.loads(line) for line in (run / "steps.jsonl").read_text().splitlines()]
-    headroom = [json.loads(line) for line in (run / "headroom.jsonl").read_text().splitlines()]
+    headroom = ([json.loads(line) for line in (run / "headroom.jsonl").read_text().splitlines()]
+                if (run / "headroom.jsonl").exists() else [])  # none for a state probe alone
     layers = [layer + 1 for layer in features["layers"]]
     train = features["train"]
     starts = {name: {s["map"]: s["cell"] for s in features[name]["steps"] if s["k"] == 1}
@@ -171,10 +172,11 @@ def main(run):
         for kind in ("target", "control"):
             cells = [r for m in headroom for r in m["rows"] if r["radius"] == radius and r["kind"] == kind]
             bounds[f"{radius}/{kind}"] = {"rows": len(cells), "on_bound": sum(max(r["norms"]) >= 0.99 * radius for r in cells)}
-    report["headroom_rows_on_norm_bound"] = bounds
-    report["headroom_median_nll"] = {
-        "target": sorted(m["target_nll"] for m in headroom)[len(headroom) // 2],
-        "control": sorted(m["control_nll"] for m in headroom if m["control_nll"] is not None)[len(headroom) // 2]}
+    if headroom:
+        report["headroom_rows_on_norm_bound"] = bounds
+        report["headroom_median_nll"] = {
+            "target": sorted(m["target_nll"] for m in headroom)[len(headroom) // 2],
+            "control": sorted(m["control_nll"] for m in headroom if m["control_nll"] is not None)[len(headroom) // 2]}
     (run / "exploratory.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
 

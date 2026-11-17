@@ -1,0 +1,784 @@
+{
+ "validity": {
+  "gate": true,
+  "set_checks": {
+   "e2": true,
+   "eb2": true,
+   "ej2": true
+  },
+  "matched_start": {
+   "ej2": 0.10009044378602994,
+   "eb2": 0.10009044378602994,
+   "matched": true
+  },
+  "valid": true
+ },
+ "manipulation": {
+  "layer": 12,
+  "eb2": {
+   "hole_balanced_accuracy": 0.6570013566876631,
+   "by_size": {
+    "7": 0.6650719509992796,
+    "8": 0.6489307623760465
+   },
+   "goal_accuracy": {
+    "7": 0.7929292929292929,
+    "8": 0.6881188118811881
+   },
+   "start_accuracy": {
+    "7": 0.7474747474747475,
+    "8": 0.5891089108910891
+   }
+  },
+  "ej2": {
+   "hole_balanced_accuracy": 0.6644055309785958,
+   "by_size": {
+    "7": 0.6745060449811386,
+    "8": 0.6543050169760529
+   },
+   "goal_accuracy": {
+    "7": 0.7828282828282829,
+    "8": 0.6683168316831684
+   },
+   "start_accuracy": {
+    "7": 0.7727272727272727,
+    "8": 0.6237623762376238
+   }
+  },
+  "e2": {
+   "hole_balanced_accuracy": 0.6533818871427723,
+   "by_size": {
+    "7": 0.6686526213156788,
+    "8": 0.638111152969866
+   },
+   "goal_accuracy": {
+    "7": 0.8131313131313131,
+    "8": 0.698019801980198
+   },
+   "start_accuracy": {
+    "7": 0.7878787878787878,
+    "8": 0.5594059405940595
+   }
+  },
+  "e": {
+   "hole_balanced_accuracy": 0.648642127770402,
+   "by_size": {
+    "7": 0.6567334226647219,
+    "8": 0.6405508328760822
+   },
+   "goal_accuracy": {
+    "7": 0.7828282828282829,
+    "8": 0.6782178217821783
+   },
+   "start_accuracy": {
+    "7": 0.7727272727272727,
+    "8": 0.6188118811881188
+   }
+  },
+  "difference": 0.0074041742909326524,
+  "interval_95": {
+   "low": -0.00016542550185627558,
+   "high": 0.014798837310669166
+  },
+  "margin": 0.05,
+  "took": false
+ },
+ "primary": {
+  "maps": 400,
+  "first": 68,
+  "second": 78,
+  "only_first": 15,
+  "only_second": 25,
+  "p": 0.1538599441628321,
+  "by_size": {
+   "7": {
+    "maps": 198,
+    "first": 44,
+    "second": 45,
+    "only_first": 11,
+    "only_second": 12,
+    "p": 1.0
+   },
+   "8": {
+    "maps": 202,
+    "first": 24,
+    "second": 33,
+    "only_first": 4,
+    "only_second": 13,
+    "p": 0.049041748046875
+   }
+  },
+  "reading": "the latent JEPA did not take; no reading on perception"
+ },
+ "secondary": {
+  "maps": 400,
+  "first": 68,
+  "second": 84,
+  "only_first": 18,
+  "only_second": 34,
+  "p": 0.03648340000835981,
+  "by_size": {
+   "7": {
+    "maps": 198,
+    "first": 44,
+    "second": 51,
+    "only_first": 10,
+    "only_second": 17,
+    "p": 0.24778856337070465
+   },
+   "8": {
+    "maps": 202,
+    "first": 24,
+    "second": 33,
+    "only_first": 8,
+    "only_second": 17,
+    "p": 0.10775214433670044
+   }
+  },
+  "reading": "EJ2 solves fewer than E2"
+ },
+ "descriptive": {
+  "held_out_success": {
+   "e": 54,
+   "e2": 84,
+   "eb2": 78,
+   "ej2": 68
+  },
+  "first_mistakes": {
+   "e": {
+    "safe": 91,
+    "hole (safe toward-goal move existed)": 96,
+    "hole": 130,
+    "stopped": 19,
+    "edge": 8,
+    "overrun": 2
+   },
+   "e2": {
+    "stopped": 17,
+    "hole (safe toward-goal move existed)": 79,
+    "hole": 124,
+    "safe": 91,
+    "edge": 5
+   },
+   "eb2": {
+    "stopped": 14,
+    "hole (safe toward-goal move existed)": 80,
+    "hole": 128,
+    "safe": 91,
+    "edge": 9
+   },
+   "ej2": {
+    "stopped": 14,
+    "hole (safe toward-goal move existed)": 90,
+    "hole": 128,
+    "safe": 94,
+    "edge": 6
+   }
+  },
+  "participation_ratio": {
+   "e": {
+    "7": 21.367919097924787,
+    "8": 20.7349358286067
+   },
+   "e2": {
+    "7": 20.572740203836883,
+    "8": 23.67416966721195
+   },
+   "eb2": {
+    "7": 22.594762494879596,
+    "8": 21.391600982770086
+   },
+   "ej2": {
+    "7": 30.47044665896549,
+    "8": 25.775400687328155
+   }
+  },
+  "jepa_error": {
+   "start": {
+    "validation": 0.6492444276809692,
+    "training": 0.5266485810279846
+   },
+   "phase1": {
+    "validation": 0.2202935814857483,
+    "training": 0.1490786373615265
+   },
+   "phase2": {
+    "validation": 0.10580283403396606,
+    "training": 0.07104941457509995
+   }
+  },
+  "round1_heldout_vs_e": {
+   "e2": {
+    "maps": 240,
+    "first": 102,
+    "second": 88,
+    "only_first": 21,
+    "only_second": 7,
+    "p": 0.012540951371192932,
+    "by_size": {
+     "3": {
+      "maps": 11,
+      "first": 8,
+      "second": 8,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0
+     },
+     "4": {
+      "maps": 36,
+      "first": 23,
+      "second": 21,
+      "only_first": 2,
+      "only_second": 0,
+      "p": 0.5
+     },
+     "5": {
+      "maps": 73,
+      "first": 37,
+      "second": 32,
+      "only_first": 7,
+      "only_second": 2,
+      "p": 0.1796875
+     },
+     "6": {
+      "maps": 120,
+      "first": 34,
+      "second": 27,
+      "only_first": 12,
+      "only_second": 5,
+      "p": 0.143463134765625
+     }
+    }
+   },
+   "eb2": {
+    "maps": 240,
+    "first": 100,
+    "second": 88,
+    "only_first": 19,
+    "only_second": 7,
+    "p": 0.028959274291992188,
+    "by_size": {
+     "3": {
+      "maps": 11,
+      "first": 8,
+      "second": 8,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0
+     },
+     "4": {
+      "maps": 36,
+      "first": 22,
+      "second": 21,
+      "only_first": 1,
+      "only_second": 0,
+      "p": 1.0
+     },
+     "5": {
+      "maps": 73,
+      "first": 38,
+      "second": 32,
+      "only_first": 9,
+      "only_second": 3,
+      "p": 0.14599609375
+     },
+     "6": {
+      "maps": 120,
+      "first": 32,
+      "second": 27,
+      "only_first": 9,
+      "only_second": 4,
+      "p": 0.266845703125
+     }
+    }
+   },
+   "ej2": {
+    "maps": 240,
+    "first": 100,
+    "second": 88,
+    "only_first": 22,
+    "only_second": 10,
+    "p": 0.050102459732443094,
+    "by_size": {
+     "3": {
+      "maps": 11,
+      "first": 8,
+      "second": 8,
+      "only_first": 0,
+      "only_second": 0,
+      "p": 1.0
+     },
+     "4": {
+      "maps": 36,
+      "first": 22,
+      "second": 21,
+      "only_first": 1,
+      "only_second": 0,
+      "p": 1.0
+     },
+     "5": {
+      "maps": 73,
+      "first": 35,
+      "second": 32,
+      "only_first": 9,
+      "only_second": 6,
+      "p": 0.60723876953125
+     },
+     "6": {
+      "maps": 120,
+      "first": 35,
+      "second": 27,
+      "only_first": 12,
+      "only_second": 4,
+      "p": 0.076812744140625
+     }
+    }
+   }
+  },
+  "benchmark_vs_livr": {
+   "e2": {
+    "all": {
+     "maps": 400,
+     "first": 322,
+     "second": 328,
+     "only_first": 22,
+     "only_second": 28,
+     "p": 0.47988766169832786
+    },
+    "detour": {
+     "maps": 40,
+     "first": 19,
+     "second": 9,
+     "only_first": 10,
+     "only_second": 0,
+     "p": 0.001953125
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 303,
+     "second": 319,
+     "only_first": 12,
+     "only_second": 28,
+     "p": 0.01658900337497471
+    }
+   },
+   "eb2": {
+    "all": {
+     "maps": 400,
+     "first": 325,
+     "second": 328,
+     "only_first": 15,
+     "only_second": 18,
+     "p": 0.7283324808813632
+    },
+    "detour": {
+     "maps": 40,
+     "first": 17,
+     "second": 9,
+     "only_first": 8,
+     "only_second": 0,
+     "p": 0.0078125
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 308,
+     "second": 319,
+     "only_first": 7,
+     "only_second": 18,
+     "p": 0.043285250663757324
+    }
+   },
+   "ej2": {
+    "all": {
+     "maps": 400,
+     "first": 323,
+     "second": 328,
+     "only_first": 18,
+     "only_second": 23,
+     "p": 0.5327092552361137
+    },
+    "detour": {
+     "maps": 40,
+     "first": 17,
+     "second": 9,
+     "only_first": 9,
+     "only_second": 1,
+     "p": 0.021484375
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 306,
+     "second": 319,
+     "only_first": 9,
+     "only_second": 22,
+     "p": 0.029449373483657837
+    }
+   }
+  },
+  "failures": {
+   "e": {
+    "stops short": 22,
+    "hole": 322,
+    "shortest": 52,
+    "longer": 2,
+    "passes the goal": 2
+   },
+   "e2": {
+    "stops short": 21,
+    "hole": 295,
+    "shortest": 82,
+    "longer": 2
+   },
+   "eb2": {
+    "stops short": 17,
+    "hole": 305,
+    "shortest": 75,
+    "longer": 3
+   },
+   "ej2": {
+    "stops short": 15,
+    "hole": 317,
+    "shortest": 61,
+    "longer": 7
+   }
+  },
+  "training": {
+   "e2": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 0.08181277939092979,
+     "mean_loss": 0.09641793358532462,
+     "last_quarter_loss": 0.06111505822842327,
+     "seconds": 405.2523105144501,
+     "stage": 2
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.10656903244307614,
+     "mean_loss": 0.09190286113251941,
+     "last_quarter_loss": 0.06048949780628551,
+     "seconds": 413.6143798828125,
+     "stage": 2
+    }
+   },
+   "eb2": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 0.10009044378602994,
+     "mean_loss": 0.10933597634873009,
+     "last_quarter_loss": 0.0708127786876661,
+     "seconds": 387.174747467041,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.07908615325141,
+     "mean_loss": 0.09282037584687912,
+     "last_quarter_loss": 0.0562163187270413,
+     "seconds": 408.3851053714752,
+     "stage": 2
+    }
+   },
+   "ej2": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 0.10009044378602994,
+     "mean_loss": 0.11232667997562061,
+     "last_quarter_loss": 0.07290333511077338,
+     "seconds": 419.0740792751312,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.0633240350507549,
+     "mean_loss": 0.09139087647312628,
+     "last_quarter_loss": 0.05505222366028125,
+     "seconds": 426.75384855270386,
+     "stage": 2
+    },
+    "jepa_error": {
+     "start": {
+      "validation": 0.6492444276809692,
+      "training": 0.5266485810279846
+     },
+     "phase1": {
+      "validation": 0.2202935814857483,
+      "training": 0.1490786373615265
+     },
+     "phase2": {
+      "validation": 0.10580283403396606,
+      "training": 0.07104941457509995
+     }
+    }
+   }
+  }
+ },
+ "gate": {
+  "image_token_probe": {
+   "by_layer": {
+    "4": {
+     "7": 1.0,
+     "8": 1.0
+    },
+    "8": {
+     "7": 1.0,
+     "8": 1.0
+    },
+    "12": {
+     "7": 1.0,
+     "8": 1.0
+    },
+    "16": {
+     "7": 1.0,
+     "8": 1.0
+    }
+   },
+   "threshold": 0.95,
+   "passing": [
+    4,
+    8,
+    12,
+    16
+   ]
+  },
+  "target_layer": 4,
+  "warm_start": {
+   "history": [
+    {
+     "epoch": 1,
+     "loss": 1.5585366665048803,
+     "train_error": 1.0299488306045532,
+     "validation_error": 1.025256872177124
+    },
+    {
+     "epoch": 2,
+     "loss": 1.1930028403058965,
+     "train_error": 1.0185950994491577,
+     "validation_error": 1.0241199731826782
+    },
+    {
+     "epoch": 3,
+     "loss": 1.1465733279573156,
+     "train_error": 1.0167819261550903,
+     "validation_error": 1.0180068016052246
+    },
+    {
+     "epoch": 4,
+     "loss": 1.1296808618180296,
+     "train_error": 1.0195040702819824,
+     "validation_error": 1.0196930170059204
+    },
+    {
+     "epoch": 5,
+     "loss": 1.1210550779991961,
+     "train_error": 1.0191624164581299,
+     "validation_error": 1.0179438591003418
+    },
+    {
+     "epoch": 6,
+     "loss": 1.1172171932585695,
+     "train_error": 1.0201891660690308,
+     "validation_error": 1.0178436040878296
+    },
+    {
+     "epoch": 7,
+     "loss": 1.1071913495976875,
+     "train_error": 1.0199358463287354,
+     "validation_error": 1.0179674625396729
+    },
+    {
+     "epoch": 8,
+     "loss": 1.0981642109282472,
+     "train_error": 1.0140469074249268,
+     "validation_error": 1.012270212173462
+    },
+    {
+     "epoch": 9,
+     "loss": 1.0943185801201678,
+     "train_error": 1.0089439153671265,
+     "validation_error": 1.010305643081665
+    },
+    {
+     "epoch": 10,
+     "loss": 1.0793472198729819,
+     "train_error": 1.006858229637146,
+     "validation_error": 1.0073505640029907
+    },
+    {
+     "epoch": 11,
+     "loss": 1.082355392740128,
+     "train_error": 1.0018852949142456,
+     "validation_error": 1.0027986764907837
+    },
+    {
+     "epoch": 12,
+     "loss": 1.0622258909205173,
+     "train_error": 0.9834675788879395,
+     "validation_error": 0.9946788549423218
+    },
+    {
+     "epoch": 13,
+     "loss": 1.0466193341194314,
+     "train_error": 0.9378585815429688,
+     "validation_error": 0.9628925323486328
+    },
+    {
+     "epoch": 14,
+     "loss": 1.0359205070962296,
+     "train_error": 0.8917450904846191,
+     "validation_error": 0.9335704445838928
+    },
+    {
+     "epoch": 15,
+     "loss": 1.0105099842903462,
+     "train_error": 0.8328060507774353,
+     "validation_error": 0.899669885635376
+    },
+    {
+     "epoch": 16,
+     "loss": 0.9846533524229172,
+     "train_error": 0.8050705194473267,
+     "validation_error": 0.881881058216095
+    },
+    {
+     "epoch": 17,
+     "loss": 0.9706365707072806,
+     "train_error": 0.7683265805244446,
+     "validation_error": 0.858252227306366
+    },
+    {
+     "epoch": 18,
+     "loss": 0.9531034091685681,
+     "train_error": 0.7445186972618103,
+     "validation_error": 0.8436012864112854
+    },
+    {
+     "epoch": 19,
+     "loss": 0.9390750083517521,
+     "train_error": 0.669783353805542,
+     "validation_error": 0.8024153709411621
+    },
+    {
+     "epoch": 20,
+     "loss": 0.9266680187367379,
+     "train_error": 0.639415442943573,
+     "validation_error": 0.7731773257255554
+    },
+    {
+     "epoch": 21,
+     "loss": 0.8864975216540885,
+     "train_error": 0.6068601608276367,
+     "validation_error": 0.761053740978241
+    },
+    {
+     "epoch": 22,
+     "loss": 0.8803463349951074,
+     "train_error": 0.576113224029541,
+     "validation_error": 0.7354601621627808
+    },
+    {
+     "epoch": 23,
+     "loss": 0.8754449233095697,
+     "train_error": 0.558535635471344,
+     "validation_error": 0.7140223383903503
+    },
+    {
+     "epoch": 24,
+     "loss": 0.8562024996635762,
+     "train_error": 0.5095316171646118,
+     "validation_error": 0.6893479824066162
+    },
+    {
+     "epoch": 25,
+     "loss": 0.8483180226163661,
+     "train_error": 0.5227997303009033,
+     "validation_error": 0.7031852602958679
+    },
+    {
+     "epoch": 26,
+     "loss": 0.8380670090939136,
+     "train_error": 0.4748038351535797,
+     "validation_error": 0.6656599044799805
+    },
+    {
+     "epoch": 27,
+     "loss": 0.8308307972360165,
+     "train_error": 0.4810851514339447,
+     "validation_error": 0.6648123264312744
+    },
+    {
+     "epoch": 28,
+     "loss": 0.8297998892500046,
+     "train_error": 0.47483357787132263,
+     "validation_error": 0.6780138611793518
+    },
+    {
+     "epoch": 29,
+     "loss": 0.8166123971025995,
+     "train_error": 0.4552502930164337,
+     "validation_error": 0.6614342331886292
+    },
+    {
+     "epoch": 30,
+     "loss": 0.817740355400329,
+     "train_error": 0.444273978471756,
+     "validation_error": 0.6470820307731628
+    }
+   ],
+   "best_epoch": 30,
+   "best_validation_error": 0.6470820307731628,
+   "start_validation_error": 1.2490105628967285,
+   "seconds": 54.702078104019165,
+   "validation_maps": 128
+  },
+  "swap_e": {
+   "identity": [
+    true,
+    true,
+    true,
+    true
+   ],
+   "maps": 200,
+   "follows_donor": 102,
+   "first_two_follow_donor": 141,
+   "keeps_own": 1,
+   "own_success": 30,
+   "by_size": {
+    "7": {
+     "maps": 100,
+     "follows_donor": 50
+    },
+    "8": {
+     "maps": 100,
+     "follows_donor": 52
+    }
+   },
+   "seconds": 251.509174823761
+  },
+  "swap_e2": {
+   "identity": [
+    true,
+    true,
+    true,
+    true
+   ],
+   "maps": 200,
+   "follows_donor": 108,
+   "first_two_follow_donor": 151,
+   "keeps_own": 0,
+   "own_success": 40,
+   "by_size": {
+    "7": {
+     "maps": 100,
+     "follows_donor": 52
+    },
+    "8": {
+     "maps": 100,
+     "follows_donor": 56
+    }
+   },
+   "seconds": 282.10925793647766
+  },
+  "beta": 2.4749105423803934
+ }
+}

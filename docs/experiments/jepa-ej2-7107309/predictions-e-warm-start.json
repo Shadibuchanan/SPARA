@@ -1,0 +1,17 @@
+{
+ "states": "results/round2-search-6992798/states.pt",
+ "heads": "results/jepa-gate-7106850/jepa_heads.pt",
+ "layer": 12,
+ "by_size": {
+  "7": {
+   "maps": 198,
+   "within_position_share": 0.00027206013328395784,
+   "hole_balanced_accuracy": 0.5
+  },
+  "8": {
+   "maps": 202,
+   "within_position_share": 0.00040331852505914867,
+   "hole_balanced_accuracy": 0.5
+  }
+ }
+}

@@ -1,0 +1,100 @@
+{
+  "layers": {
+    "4": {
+      "next_move": 0.5627198124267292,
+      "start_cell_at_first_move": 0.23,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.5819295558958653
+      }
+    },
+    "8": {
+      "next_move": 0.5662368112543963,
+      "start_cell_at_first_move": 0.24,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.7473200612557427
+      }
+    },
+    "12": {
+      "next_move": 0.5920281359906213,
+      "start_cell_at_first_move": 0.26,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.7320061255742726
+      }
+    },
+    "16": {
+      "next_move": 0.6189917936694022,
+      "start_cell_at_first_move": 0.29,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.6967840735068913
+      },
+      "absolute_cell_mlp": 0.1301460823373174
+    },
+    "20": {
+      "next_move": 0.6330597889800703,
+      "start_cell_at_first_move": 0.42,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.7120980091883614
+      },
+      "absolute_cell_mlp": 0.1845949535192563
+    },
+    "24": {
+      "next_move": 0.6822977725674091,
+      "start_cell_at_first_move": 0.24,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.6584992343032159
+      }
+    },
+    "28": {
+      "next_move": 0.7432590855803048,
+      "start_cell_at_first_move": 0.23,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.5926493108728943
+      },
+      "absolute_cell_mlp": 0.20717131474103587
+    },
+    "32": {
+      "next_move": 0.7596717467760844,
+      "start_cell_at_first_move": 0.16,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.5451761102603369
+      }
+    },
+    "36": {
+      "next_move": 0.7667057444314185,
+      "start_cell_at_first_move": 0.22,
+      "displacement": {
+        "k=2": 1.0,
+        "k>=3": 0.5513016845329249
+      }
+    }
+  },
+  "splits": {
+    "test": {
+      "displacement_layer_20": {
+        "solved_steps": 0.9724517906336089,
+        "fatal_steps": "223/240"
+      },
+      "position_probe": {
+        "fatal_steps": 0.17083333333333334,
+        "fatal_expected": 0.18561168546365917,
+        "earlier_steps_of_failed_routes": 0.17751479289940827,
+        "earlier_steps_expected": 0.20416045942361707,
+        "fatal_expected_from_solved_steps_next_to_a_hole": 0.178453395363162
+      },
+      "hole_ahead_direction_taken": {
+        "fatal_read_as_hole": 0.3592233009708738,
+        "safe_read_as_hole": 0.3877551020408163,
+        "fatal_steps": 309,
+        "safe_steps": 441
+      }
+    }
+  }
+}

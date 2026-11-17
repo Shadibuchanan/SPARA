@@ -1,0 +1,276 @@
+{
+  "settings": {
+    "context_layer": 12,
+    "target_layer": 4,
+    "components": 256,
+    "fallback_components": 32,
+    "separates": 0.95,
+    "hole_share": 0.1,
+    "shuffled_gap": 0.02,
+    "holes_from_predictions": 0.55,
+    "dim": 256,
+    "width": 1024,
+    "predictor_width": 512,
+    "dropout": 0.1,
+    "frequencies": 8,
+    "sigreg_weight": 0.0,
+    "directions": 256,
+    "queue_context": 512,
+    "queue_target": 1024,
+    "shuffle_pool": 64,
+    "head_learning_rate": 0.0001,
+    "head_weight_decay": 0.01,
+    "warm_start": {
+      "epochs": 30,
+      "maps_per_batch": 32,
+      "learning_rate": 0.001
+    },
+    "validation_maps": 128,
+    "monitor_maps": 32,
+    "pilot_rows": 16,
+    "beta_bounds": [
+      0.01,
+      100.0
+    ],
+    "seed": 42
+  },
+  "features_run": "results/jepa-fixed-gate-7116395/diagnosis/standardised",
+  "maps": 2185,
+  "valid": false,
+  "targets": [
+    {
+      "components": 256,
+      "variance_kept": 0.944146129152706,
+      "hole_probe": {
+        "7": 1.0,
+        "8": 1.0
+      },
+      "hole_share": {
+        "7": 0.21047699818613064,
+        "8": 0.2311752255660754
+      },
+      "between_position_share": {
+        "7": 0.0077144500286194795,
+        "8": 0.007761808329402986
+      }
+    }
+  ],
+  "components": 256,
+  "warm_start": {
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 1.0327240266698472,
+        "train_error": 0.9617958664894104,
+        "validation_error": 0.9874145984649658
+      },
+      {
+        "epoch": 2,
+        "loss": 1.0114571946732542,
+        "train_error": 0.9437023401260376,
+        "validation_error": 0.9789693355560303
+      },
+      {
+        "epoch": 3,
+        "loss": 0.984781894278019,
+        "train_error": 0.9116735458374023,
+        "validation_error": 0.9795812368392944
+      },
+      {
+        "epoch": 4,
+        "loss": 0.9527879610974738,
+        "train_error": 0.8759487867355347,
+        "validation_error": 0.9619158506393433
+      },
+      {
+        "epoch": 5,
+        "loss": 0.922290323896611,
+        "train_error": 0.853193461894989,
+        "validation_error": 0.9812807440757751
+      },
+      {
+        "epoch": 6,
+        "loss": 0.9028546708695432,
+        "train_error": 0.831251323223114,
+        "validation_error": 0.9770327210426331
+      },
+      {
+        "epoch": 7,
+        "loss": 0.8810575781984532,
+        "train_error": 0.8076450228691101,
+        "validation_error": 0.9778645038604736
+      },
+      {
+        "epoch": 8,
+        "loss": 0.8534742809356527,
+        "train_error": 0.783750593662262,
+        "validation_error": 0.9637565016746521
+      },
+      {
+        "epoch": 9,
+        "loss": 0.832319272325394,
+        "train_error": 0.7592039704322815,
+        "validation_error": 0.9610021114349365
+      },
+      {
+        "epoch": 10,
+        "loss": 0.808944840380486,
+        "train_error": 0.7390673756599426,
+        "validation_error": 0.9510511159896851
+      },
+      {
+        "epoch": 11,
+        "loss": 0.7904972167725258,
+        "train_error": 0.7196769714355469,
+        "validation_error": 0.9548179507255554
+      },
+      {
+        "epoch": 12,
+        "loss": 0.7769422074581714,
+        "train_error": 0.7053499817848206,
+        "validation_error": 0.9533698558807373
+      },
+      {
+        "epoch": 13,
+        "loss": 0.7636212199292285,
+        "train_error": 0.6963541507720947,
+        "validation_error": 0.9546627402305603
+      },
+      {
+        "epoch": 14,
+        "loss": 0.7498034416361058,
+        "train_error": 0.6749886274337769,
+        "validation_error": 0.9637110233306885
+      },
+      {
+        "epoch": 15,
+        "loss": 0.7338822484016418,
+        "train_error": 0.6620960831642151,
+        "validation_error": 0.9516947269439697
+      },
+      {
+        "epoch": 16,
+        "loss": 0.7202886000592658,
+        "train_error": 0.6478877067565918,
+        "validation_error": 0.9592172503471375
+      },
+      {
+        "epoch": 17,
+        "loss": 0.7080426089307095,
+        "train_error": 0.637172281742096,
+        "validation_error": 0.9475192427635193
+      },
+      {
+        "epoch": 18,
+        "loss": 0.6981699263795893,
+        "train_error": 0.6295125484466553,
+        "validation_error": 0.951353907585144
+      },
+      {
+        "epoch": 19,
+        "loss": 0.6889935452887352,
+        "train_error": 0.6074538826942444,
+        "validation_error": 0.9502419829368591
+      },
+      {
+        "epoch": 20,
+        "loss": 0.6758692657693903,
+        "train_error": 0.5938736796379089,
+        "validation_error": 0.9462156891822815
+      },
+      {
+        "epoch": 21,
+        "loss": 0.6621539402515331,
+        "train_error": 0.5816510915756226,
+        "validation_error": 0.9592934846878052
+      },
+      {
+        "epoch": 22,
+        "loss": 0.6534806743581244,
+        "train_error": 0.5718087553977966,
+        "validation_error": 0.9616583585739136
+      },
+      {
+        "epoch": 23,
+        "loss": 0.6451751551729568,
+        "train_error": 0.5662903189659119,
+        "validation_error": 0.9439876675605774
+      },
+      {
+        "epoch": 24,
+        "loss": 0.6372855394444568,
+        "train_error": 0.5557340979576111,
+        "validation_error": 0.9477951526641846
+      },
+      {
+        "epoch": 25,
+        "loss": 0.6288515050360497,
+        "train_error": 0.5489979982376099,
+        "validation_error": 0.9471701979637146
+      },
+      {
+        "epoch": 26,
+        "loss": 0.6229375702269534,
+        "train_error": 0.537295937538147,
+        "validation_error": 0.9489806294441223
+      },
+      {
+        "epoch": 27,
+        "loss": 0.612436997129562,
+        "train_error": 0.5256996154785156,
+        "validation_error": 0.9510243535041809
+      },
+      {
+        "epoch": 28,
+        "loss": 0.604272611597751,
+        "train_error": 0.5215476751327515,
+        "validation_error": 0.9467851519584656
+      },
+      {
+        "epoch": 29,
+        "loss": 0.5956917493901355,
+        "train_error": 0.5168893337249756,
+        "validation_error": 0.9507330060005188
+      },
+      {
+        "epoch": 30,
+        "loss": 0.590137982622106,
+        "train_error": 0.5056024789810181,
+        "validation_error": 0.9459765553474426
+      }
+    ],
+    "best_epoch": 23,
+    "best_validation_error": 0.9439876675605774,
+    "start_validation_error": 1.0028884410858154,
+    "seconds": 250.82629108428955,
+    "validation_maps": 128
+  },
+  "latent_dependence": {
+    "7": {
+      "unexplained": 0.8734073042869568,
+      "shuffled_gap": 0.2591901421546936,
+      "holes_from_predictions": 0.5168585641716482,
+      "within_position_share": 0.9451508918370287
+    },
+    "8": {
+      "unexplained": 0.9867461323738098,
+      "shuffled_gap": 0.037664711475372314,
+      "holes_from_predictions": 0.5,
+      "within_position_share": 0.9430810405546509
+    }
+  },
+  "linear_ceiling": {
+    "7": {
+      "unexplained": 0.84465491771698,
+      "shuffled_gap": 0.7770290374755859,
+      "holes_from_predictions": 0.5367400110390764
+    },
+    "8": {
+      "unexplained": 0.9340302348136902,
+      "shuffled_gap": 0.67253178358078,
+      "holes_from_predictions": 0.5311378427270511
+    }
+  },
+  "reading": "gate 3c failed: the warm-started predictions do not depend enough on the latents (the linear ceiling fails too: E's latents carry too little cell content); stop",
+  "seconds": 278.40260100364685
+}

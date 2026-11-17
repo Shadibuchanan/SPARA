@@ -1,0 +1,49 @@
+{
+  "settings": {
+    "sizes": [
+      7,
+      8
+    ],
+    "maps_per_size": 50,
+    "reproduce": 0.95,
+    "seed": 42
+  },
+  "maps": 100,
+  "seconds": 281.090943813324,
+  "identity": [
+    true,
+    true,
+    true,
+    true
+  ],
+  "conditions": {
+    "own": {
+      "maps": 100,
+      "solved": 17
+    },
+    "block_swap": {
+      "maps": 100,
+      "solved": 18,
+      "unchanged": 92,
+      "donor_route": 0
+    },
+    "block_mean": {
+      "maps": 100,
+      "solved": 17,
+      "unchanged": 93
+    },
+    "global_swap": {
+      "maps": 100,
+      "solved": 0,
+      "unchanged": 0,
+      "donor_route": 92
+    }
+  },
+  "reproduced": {
+    "same_route": 100,
+    "maps": 100,
+    "share": 1.0
+  },
+  "reading": "the answer ignores the block latents",
+  "peak_gpu_gib": 15.48945140838623
+}

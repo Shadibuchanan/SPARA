@@ -15,19 +15,27 @@ def latent_queries(ids, latent_ids):
     return queries
 
 
-def bottleneck_mask(ids, padding, latent_ids, image_id, dtype, query_start=0):
+def bottleneck_mask(ids, padding, latent_ids, image_id, dtype, query_start=0, image_block=True):
+    """The additive attention mask: causal and padding-aware; with `image_block` (Stage 1), only the
+    latents' prompt occurrences and image tokens may attend to image tokens. Returns [B, 1, Q, K];
+    `allowed_mask` returns the boolean form."""
+    allowed = allowed_mask(ids, padding, latent_ids, image_id, query_start, image_block)
+    mask = torch.zeros(allowed.shape, dtype=dtype, device=ids.device)
+    return mask.masked_fill(~allowed, torch.finfo(dtype).min)[:, None, :, :]
+
+
+def allowed_mask(ids, padding, latent_ids, image_id, query_start=0, image_block=True):
     length = ids.shape[-1]
     key = torch.arange(length, device=ids.device)
     query = key[query_start:]
     allowed = (key[None, :] <= query[:, None])[None, :, :] & padding[:, None, :].bool()
     image = ids == image_id
-    permitted = latent_queries(ids, latent_ids) | image
-    allowed = allowed & ~(~permitted[:, query_start:, None] & image[:, None, :])
+    if image_block:
+        permitted = latent_queries(ids, latent_ids) | image
+        allowed = allowed & ~(~permitted[:, query_start:, None] & image[:, None, :])
     # Padded queries are discarded; give them a self edge to avoid NaN rows.
     padded = ~padding[:, query_start:].bool()
-    allowed = torch.where(padded[:, :, None], key[None, None, :] == query[None, :, None], allowed)
-    mask = torch.zeros(allowed.shape, dtype=dtype, device=ids.device)
-    return mask.masked_fill(~allowed, torch.finfo(dtype).min)[:, None, :, :]
+    return torch.where(padded[:, :, None], key[None, None, :] == query[None, :, None], allowed)
 
 
 class LivrQwen(Qwen2_5_VLForConditionalGeneration):
@@ -47,8 +55,12 @@ class LivrQwen(Qwen2_5_VLForConditionalGeneration):
 
     def forward(self, input_ids=None, attention_mask=None, position_ids=None,
                 past_key_values=None, cache_position=None, livr_full_input_ids=None,
-                pixel_values=None, image_grid_thw=None, labels=None, **kwargs):
-        if getattr(self.config, "livr_stage", 2) == 1 and self.config.livr_latent_ids:
+                pixel_values=None, image_grid_thw=None, labels=None, livr_grid_size=None, livr_hide_globals=None,
+                **kwargs):
+        # Region latents with a mask (spara.region_latents) need the explicit mask in both stages.
+        region = getattr(self.config, "livr_region_latents", None) or {}
+        stage_one = getattr(self.config, "livr_stage", 2) == 1 and bool(self.config.livr_latent_ids)
+        if stage_one or region.get("mask"):
             if kwargs.get("inputs_embeds") is not None:
                 raise ValueError("Stage 1 requires token IDs to identify visual and latent positions")
             if attention_mask is not None and attention_mask.ndim != 2:
@@ -66,8 +78,21 @@ class LivrQwen(Qwen2_5_VLForConditionalGeneration):
                 position_ids = (positions[None, :] + self.rope_deltas).unsqueeze(0).expand(3, -1, -1)
             # Under mixed precision the decoder's Q/K/V use the autocast dtype.
             dtype = torch.get_autocast_dtype(input_ids.device.type) if torch.is_autocast_enabled(input_ids.device.type) else self.dtype
-            attention_mask = bottleneck_mask(full_ids, padding, self.config.livr_latent_ids,
-                                             self.config.image_token_id, dtype, start)
+            allowed = allowed_mask(full_ids, padding, self.config.livr_latent_ids, self.config.image_token_id,
+                                   start, image_block=stage_one)
+            if region.get("mask"):
+                from .region_latents import hide_globals, restrict_patches, restrict_regions
+                if region.get("layout") == "global+patch":  # tiles of each image; no map grid needed
+                    allowed = restrict_patches(allowed, full_ids, start, self.config, image_grid_thw)
+                else:
+                    if livr_grid_size is None:
+                        raise ValueError("Masked region latents need each map's grid size (livr_grid_size)")
+                    allowed = restrict_regions(allowed, full_ids, start, self.config, livr_grid_size,
+                                               image_grid_thw)
+                if livr_hide_globals is not None:
+                    allowed = hide_globals(allowed, full_ids, start, self.config, livr_hide_globals)
+            attention_mask = torch.zeros(allowed.shape, dtype=dtype, device=full_ids.device).masked_fill(
+                ~allowed, torch.finfo(dtype).min)[:, None, :, :]
         return super().forward(input_ids=input_ids, attention_mask=attention_mask,
                                position_ids=position_ids, past_key_values=past_key_values,
                                cache_position=cache_position, pixel_values=pixel_values,

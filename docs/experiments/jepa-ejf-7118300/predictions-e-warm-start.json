@@ -1,0 +1,23 @@
+{
+ "states": "results/round2-search-6992798/states.pt",
+ "heads": "results/jepa-fixed-gate-7118222/jepa_heads.pt",
+ "layer": 12,
+ "by_size": {
+  "7": {
+   "maps": 198,
+   "within_position_share": 0.940714418888092,
+   "hole_balanced_accuracy": 0.5234849335316625,
+   "unexplained": 0.8711465001106262,
+   "shuffled_gap": 0.2781028151512146,
+   "hole_direction_share": 0.11815512180328369
+  },
+  "8": {
+   "maps": 202,
+   "within_position_share": 0.8855047821998596,
+   "hole_balanced_accuracy": 0.5,
+   "unexplained": 0.9925862550735474,
+   "shuffled_gap": 0.02681732177734375,
+   "hole_direction_share": 0.005108177661895752
+  }
+ }
+}
