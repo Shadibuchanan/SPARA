@@ -2521,3 +2521,33 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-16 — Commit the expert iteration and hole check work, merge Raymond's push and open a PR
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Commit the local work on a branch, merge Raymond's latest commit, resolve the conflicts, run the tests and open a PR, with few files and simple changes.
+**AI contribution:** Committed the code, specs, configs and tests on branch `expert-rounds-hole-check`, with each evidence folder cut to its README and readout JSON. Merged `origin/main` (a7b6fd6) and resolved conflicts in 7 files by keeping both sides. Made Raymond's new code agree with the round 3 changes (a list of search runs, the renamed checkpoint check, the search manifest in his test folders) and named the read precision in three settings files. Opened the PR.
+**Contribution type:** Editing.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Approved the commit, merge and PR; asked for few files and simple changes | Left the per-map run records out of git; kept the merge fixes to one line each |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/experiments/*/README.md (the six folders of this work) | modified | One line each: only the README and readout JSON are in git |
+| docs/DETOUR_LEARNING_SPEC.md, docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | Merge: Raymond's round 2 and the rerun side by side |
+| src/spara/serialization.py | modified | Merge: the blank image on Raymond's multi-image `encode` |
+| src/spara/cli.py, scripts/pace/expert_round2.sbatch | modified | Merge: both sides' options and commands |
+| src/spara/perception_jepa.py, src/spara/region_latents.py | modified | Pass `training_rows` a list of search runs |
+| tests/test_expert_round2.py | modified | Merge: both sides' tests and settings |
+| tests/test_perception_jepa.py, tests/test_region_latents.py | modified | The search folder gets the manifest a search job writes |
+| configs/expert_round3.json, configs/hole_check.json, configs/hole_check_text.json | modified | Name `read_precision` (bf16), which Raymond's search now requires |
+
+### Folders created
+
+- None
