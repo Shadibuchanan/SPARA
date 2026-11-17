@@ -2,6 +2,7 @@
 import argparse
 import contextlib
 import json
+import shutil
 from pathlib import Path
 
 
@@ -65,24 +66,36 @@ def main():
         if command == "expert-iteration":
             cmd.add_argument("--stage", choices=["search", "train"], required=True)
             cmd.add_argument("--settings", default="configs/expert_iteration.json")
-            cmd.add_argument("--probe-points", help="search: points.jsonl of a detour-probe run (validity check)")
+            cmd.add_argument("--probe-points", help="search: points.jsonl of a detour-probe run of the same checkpoint "
+                             "(validity check); without it, batched reads are checked against single passes only")
             cmd.add_argument("--reference", help="search: the JEPA judge run's searches-verdict_only.jsonl")
             cmd.add_argument("--labels", choices=["search", "shortest"],
                              help="train: the found routes, or the same maps' shortest-route labels")
             cmd.add_argument("--routes", help="train: routes.jsonl of the search run")
         if command == "expert-round2":
-            cmd.add_argument("--stage", choices=["batching-check", "search", "train"], required=True)
+            cmd.add_argument("--stage", choices=["batching-check", "livr-greedy", "search", "train"], required=True,
+                             help="livr-greedy: L's answers on the new held-out maps, from LIVR's --checkpoint")
             cmd.add_argument("--settings", default="configs/expert_round2.json")
             cmd.add_argument("--batch", type=int, help="search: policy reads per pass, overriding the settings")
             cmd.add_argument("--read-precision", choices=["bf16", "tf32"],
                              help="search: precision of policy reads, overriding the settings")
             cmd.add_argument("--check-split", default="fresh/jepa-train",
                              help="batching-check: a fresh set with maps of every size from 3 to 8")
-            cmd.add_argument("--round1-routes", help="search, train: routes.jsonl of round 1's search")
-            cmd.add_argument("--round1-greedy", help="search: greedy.jsonl of round 1's E (loading check)")
+            cmd.add_argument("--round1-routes", help="train: routes.jsonl of round 1's search")
+            cmd.add_argument("--frontier-routes",
+                             help="search: the previous round's routes.jsonl; its unsolved maps are the frontier")
+            cmd.add_argument("--reference-greedy",
+                             help="search: the policy's recorded greedy.jsonl (loading check on round 1's maps)")
             cmd.add_argument("--livr-checkpoint", help="search: LIVR's final Stage 2 checkpoint, for L's answers")
-            cmd.add_argument("--arm", choices=["e2", "eb2"], help="train: E2, or EB2 under the bottleneck")
-            cmd.add_argument("--search-run", help="train: the round 2 search job's output")
+            cmd.add_argument("--livr-greedy", help="search: a livr-greedy stage's output, in place of --livr-checkpoint")
+            cmd.add_argument("--arm", choices=["e2", "eb2", "o2", "t2", "eb3", "s3", "o3", "s3t"],
+                             help="train: E2, EB2 under the bottleneck, O2 with the map also as text, "
+                                  "T2 with the text map and a blank image, EB3 (round 3, EB2's recipe), "
+                                  "S3 (EB3 with the hole check in every answer), or O3 and S3T (EB3 and S3 "
+                                  "with the map also as text)")
+            cmd.add_argument("--search-run", nargs="+",
+                             help="train: each later round's search output, in order (round 2's, then round 3's)")
+            cmd.add_argument("--save-weights", action="store_true", help="train: save the arm's final weights")
         if command == "perception-jepa":
             cmd.add_argument("--stage", choices=["gate", "train", "features"], required=True,
                              help="features: E's latents and cells for the fixed-target retry (gate 3 runs on CPU, "
@@ -381,8 +394,6 @@ def main():
         from .expert_iteration import run_search, run_train
         if not args.checkpoint:
             parser.error("Expert iteration starts from the final Stage 2 LIVR checkpoint")
-        if args.stage == "search" and not args.probe_points:
-            parser.error("The search stage needs --probe-points for its validity check")
         if args.stage == "train" and not (args.labels and args.routes):
             parser.error("The train stage needs --labels and --routes")
         settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
@@ -405,13 +416,23 @@ def main():
         from . import expert_round2 as round2
         from .evaluation import ReferenceEvaluator
         if not args.checkpoint:
-            parser.error("Round 2 starts from E, round 1's fine-tune on found routes")
+            parser.error("Each round starts from a checkpoint: E for round 2, B for round 3")
         settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
         if args.batch:
             settings["batch"] = args.batch
         if args.read_precision:
             settings["read_precision"] = args.read_precision
-        round2.require_round1_checkpoint(args.checkpoint, config, settings)
+        if args.stage == "livr-greedy":
+            require_final_checkpoint(args.checkpoint, 2, config)
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            model.requires_grad_(False)
+            Path(args.output).mkdir(parents=True, exist_ok=False)
+            json_write(Path(args.output) / "manifest.json", manifest(config, model, processor, args.data_root)
+                       | {"checkpoint": str(args.checkpoint), "settings": settings})
+            round2.livr_greedy(model, processor, ReferenceEvaluator(args.data_root), args.data_root, args.output,
+                               settings)
+            return
+        round2.require_base_checkpoint(args.checkpoint, config, settings)
         if args.stage == "batching-check":
             model, processor = load_model(config, args.checkpoint, device="cpu")
             model.requires_grad_(False)
@@ -420,24 +441,35 @@ def main():
                        | {"checkpoint": str(args.checkpoint), "threads": torch.get_num_threads()})
             round2.batching_check(model, processor, args.data_root, args.check_split, args.output)
             return
-        needed = {"search": ("round1_routes", "round1_greedy", "livr_checkpoint"),
+        if args.save_weights:
+            settings["save_arm_weights"] = True
+        needed = {"search": ("frontier_routes", "reference_greedy"),
                   "train": ("round1_routes", "arm", "search_run")}[args.stage]
         if any(not getattr(args, name) for name in needed):
             parser.error(f"The {args.stage} stage needs " + ", ".join("--" + n.replace("_", "-") for n in needed))
         if args.stage == "search":
-            require_final_checkpoint(args.livr_checkpoint, 2, config)
+            if bool(args.livr_checkpoint) == bool(args.livr_greedy):
+                parser.error("The search stage needs one of --livr-checkpoint and --livr-greedy")
+            if args.livr_checkpoint:
+                require_final_checkpoint(args.livr_checkpoint, 2, config)
+            elif not (Path(args.livr_greedy) / "livr-greedy.jsonl").is_file():
+                parser.error("--livr-greedy has no livr-greedy.jsonl")
         fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
                  for split in (settings["pool_split"], settings["heldout_split"])}
         model, processor = load_model(config, args.checkpoint, device="cuda")
         if model.config.livr_stage != 2:
-            parser.error("Round 2 requires a Stage 2 checkpoint")
+            parser.error("Expert iteration rounds require a Stage 2 checkpoint")
         base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
                                                                     "fresh_manifests": fresh}
         evaluator = ReferenceEvaluator(args.data_root)
         if args.stage == "search":
             round2.run_search(model, processor, evaluator, args.data_root, args.output, settings,
-                              base | {"livr_checkpoint": str(args.livr_checkpoint)}, args.round1_routes,
-                              args.round1_greedy)
+                              base | {"livr_checkpoint": str(args.livr_checkpoint or args.livr_greedy)},
+                              args.frontier_routes, args.reference_greedy)
+            if args.livr_greedy:
+                for name in ("livr-greedy.jsonl", "livr-summary.json"):
+                    shutil.copyfile(Path(args.livr_greedy) / name, Path(args.output) / name)
+                return
             del model
             torch.cuda.empty_cache()
             model, processor = load_model(config, args.livr_checkpoint, device="cuda")
@@ -454,7 +486,7 @@ def main():
             parser.error("The latent JEPA arm starts from E, round 1's fine-tune on found routes")
         round2_settings = json.loads(Path(args.round2_settings).read_text(encoding="utf-8"))
         settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
-        round2.require_round1_checkpoint(args.checkpoint, config, round2_settings)
+        round2.require_base_checkpoint(args.checkpoint, config, round2_settings)
         needed = {"gate": "e2_checkpoint", "train": "gate_run", "features": None}[args.stage]
         if needed and not getattr(args, needed):
             parser.error(f"The {args.stage} stage needs --{needed.replace('_', '-')}")
@@ -526,7 +558,7 @@ def main():
         missing = [name for name in ("round1_routes", "search_run", "gate_run") if not getattr(args, name)]
         if missing:
             parser.error("Training needs --" + ", --".join(m.replace("_", "-") for m in missing))
-        round2.require_round1_checkpoint(args.checkpoint, config, round2_settings)
+        round2.require_base_checkpoint(args.checkpoint, config, round2_settings)
         fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
                  for split in (round2_settings["pool_split"], round2_settings["heldout_split"])}
         model, processor = load_model(config, args.checkpoint, device="cuda")

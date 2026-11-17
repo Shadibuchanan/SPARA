@@ -1,0 +1,62 @@
+{
+ "answers": 400,
+ "first_line_offset": {
+  "0,0": 269,
+  "0,1": 35,
+  "1,0": 35,
+  "0,-1": 26,
+  "-1,0": 20,
+  "1,1": 8,
+  "-1,1": 2,
+  "-1,-1": 2,
+  "1,-1": 2,
+  "0,-2": 1
+ },
+ "lines": {
+  "wrong_cell": 442,
+  "wrong_cell_matches_true_cell": 206,
+  "wrong_cell_matches_named_cell": 148,
+  "right_cell": 959,
+  "right_cell_exact": 451,
+  "right_cell_dash_baseline": 370,
+  "hole_directions": 797,
+  "hole_directions_listed": 277,
+  "directions_invented": 149
+ },
+ "by_direction": {
+  "U": {
+   "holes": 194,
+   "listed": 57,
+   "safe": 765,
+   "invented": 52
+  },
+  "D": {
+   "holes": 225,
+   "listed": 63,
+   "safe": 734,
+   "invented": 33
+  },
+  "L": {
+   "holes": 173,
+   "listed": 74,
+   "safe": 786,
+   "invented": 36
+  },
+  "R": {
+   "holes": 205,
+   "listed": 83,
+   "safe": 754,
+   "invented": 28
+  }
+ },
+ "by_line": {
+  "first": {
+   "holes": 292,
+   "listed": 132
+  },
+  "later": {
+   "holes": 505,
+   "listed": 145
+  }
+ }
+}

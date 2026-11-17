@@ -2295,3 +2295,259 @@ Single-image prompts were checked to encode identically before and after on 60 r
 ### Folders created
 
 - None
+
+## 2026-11-14 — Summarize SPARA's goal, Raymond's latest push and next steps
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Explain SPARA's goal, the latest pushes by Raymond, and the next steps to complete the goal.
+**AI contribution:** Read the project plan, glossary, README, the latent RL, latent battery, direct SFT control and Scaffolding Minds results, the detour-learning, expert iteration and expert iteration round 2 specifications, and the evidence READMEs that Raymond's commit `eddacca` added. Summarized the state of the planned comparison (condition C against B), the detour-map line of work that followed it, and the open decisions for round 2. Recommended next steps against the course timeline. Ran the CPU test suite on the current `main`. After the user relayed Raymond's direction, related the existing perception evidence (latent battery, JEPA judge, round 1 failure breakdown) to round 2's bottleneck arm and outlined label-free ways to improve perception; a read-only PACE connection to check the round 2 batching job timed out.
+**Contribution type:** Review and advice.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked to understand SPARA's goal, Raymond's latest pushes and the next steps to complete the goal | Read-only investigation of the repository, its history and its GitHub issues, with a written summary and recommendation |
+| 2 | User message | Relayed that Raymond said to keep trying to improve perception, and that the team should not give up yet | Refocused the recommendation on perception work, starting from round 2's bottleneck arm |
+| 3 | User message | Relayed Raymond's view that the policy is decent with expert iteration | Checked that view against round 1's failure breakdown and the hole-probe evidence |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-14 — Rerun expert iteration round 1 on PACE and run round 2
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Rerun expert iteration round 1 on the user's PACE-ICE account, since Raymond's weights were not available, continue with round 2, and decide the details.
+**AI contribution:** Changed the round 1 and round 2 code so the runs could proceed without Raymond's LIVR 6253300 weights. The changes are in-job single-pass policy checks, an optional V500 arm, optional weight saving, a separate L greedy stage, and a hole-walk reading that asks whether the layer-12 probe reads the hole each failure walked into. Uploaded LIVR 6189457 and regenerated the fresh map sets. Submitted and monitored nine PACE jobs (about 11,600 GPU-seconds and one CPU job), and deleted only the agent's own LIVR upload from scratch to make room. Ran both comparisons. Round 1 replicated (E 92 against L 39 of 240). In round 2, a second round helped on 7 x 7 and 8 x 8 maps (72 against 56, p = 0.033), and training under LIVR's mask showed no detectable difference (76 against 72). The mask's probe gain over E2 came from E2 losing hole information, not from EB2 gaining it. Exported redacted evidence, wrote the results sections, and added an evidence export script.
+**Contribution type:** Generation, editing, debugging and analysis.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Said Raymond's weights are unavailable, the user has PACE-ICE access, and asked to rerun round 1, continue with round 2, and decide what is best | Treated as authority to choose settings and submit round 1 and round 2 jobs within the specs' budgets; started from LIVR 6189457 |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/expert_iteration.py | modified | Policy validity from in-job single passes when no recorded points exist; V500 optional in `compare`; only E's final weights saved |
+| src/spara/detour_scaling.py | modified | `run_arm` passes a `save_final` flag through to training |
+| src/spara/expert_round2.py | modified | Arms can skip saving weights; probe predictions carry map layouts; `walk` and `hole_walks` readings added to `compare` |
+| src/spara/cli.py | modified | `expert-round2 --stage livr-greedy`; search accepts a prior L greedy run; round 1 no longer requires recorded probe points |
+| configs/expert_round2.json | modified | `save_arm_weights: false` |
+| scripts/pace/expert_iteration.sbatch | modified | Probe points and reference may be `none` |
+| scripts/pace/expert_round2.sbatch | modified | `livr-greedy` stage and `SPARA_LIVR_GREEDY` input for the search |
+| scripts/export_expert_evidence.py | created | Copies a run's small JSON files into docs/experiments with PACE paths redacted and benchmark responses reduced to outcomes |
+| tests/test_expert_iteration.py | modified | Tests for single-pass validity and for which arm saves weights |
+| tests/test_expert_round2.py | modified | Tests for `hole_walks` and for an arm run without saved weights |
+| docs/EXPERT_ITERATION_SPEC.md | modified | Rerun results section |
+| docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | Status line and results section |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullets for the rerun and round 2 |
+| docs/experiments/expert-iteration-rerun-7063156/README.md | created | Evidence index for the rerun |
+| docs/experiments/expert-iteration-round2-7065168/README.md | created | Evidence index for round 2 |
+
+### Folders created
+
+- docs/experiments/expert-iteration-rerun-7063156: exported round 1 rerun evidence (routes, E, M, L, comparison).
+- docs/experiments/expert-iteration-round2-7065168: exported round 2 evidence (batching check, L greedy, search, E2, EB2, comparison).
+- results/ei-rerun, results/ei-round2, results/ei-logs (git-ignored): pulled run outputs, latent states and job logs.
+- .audit (uncommitted): decision trail and checklist for the run.
+
+## 2026-11-15 — Perception ceiling experiments (O2 and T2)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Continue running experiments after expert iteration round 2.
+**AI contribution:** Chose the next experiment from round 2's open question, whether hole failures at 7 x 7 and 8 x 8 come from perception or from choosing moves. Specified and ran two diagnostic arms on PACE with readings fixed before each run. O2 is E2's recipe with the map also given as text. T2 is the same with the image blanked. Both showed no detectable difference from E2 (77 and 69 against 72 of 400), and T2 showed the model learns to read the text map (3 to 69). So at these sizes, choosing moves limits, not perception. Used 3,037 GPU-seconds and saved no weights.
+**Contribution type:** Generation, editing and analysis.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked to continue running experiments | Ran the perception ceiling (O2), then its follow-up (T2), within the existing round 2 setup |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/expert_round2.py | modified | `o2` and `t2` arms, `with_map_text`, `text_evaluate`, a zero-shot read before training, and the `ceiling` reading |
+| src/spara/serialization.py | modified | `encode` replaces the image with a white one of the same size when a row sets `blank_image` |
+| src/spara/cli.py | modified | `--arm` accepts `o2` and `t2` |
+| configs/expert_round2.json | modified | `ceiling_margin: 40` |
+| scripts/pace/expert_round2.sbatch | modified | Accepts `SPARA_ARM=o2` or `t2` |
+| tests/test_expert_round2.py | modified | Tests for the text map, both text arms, the blank image and the ceiling reading's rules |
+| docs/PERCEPTION_CEILING_SPEC.md | created | Design, fixed readings and results of O2 and T2 |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullet for the perception ceiling |
+| docs/experiments/perception-ceiling-7076349/README.md | created | Evidence index |
+
+### Folders created
+
+- docs/experiments/perception-ceiling-7076349: exported O2 and T2 evidence and `ceiling.json`.
+
+## 2026-11-15 — Expert iteration round 3
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Continue running experiments; the user then allowed clearing the Hugging Face cache on PACE scratch.
+**AI contribution:** Chose a third round of expert iteration as the next experiment and fixed its readings in a spec before any run. Generalized round 2's code so a round can start from any checkpoint, search any frontier and train on routes from several searches, then generated a new pool of 500 maps. On PACE, retrained round 2's EB2 with saved weights (B), searched with B, and trained EB3 from B. The fixed reading is no detectable difference (EB3 83 against B 76 of 400, p = 0.37), while two rounds together beat round 1 (83 against 56, p = 0.0002). Used 9,454 GPU-seconds.
+**Contribution type:** Generation, editing, debugging and analysis.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked to continue running experiments | Chose and specified round 3 |
+| 2 | User message | Allowed clearing the Hugging Face cache on PACE scratch | Freed the space to save B's and EB3's weights; other scratch data was left alone |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/expert_round2.py | modified | `eb3` arm; search frontier and loading check taken from arguments; training rows chained over several searches; `require_base_checkpoint`; the `round3` reading |
+| src/spara/cli.py | modified | `--frontier-routes`, `--reference-greedy`, several `--search-run` values, `--save-weights`, and the `eb3` arm |
+| configs/expert_round2.json | modified | `frontier_split` and `base_steps` in place of `round1_steps` |
+| configs/expert_round3.json | created | Round 3's settings: the new pool, round 2's pool as the frontier, `base_steps` 188, saved weights |
+| scripts/pace/expert_round2.sbatch | modified | Round 3 variables, several search runs, saved weights; fixed a quoting error that failed B's first submission |
+| tests/test_expert_round2.py | modified | Tests for chained training rows and the round 3 reading |
+| docs/EXPERT_ITERATION_ROUND3_SPEC.md | created | Design, fixed readings and result of round 3 |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullet for round 3 |
+| docs/experiments/expert-iteration-round3-7088134/README.md | created | Evidence index |
+
+### Folders created
+
+- data/vsp/fresh/detour-pool-78b: 500 new 7 x 7 and 8 x 8 detour maps (seed 206) for round 3's search.
+- docs/experiments/expert-iteration-round3-7088134: exported B, search and EB3 evidence and `round3.json`.
+- results/ei-round3 (git-ignored): pulled run outputs and latent states.
+
+## 2026-11-16 — Hole check experiment (S3)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Run the next experiment after expert iteration round 3.
+**AI contribution:** Chose the hole check as the next experiment and fixed its readings in a spec before the run. S3 trains EB3's recipe with every answer first writing the agent's cell and the hole directions around it before each move. Built the line writer and reader, the `s3` arm with a replay check on every training row, and the readout. Ran S3 on PACE (3,406 GPU-seconds). The fixed reading is that writing the check harms (65 against EB3's 83 of 400, p = 0.006). The format and loss checks found nothing broken. A post hoc reading of the lines shows the model lists 35% of nearby holes and misplaces the start on a third of the maps, yet never steps into a hole it listed.
+**Contribution type:** Generation, editing and analysis.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the status of the round 3 runs | Reported round 3's result |
+| 2 | User message | Asked whether the results were good | Explained the round 3 null against the noise floor |
+| 3 | User message | Asked to run the next experiment | Chose, specified, built and ran the hole check |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/hole_check.py | created | Writes the hole-check lines from a map and route; parses and reads generated lines against the map |
+| src/spara/expert_round2.py | modified | `s3` arm, replay check on training rows, and the `hole_check` reading |
+| src/spara/detour_scaling.py | modified | Greedy records keep the generated answer text and its token count |
+| src/spara/cli.py | modified | `s3` added to `--arm` |
+| configs/hole_check.json | created | Round 3's settings with a 256-token cap |
+| scripts/pace/expert_round2.sbatch | modified | Notes and error message for the `s3` arm |
+| scripts/hole_reading.py | created | Post hoc reading of how S3's lines match the map |
+| tests/test_hole_check.py | created | Tests for the lines, the parser, the fatal-move classes and the replay check |
+| tests/test_expert_round2.py | modified | `s3` in the arm test; answer fields in greedy records; the hole-check reading |
+| docs/HOLE_CHECK_SPEC.md | created | Design, fixed readings and result of the hole check |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullet for the hole check |
+| docs/experiments/hole-check-7108600/README.md | created | Evidence index |
+
+### Folders created
+
+- docs/experiments/hole-check-7108600: exported S3 evidence, `hole_check.json` and `reading.json`.
+- results/hole-check (git-ignored): pulled S3 output and latent states.
+
+## 2026-11-16 — Hole check on the exact map (S3T and O3)
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Name the next best experiment, then run it; explain the project's goal, experiments and state along the way.
+**AI contribution:** Recommended pairing the hole check with the exact text map, to test whether the check works once the reading is right, and fixed its readings in a spec before any run. Built two arms, S3T (S3 with the text map) and O3 (EB3 with the text map), a shared reading of the lines against the map, and the readout, then ran both on PACE (3,596 GPU-seconds). The fixed reading is that the check harms even with the exact map (70 against 92 of 400, p = 0.005), and the lines list a third of the holes next to the agent from exact text, as from the image. Also measured, on saved latent states, that one latent token predicts about 80% of another's variation, and summarized the project's experiments against its goal for the user.
+**Contribution type:** Advice, generation, editing and analysis.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked which experiment would be the next best to run | Recommended the hole check on the exact map, with what each outcome would lead to |
+| 2 | User message | Agreed ("sure") | Wrote the spec, built the arms and prepared the jobs |
+| 3 | User message | Relayed a teammate's framing (policy or planning against perception) and his view that the four latent tokens hold the same information; asked what had been done and whether work was pushed | Mapped the experiments to the two sides, measured the tokens' redundancy, and reported that nothing since the last commit is pushed |
+| 4 | User message | Reported restarting the VPN; asked for a simple account of the experiments, the goal and how close it is | Synced and submitted both jobs; gave the account |
+| 5 | User message | Asked for status | Reported S3T complete and O3 running |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/HOLE_CHECK_TEXT_SPEC.md | created | Design, fixed readings and result of the hole check on the exact map |
+| docs/HOLE_CHECK_SPEC.md | modified | Follow-up note pointing at the exact-map result |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullet for the hole check on the exact map |
+| docs/experiments/hole-check-text-7125957/README.md | created | Evidence index |
+| docs/experiments/hole-check-7108600/reading.json | modified | Regenerated with the by-direction and by-line counts |
+| src/spara/expert_round2.py | modified | `s3t` and `o3` arms and the `text_check` reading |
+| src/spara/hole_check.py | modified | `line_reading`, moved in from the script so the readout can use it, with counts by direction and by line |
+| scripts/hole_reading.py | modified | Now a thin wrapper over `line_reading` |
+| src/spara/cli.py | modified | `o3` and `s3t` added to `--arm` |
+| configs/hole_check_text.json | created | The hole check's settings without saved weights |
+| scripts/pace/expert_round2.sbatch | modified | Notes and error message for the new arms |
+| tests/test_expert_round2.py | modified | The new arms in the text-arm test; the `text_check` reading |
+| tests/test_hole_check.py | modified | Test for `line_reading` |
+
+### Folders created
+
+- docs/experiments/hole-check-text-7125957: exported S3T and O3 evidence and `text_check.json`.
+
+## 2026-11-16 — Review Raymond's latest push and compare it with the local experiments
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Look at Raymond's latest pushes on GitHub to decide the next steps.
+**AI contribution:** Fetched `origin/main` (commit a7b6fd6, "latent grid patch tokens") without changing the working tree and read its latent JEPA specification and results (EJ2, EJF, EJR, EGR, the swap test, EGD, position tracking, and the unrun global + patch latents). Compared them with the local hole-check and exact-map results, and dry-ran a merge, which found conflicts in 7 files. Recommended committing and merging the local work first, then a test of whether neighbour reading can be learned.
+**Contribution type:** Review and advice.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked whether the exact-map result was a bad result | Answered: negative for the hole check, informative for the project |
+| 2 | User message | Asked to look at Raymond's latest pushes to work out the next steps | Fetched and read commit a7b6fd6; compared it with the local results; checked the merge |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-16 — Commit the expert iteration and hole check work, merge Raymond's push and open a PR
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Commit the local work on a branch, merge Raymond's latest commit, resolve the conflicts, run the tests and open a PR, with few files and simple changes.
+**AI contribution:** Committed the code, specs, configs and tests on branch `expert-rounds-hole-check`, with each evidence folder cut to its README and readout JSON. Merged `origin/main` (a7b6fd6) and resolved conflicts in 7 files by keeping both sides. Made Raymond's new code agree with the round 3 changes (a list of search runs, the renamed checkpoint check, the search manifest in his test folders) and named the read precision in three settings files. Opened the PR.
+**Contribution type:** Editing.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Approved the commit, merge and PR; asked for few files and simple changes | Left the per-map run records out of git; kept the merge fixes to one line each |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/experiments/*/README.md (the six folders of this work) | modified | One line each: only the README and readout JSON are in git |
+| docs/DETOUR_LEARNING_SPEC.md, docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | Merge: Raymond's round 2 and the rerun side by side |
+| src/spara/serialization.py | modified | Merge: the blank image on Raymond's multi-image `encode` |
+| src/spara/cli.py, scripts/pace/expert_round2.sbatch | modified | Merge: both sides' options and commands |
+| src/spara/perception_jepa.py, src/spara/region_latents.py | modified | Pass `training_rows` a list of search runs |
+| tests/test_expert_round2.py | modified | Merge: both sides' tests and settings |
+| tests/test_perception_jepa.py, tests/test_region_latents.py | modified | The search folder gets the manifest a search job writes |
+| configs/expert_round3.json, configs/hole_check.json, configs/hole_check_text.json | modified | Name `read_precision` (bf16), which Raymond's search now requires |
+
+### Folders created
+
+- None

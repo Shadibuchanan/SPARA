@@ -550,7 +550,7 @@ def first_per_size(rows, count):
 def gate_items(data_root, round2, round1_routes, search_run, validation_count):
     """Every map the gate and the arm read, once: the training maps (as round 2 builds its rows), the
     pool, the held-out maps and the validation maps. Returns (items, groups, round 2's rows, counts)."""
-    data, counts = training_rows(data_root, round2, round1_routes, search_run)
+    data, counts = training_rows(data_root, round2, round1_routes, [search_run])
     trained = distinct_maps(data)
     pool = [(round2["pool_split"], r) for r in records(data_root, round2["pool_split"])]
     held = [(round2["heldout_split"], r) for r in records(data_root, round2["heldout_split"])]
@@ -982,7 +982,7 @@ def run_jepa_arm(model, processor, evaluator, config, data_root, output, round2,
     arm = "ejf" if fixed else "ej2"
     settings = aux.settings
     checks = check_sets(evaluator, data_root, round2)
-    data, counts = training_rows(data_root, round2, round1_routes, search_run)
+    data, counts = training_rows(data_root, round2, round1_routes, [search_run])
     one, two = phases(data, round2, config["gradient_accumulation"])
     json_write(output / "manifest.json", run_manifest | {"arm": arm, "settings": settings, "round2_settings": round2,
                                                          "checks": checks, "counts": counts, "gate_run": str(gate_run),

@@ -168,6 +168,45 @@ The next step it gives is a second round from E's weights, or a second problem.
   - The no-detour loss, a net 14 maps, is the harm the spec expected. The detour-scaling
     arms lost 9–16.
 
+## Rerun (jobs 7063156–7063729)
+
+Round 1 was rerun on a second PACE account because the first run's E weights were not
+available to start round 2 from. The rerun used the same code, settings and seed. It
+started from a different LIVR run, 6189457, because 6253300's weights were not
+available either. 6189457 is the first LIVR baseline (323 of 400 on the benchmark),
+and its weights were already on hand. Evidence:
+[docs/experiments/expert-iteration-rerun-7063156/](experiments/expert-iteration-rerun-7063156/).
+4,402 GPU-seconds: search 2,077, E 1,072, M 1,092 and L's greedy answers 161.
+
+**Two changes from the first run.**
+- **The policy check uses single passes, not the 52 recorded points.** Those points
+  record LIVR 6253300's probabilities, not 6189457's. The job now compares the batched
+  policy against one request per pass on the run's own cached answers. Batched reads were
+  off by up to 0.087, so the job fell back to one request per pass, where the difference
+  was 0.0.
+- **V500 was not run.** The first run showed it ties M (97 and 97).
+
+**Validity: all checks passed.** Sets are valid, and both arms' set checks pass.
+
+**The search solved 338 of the 500 pool maps** (first run: 326). By size: 11 of 11, 62
+of 70, 108 of 161 and 157 of 258. Of the 338 routes, 222 are the label and 37 are longer
+than it.
+
+**Primary: replicated.** On the 240 held-out maps, E solves 92 and L 39: 57 maps only E
+solves, 4 only L, p = 4.9 × 10⁻¹³. On the 40 test detour maps: 14 against 6, p = 0.008.
+
+**Secondary: replicated.** E solves 92 and M 93: 19 maps only E solves, 20 only M,
+p = 1.0. On the test detour maps: 14 and 13.
+
+**Benchmark against LIVR:** overall 325 against 323 (p = 0.88); detour maps 16 against 7
+(p = 0.004); no-detour maps 309 against 316 (p = 0.31). The no-detour loss is a net 7
+maps, half the first run's 14, and not significant.
+
+**Seen maps:** of the first 98 pool maps, the search solved 63. E solves 57 of those and
+0 of the other 35.
+
+This E (7063729) is the starting point for round 2.
+
 ## Limits
 
 - **One round, one training run per arm.** McNemar treats the map as the unit, not the
