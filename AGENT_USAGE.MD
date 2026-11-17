@@ -2295,3 +2295,174 @@ Single-image prompts were checked to encode identically before and after on 60 r
 ### Folders created
 
 - None
+
+## 2026-11-17 — Review project state and recommend next steps
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Read the Scaffolding Minds and LIVR papers, the untracked `misc/` folder (midterm and proposal PDFs, which take precedence, and a research-plan text file), and the specs and results in `docs/`, then give recommendations on what to do next in light of a teammate's messages about expert iteration, perception, and redundant latent tokens.
+**AI contribution:** Read both papers, the midterm and proposal decks, the research-plan text, the project plan, glossary, results documents and experiment READMEs from the LIVR baseline through the region-latent, EGD and tracking runs. Summarized the evidence that perception isn't the limit on FrozenLake: image tokens show every hole, and EGD steps into holes its own block latents flag. Recommended stopping new FrozenLake perception arms, rerunning the proposal's latent-versus-text RL comparison (C vs B) on fresh maps with reachable detour moves and repeated seeds, with expert iteration as the reference, and checking why expert iteration loses no-detour benchmark maps. Flagged that today is the course's code and audit-packet freeze.
+**Contribution type:** Review and advice.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked to read the two papers, the `misc/` folder (PDF direction over the text file; do not commit these), and the `docs/` specs and results, then give thoughts on what to do | Set the reading scope and the priority of the PDF direction; nothing in `misc/` was committed |
+| 2 | User-provided file (pasted chat) | A teammate's messages: expert iteration helps policy; latents encode the map but there is a slight perception gap; the four latent tokens are redundant; a perception-improving commit the model's reasoning cannot use | Weighed against the recorded results; the recommendation agrees on policy and redundancy and disagrees on further FrozenLake perception work |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-17 — Audit the text-only and latent RL runs (B and C) for a fair rerun
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Say where the November 17 deadline came from; explain in detail, with citations to specs and results files, what made the earlier text-only RL (B) against latent RL (C) comparison unfair, so the team's rerun fixes are thorough.
+**AI contribution:** Traced the November 17 date to the project plan's timeline and the midterm deck; the user corrected the code-freeze date to November 19. Audited the B and C specifications, configs, the shared GRPO loop and latent RL code, the recorded generation settings in run manifests, and both runs' step logs. Identified the confounds with file and line citations: memorized training maps, a nucleus that excluded detour moves, rollouts sampled with the model's inherited repetition penalty and top-k while the loss ignores both, few informative steps (counted from the step logs), isotropic and oversized latent noise, Gaussian heads that could barely move, an insensitive single-sample benchmark, and one seed. Proposed a rerun design (B′ and C′) with a pre-flight gate, matched budgets, held-out primary readings and two seeds.
+**Contribution type:** Review and advice.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Corrected the code and audit-packet deadline to November 19 and asked where November 17 came from | Cited the project plan and midterm deck as the source of the earlier date |
+| 2 | User message | Said other teammates are working on perception improvement | Kept the recommendation focused on the RL comparison |
+| 3 | User message | Agreed to the fair-conditions rerun and asked for a detailed, cited explanation of what was problematic | Audited specs, configs, code and logs; produced the cited issue list and rerun design |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-17 — Amend the B′/C′ spec with a rerun under fair conditions
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Add the fair-conditions rerun of text-only against latent RL to the structured-exploration spec, with an explanation of each change and why it is correct, and assess whether the comparison is defensible in the final presentation.
+**AI contribution:** Amended `docs/STRUCTURED_EXPLORATION_SPEC.md` with a dated section that lists the eight measured issues in B and C with citations. It sets out a shared B′/C′ design that differs only in the latent policy, and explains the seven changes and why each is correct. It also fixes before any run a pilot with stopping rules, validity checks, the readings with an outcome table, the claims the comparison can and cannot support, a note on ADR-0002, a budget, a build list and untuned assumptions. Revised the earlier advice to keep the two arms' rollout budgets equal instead of refilling batches with mixed groups, and estimated the primary test's power by simulation (about 80% for a 7-point gain with two seeds). Marked the spec's earlier reading and budget sections as superseded and recorded that the open decision on training sizes is settled.
+**Contribution type:** Generation and editing (design specification).
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Approved the rerun plan and asked to add it to the existing spec, explaining each change and why it is correct | Wrote the amendment into `docs/STRUCTURED_EXPLORATION_SPEC.md` rather than a new file |
+| 2 | User message | Asked whether the result would be a fair comparison to defend in the presentation | Added a section on what the comparison can and cannot claim, with the power estimate |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/STRUCTURED_EXPLORATION_SPEC.md | modified | Status note; superseded notes on the original reading and budget sections; the open decision settled; new section "Amendment: rerun under fair conditions (2026-11-17)" |
+
+### Folders created
+
+- None
+
+## 2026-11-17 — Review a teammate's policy branch and analyse expert iteration's no-detour losses
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Review a second worktree holding a teammate's commit, said to make a perception fix and to show that policy is still the issue; decide whether to revisit fixing expert iteration's no-detour benchmark losses; explain a runtime estimate.
+**AI contribution:** Read the teammate's commit `5b12055` on branch `feat/rebalanced-policy-and-rl-gate`, with its usage-log entry, scripts and results, in the second worktree without changing it. Verified on the local VSP training data that its "10% detour" set equals the original 1,000 training rows, since 98 of them are detour maps. Found that its RL gate ran on test maps with the old rollout sampling, and that its detour count is always zero because it reads a field the test rows lack. Analysed on CPU the saved benchmark answers of nine runs, with a scratch script outside the project. Expert iteration's models solve 303–308 of the 360 no-detour maps, against 315–320 for the other runs. Their extra failures show away-from-goal moves and, for E2, routes that stop short. Recommended a rebalanced expert-iteration run and corrected an overstated wall-clock estimate.
+**Contribution type:** Review and analysis.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Pointed to a second worktree with a teammate's edits, reported as a perception fix with policy still the issue, and asked whether to revisit fixing expert iteration's no-detour losses | Reviewed the teammate's commit and ran the no-detour failure analysis |
+| 2 | User message | Questioned the "about a day" runtime against the earlier 7-hour estimate | Corrected the estimate: compute unchanged at about 6.5 GPU-hours; wall-clock depends on parallel jobs and queue wait |
+| 3 | Teammate's commit, authorship per git metadata (AaryaSingh) | Policy diagnostics, a "rebalanced" from-scratch LIVR training (305/400), hole-veto decoding, and an RL feasibility gate | Read as input; its rebalanced set and RL gate were found not to test what they were described as testing |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-17 — Specify and build E2R and the fair B′/C′ rerun
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Add the rebalanced expert-iteration arm to the round 2 spec, and build both it and the fair-conditions rerun of text-only against latent RL.
+**AI contribution:** Amended the round 2 spec with E2R. E2R is E2 with a 37% detour mix: half the found detour rows plus 1,000 new no-detour maps. The amendment gives the evidence, a justification for each choice, validity checks, readings with a guard, an outcome table and a budget. A CPU script reproduces the no-detour failure table. Built E2R: a no-detour map generator, a check of the new set, the rebalanced rows and arm, readings, settings and a job-script guard. Built B′ and C′:
+- a fixed-step map stream and skipping of groups with equal rewards in the shared RL loop;
+- structured latent heads over a principal basis, with a summed log-probability;
+- a pilot (basis, sampler check, signal, scale rule, L's greedy answers);
+- arm training with an identity check, in-job evaluation and readings;
+- settings and a job script.
+
+Added CPU tests for both builds and recorded the build, its safeguards and the commands in the structured-exploration spec. Added glossary entries for B′/C′ and E2R.
+**Contribution type:** Generation and editing (specification, code and tests).
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | "yes add it to the spec and start building both" | Amended the round 2 spec with E2R; built E2R and B′/C′ with tests on a new branch, without committing |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | Status note and the E2R amendment |
+| docs/STRUCTURED_EXPLORATION_SPEC.md | modified | Status, the map stream and skipped steps, the pilot's L greedy step, the sampler check's definition, the built parts, safeguards and running commands |
+| GLOSSARY.md | modified | Entries for B′ and C′, and E2R |
+| src/spara/fresh_maps.py | modified | `is_direct`, a filter on `draw_detour_layouts`, and `--nodetour-count` sets |
+| src/spara/expert_round2.py | modified | The E2R arm, `check_nodetour`, the rebalanced rows with their composition, failure signatures, `benchmark_outcomes` and `compare_rebalanced` |
+| src/spara/text_rl.py | modified | `stream_batch`; a fixed-step stream, skipping groups with equal rewards, completions and verifier calls in the logs |
+| src/spara/latent_rl.py | modified | `BasisHeads`; basis-aware `add_latent_heads`, adjuster and `latent_objective` |
+| src/spara/model.py | modified | Rebuilds structured heads when reloading a C′ checkpoint |
+| src/spara/runtime.py | modified | The completed-RL check accepts fixed-step runs |
+| src/spara/explore_probe.py | modified | The noise summary runs with one noise family |
+| src/spara/fair_rl.py | created | B′ and C′: pilot, arms, evaluation and readings |
+| src/spara/cli.py | modified | The `fair-rl` command and the `e2r` arm |
+| configs/expert_round2_rebalanced.json | created | E2R's settings |
+| configs/text_rl_fair.json | created | B′'s RL settings |
+| configs/latent_rl_fair.json | created | C′'s RL settings |
+| configs/fair_rl.json | created | Pilot, evaluation and reading settings for B′ and C′ |
+| scripts/analyze_nodetour_failures.py | created | Reproduces the no-detour failure table from recorded benchmark answers |
+| scripts/pace/expert_round2.sbatch | modified | E2R's settings and no-detour set checks |
+| scripts/pace/fair_rl.sbatch | created | Job script for the pilot and the four runs |
+| tests/test_expert_round2.py | modified | E2R rows, the set check, signatures, the arm and its readings |
+| tests/test_fresh_maps.py | modified | No-detour sets |
+| tests/test_fair_rl.py | created | B′ and C′ tests, including an end-to-end pilot, four runs and readings |
+
+### Folders created
+
+- None
+
+## 2026-11-19 — Pick up the fair B′/C′ and E2R handoff; check other branches and run readiness
+
+**Agent/tool:** Claude Code, Claude Opus 5.5
+**User request:** Read `docs/HANDOFF_2026-11-17.md` and follow it; say whether another team branch said to fix perception should be merged before the upcoming runs; read only the important parts of the papers and flag reading over about 150k tokens; jobs are submitted directly with `sbatch`, without QoS, account or partition options.
+**AI contribution:** Read the handoff, the B′/C′ and E2R amendments, the job scripts, the PACE notes, the midterm and proposal text, and Scaffolding Minds' Table 3, Table 8 and Appendix D.1 (selective reading; the full list was estimated at 180–200k tokens). Reviewed `origin/expert-rounds-hole-check` (Shadi Buchanan) and `origin/feat/rebalanced-policy-and-rl-gate` (Aarya Singh) against the uncommitted work and advised that neither is needed for the B′/C′ or E2R runs. Checked run readiness from this account: the input checkpoints and fresh map sets are in a teammate's scratch that this account cannot read, scratch has about 190 GB free, and the job scripts carry no QoS, account or partition lines. Amended the commit to exclude the handoff note, installed the pinned map renderer in the `sft-run` environment, and regenerated every fresh map set in `sft-run/data/vsp/fresh` (CPU job 7134760); all six existing sets match their recorded hashes, and `nodetour-pool` was generated for E2R (SHA-256 5aa00339…ae85c). Drafted instructions for a teammate to run E2R from their scratch. No GPU jobs were submitted.
+**Contribution type:** review and advice
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Follow the handoff; asked whether to bring in the other branch's perception changes | Reviewed both unmerged branches against the planned runs |
+| 2 | User message | The Nov 17 deadline has passed (it is Nov 19); drop it from concerns and logging | Deadline not treated as a constraint; this entry is dated 2026-11-19 |
+| 3 | User message | Read only the important parts of the papers; flag reading over about 150k tokens | Selective reading; full list flagged as over the limit |
+| 4 | User message | Jobs can be submitted with plain `sbatch`; omit QoS, account, partition and other unneeded fields | Submission plan uses only GPU, CPU, memory and time requests |
+| 5 | User message | Explain the handoff's open questions in plain terms | Rewritten in the reply |
+| 6 | User message | Commit the branch with no co-author line; the user is uploading the LIVR rerun `baseline-6253300` to `spara_results/`; asked what the other checkpoints block | Committed the 2026-11-17 handoff work (excluding `misc/`, `spara_results/` and the handoff note itself); mapped each remaining input to the jobs that need it |
+| 7 | User message | The handoff and `misc/` must not be in the commit | Amended the unpushed commit to drop `docs/HANDOFF_2026-11-17.md`; `misc/` had not been committed |
+| 8 | User message | Approved installing the map renderer and regenerating the fresh sets; asked for a message so a teammate can run E2R on their side, assuming the branch is pushed | Installed `gymnasium` 1.0.0 and `pygame` 2.6.1 into the `sft-run` venv; CPU job 7134760 regenerated six fresh sets outside the repo, each matching its recorded SHA-256, plus `nodetour-pool`; drafted the teammate's E2R run instructions |
+
+### Files
+
+None (the commit contains the earlier session's work listed in the previous entry; none of it was written in this task)
+
+### Folders created
+
+- None

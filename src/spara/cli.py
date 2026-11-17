@@ -16,7 +16,7 @@ def main():
     fetch.add_argument("--processor-only", action="store_true")
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
-                    "expert-iteration", "expert-round2", "perception-jepa", "region-latents"):
+                    "expert-iteration", "expert-round2", "perception-jepa", "region-latents", "fair-rl"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -81,7 +81,9 @@ def main():
             cmd.add_argument("--round1-routes", help="search, train: routes.jsonl of round 1's search")
             cmd.add_argument("--round1-greedy", help="search: greedy.jsonl of round 1's E (loading check)")
             cmd.add_argument("--livr-checkpoint", help="search: LIVR's final Stage 2 checkpoint, for L's answers")
-            cmd.add_argument("--arm", choices=["e2", "eb2"], help="train: E2, or EB2 under the bottleneck")
+            cmd.add_argument("--arm", choices=["e2", "eb2", "e2r"],
+                             help="train: E2, EB2 under the bottleneck, or E2R with the rebalanced settings "
+                                  "(configs/expert_round2_rebalanced.json)")
             cmd.add_argument("--search-run", help="train: the round 2 search job's output")
         if command == "perception-jepa":
             cmd.add_argument("--stage", choices=["gate", "train", "features"], required=True,
@@ -107,6 +109,13 @@ def main():
             cmd.add_argument("--round1-routes", help="train: routes.jsonl of round 1's search")
             cmd.add_argument("--search-run", help="train: the round 2 search job's output")
             cmd.add_argument("--gate-run", help="train: gate 3's output, the fixed targets (job 7118222)")
+        if command == "fair-rl":
+            cmd.add_argument("--stage", choices=["pilot", "train"], required=True,
+                             help="pilot: on LIVR, before any run; train: one arm and seed, then its evaluation")
+            cmd.add_argument("--settings", default="configs/fair_rl.json")
+            cmd.add_argument("--arm", choices=["b", "c"], help="train: B′ (text only) or C′ (structured latent)")
+            cmd.add_argument("--seed", type=int, help="train: map order and sampling seed")
+            cmd.add_argument("--pilot-run", help="train: the pilot's output (maps per step, scale, basis)")
         if command == "jepa-judge":
             cmd.add_argument("--settings", default="configs/jepa_judge.json")
             cmd.add_argument("--probe-points", required=True, help="points.jsonl of a detour-probe run (validity check)")
@@ -446,6 +455,50 @@ def main():
         else:
             round2.run_arm(model, processor, evaluator, config, args.data_root, args.output, settings, args.arm,
                            args.round1_routes, args.search_run, base)
+    elif args.command == "fair-rl":
+        from . import fair_rl
+        from .evaluation import ReferenceEvaluator
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        if not args.checkpoint:
+            parser.error("B′ and C′ start from the LIVR rerun's final Stage 2 checkpoint (also the KL reference)")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        if args.stage == "train" and (args.arm is None or args.seed is None or not args.pilot_run):
+            parser.error("The train stage needs --arm, --seed and --pilot-run")
+        output = Path(args.output)
+        if output.exists():
+            parser.error("Output already exists; choose a new directory")
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (settings["pool_split"], settings["round1_heldout_split"], settings["heldout_split"])}
+        evaluator = ReferenceEvaluator(args.data_root)
+        arm = "b" if args.stage == "pilot" else args.arm  # the pilot measures B′'s sampler
+        rl = json.loads(Path(settings["rl_configs"][arm]).read_text(encoding="utf-8"))
+        if args.stage == "pilot":
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            model.requires_grad_(False)
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                        "fresh_manifests": fresh}
+            fair_rl.run_pilot(model, processor, evaluator, args.data_root, output, settings, rl, base)
+        else:
+            reference, _ = load_model(config, args.checkpoint, device="cuda")
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                        "fresh_manifests": fresh}
+            base["assumptions"] |= {
+                "rl_objective": "Scaffolding Minds Eq. 6 text term" + (" plus its latent term" if arm == "c" else "")
+                                + ": one update per batch, k3 KL to LIVR, mean over the rollouts of groups whose rewards differ",
+                "rl_sampler": "the model's own distribution: temperature, top-p, top-k and repetition penalty all set "
+                              "so generate samples from the softmax the loss differentiates (checked in the pilot)",
+                "rl_maps": "a stream of seeded permutations of the pool, cut into full batches; the same per seed for both arms"}
+            if arm == "c":
+                base["assumptions"]["latent_policy"] = ("a = z + sum_j u_j s_j c_j at the output of decoder layer "
+                                                        f"{rl['latent']['layer']}, c ~ N(mu, sigma^2) from heads over "
+                                                        "the pilot's principal basis; log-probability summed over the coefficients")
+            adjuster = fair_rl.train_arm(model, reference, processor, evaluator, config, args.data_root, output,
+                                         settings, rl, arm, args.seed, args.pilot_run, args.checkpoint, base)
+            del reference
+            torch.cuda.empty_cache()
+            fair_rl.evaluate_arm(model, processor, evaluator, config, args.data_root, output, settings, arm, adjuster,
+                                 base)
     elif args.command == "perception-jepa":
         from . import expert_round2 as round2
         from . import perception_jepa as jepa

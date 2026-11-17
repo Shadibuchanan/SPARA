@@ -48,9 +48,13 @@ def require_final_checkpoint(path, stage, config):
 def require_final_rl_checkpoint(path, config, rl, phase="text-rl"):
     """Completed RL from the LIVR checkpoint: text-only ("text-rl") or latent ("latent-rl")."""
     progress = json.loads((Path(path) / "complete.json").read_text())["progress"]
-    expected_steps = rl["epochs"] * ((1000 + rl["prompts_per_step"] - 1) // rl["prompts_per_step"])
-    if (progress.get("pilot") or progress.get("phase") != phase or progress.get("epoch") != rl["epochs"]
-            or progress.get("next_row") != 0 or progress.get("optimizer_steps") != expected_steps):
+    if rl.get("steps"):  # B′ and C′: a fixed number of steps from a stream of map permutations
+        incomplete = progress.get("optimizer_steps") != rl["steps"]
+    else:
+        expected_steps = rl["epochs"] * ((1000 + rl["prompts_per_step"] - 1) // rl["prompts_per_step"])
+        incomplete = (progress.get("epoch") != rl["epochs"] or progress.get("next_row") != 0
+                      or progress.get("optimizer_steps") != expected_steps)
+    if progress.get("pilot") or progress.get("phase") != phase or incomplete:
         label = "text-only" if phase == "text-rl" else "latent"
         raise ValueError(f"Expected completed {label} RL, not an intermediate checkpoint")
     for key, value in config.items():

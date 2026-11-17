@@ -184,7 +184,8 @@ def summarise_noise(results):
                 "maps_with_break": sum(not all(cell(r)["success"]) for r in solved)}
         summary["families"][name] = {
             "scales": scales, "chosen": choose_sigma({"base_success_rate": base, "sigmas": scales})}
-    summary["decision"] = choose_noise(summary)
+    # C′'s pilot probes structured noise alone; the choice between families needs both.
+    summary["decision"] = choose_noise(summary) if {"structured", "isotropic"} <= summary["families"].keys() else None
     return summary
 
 

@@ -79,6 +79,19 @@ def steps_per_epoch(rows, rl):
     return math.ceil(rows / rl["prompts_per_step"])
 
 
+def stream_batch(rows, size, seed, position):
+    """`size` row indices from `position` of a stream of seeded permutations, one per epoch
+    (seed + epoch), and the next position. Every batch is full; epochs run into each other."""
+    selected = []
+    while len(selected) < size:
+        epoch, offset = divmod(position, rows)
+        order = torch.randperm(rows, generator=torch.Generator().manual_seed(seed + epoch)).tolist()
+        taken = order[offset:offset + size - len(selected)]
+        selected += taken
+        position += len(taken)
+    return selected, position
+
+
 def train_text_rl(model, reference, processor, data_root, output, config, rl,
                   source, resume=None, scorer=None, final_weights_only=False, max_steps=None,
                   save_final=True, adjusters=None):
@@ -87,6 +100,13 @@ def train_text_rl(model, reference, processor, data_root, output, config, rl,
 
     Condition C: `rl["latent"]` holds the latent policy and `adjusters` the
     (policy, reference) LatentAdjusters; the model must carry `latent_heads`.
+
+    B′ and C′ (docs/STRUCTURED_EXPLORATION_SPEC.md, 2026-11-17 amendment): `rl["steps"]`
+    runs that many optimizer steps of exactly `prompts_per_step` maps from a stream of
+    seeded permutations, and `rl["skip_uniform_groups"]` averages each step's loss over the
+    rollouts of groups whose rewards differ, skipping the rest (their advantage is zero). A
+    step with no such group updates nothing but still counts, so every arm of a seed sees
+    the same maps.
     """
     latent = rl.get("latent")
     if bool(latent) != bool(adjusters):
@@ -129,78 +149,101 @@ def train_text_rl(model, reference, processor, data_root, output, config, rl,
         if (progress.get("phase") != phase or progress["config"] != config or progress["rl"] != rl
                 or progress["source_checkpoint"] != str(source)):
             raise ValueError("Resume must keep the same LIVR source and RL recipe")
+    seed, size = rl.get("seed", config["seed"]), rl["prompts_per_step"]
+
+    def batches():
+        """(maps, position after them) per step: one seeded permutation per epoch, or with
+        `steps`, a stream of permutations cut into full batches until that many steps."""
+        if rl.get("steps"):
+            position = progress["next_row"]
+            while progress["optimizer_steps"] < rl["steps"]:
+                selected, position = stream_batch(len(rows), size, seed, position)
+                yield selected, {"epoch": position // len(rows), "next_row": position}
+            return
+        for epoch in range(progress["epoch"], rl["epochs"]):
+            order = torch.randperm(len(rows), generator=torch.Generator().manual_seed(seed + epoch)).tolist()
+            start = progress["next_row"] if epoch == progress["epoch"] else 0
+            for offset in range(start, len(rows), size):
+                selected = order[offset:offset + size]
+                yield selected, {"epoch": epoch, "next_row": offset + len(selected)}
+            progress.update(epoch=epoch + 1, next_row=0)
+
+    skip_uniform = rl.get("skip_uniform_groups", False)
     with (output / "steps.jsonl").open("w", encoding="utf-8") as log, \
             (output / "rollouts.jsonl").open("w", encoding="utf-8") as rollout_log:
-        for epoch in range(progress["epoch"], rl["epochs"]):
+        for selected, place in batches():
             if pilot and progress["optimizer_steps"] >= max_steps:
                 break
-            generator = torch.Generator().manual_seed(rl.get("seed", config["seed"]) + epoch)
-            order = torch.randperm(len(rows), generator=generator).tolist()
-            start = progress["next_row"] if epoch == progress["epoch"] else 0
-            for offset in range(start, len(rows), rl["prompts_per_step"]):
-                if pilot and progress["optimizer_steps"] >= max_steps:
-                    break
-                selected = order[offset:offset + rl["prompts_per_step"]]
-                started = time.perf_counter()
-                groups = []
-                for index in selected:
-                    prompt = to_device(encode(processor, data_root, split, rows[index], training=False), model.device)
-                    completions, actions = rollout(model, prompt, rl, eos_ids, policy_adjuster)
-                    texts = [processor.tokenizer.decode(torch.cat([prompt["input_ids"][0], c]), skip_special_tokens=False)
-                             for c in completions]
-                    rewards = torch.tensor([scorer(rows[index], text) for text in texts])
-                    groups.append((index, prompt, completions, rewards, group_advantages(rewards), actions))
-                    rollout_log.write(json.dumps({"step": progress["optimizer_steps"] + 1, "row": index,
-                                                  "rewards": rewards.tolist(), "lengths": [len(c) for c in completions]}) + "\n")
-                generation_seconds = time.perf_counter() - started
-                model.train()
-                model.visual.eval()
-                optimizer.zero_grad(set_to_none=True)
-                count = sum(len(g[2]) for g in groups)
-                loss_sum = kl_sum = 0.0
-                latent_stats = []
-                for index, prompt, completions, rewards, advantages, actions in groups:
-                    for i, (completion, advantage) in enumerate(zip(completions, advantages.tolist())):
-                        action = None if actions is None else actions[i:i + 1]
-                        # The reference reads the same latent action, so KL covers the text only.
-                        with torch.no_grad(), replaying(reference_adjuster, action):
-                            reference_logprobs = token_logprobs(reference, prompt, completion, temperature)
-                        # Keep the replay open through backward: checkpointing re-runs the hook.
-                        with replaying(policy_adjuster, action) as state:
-                            policy = token_logprobs(model, prompt, completion, temperature)
-                            loss, kl = sequence_loss(policy, reference_logprobs, advantage, rl)
-                            if latent:
-                                latent_loss, stats = latent_objective(model, state["prior"], action, advantage,
-                                                                      latent, rl["clip_epsilon"])
-                                loss = loss + latent_loss
-                                latent_stats.append(stats)
-                            if not torch.isfinite(loss):
-                                raise FloatingPointError(f"Nonfinite RL loss at row {index}")
-                            (loss / count).backward()
-                        loss_sum += loss.item(); kl_sum += kl.item()
-                norm = torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad],
-                                                      config["max_grad_norm"], error_if_nonfinite=True)
+            started = time.perf_counter()
+            groups = []
+            for index in selected:
+                prompt = to_device(encode(processor, data_root, split, rows[index], training=False), model.device)
+                completions, actions = rollout(model, prompt, rl, eos_ids, policy_adjuster)
+                texts = [processor.tokenizer.decode(torch.cat([prompt["input_ids"][0], c]), skip_special_tokens=False)
+                         for c in completions]
+                rewards = torch.tensor([scorer(rows[index], text) for text in texts])
+                groups.append((index, prompt, completions, rewards, group_advantages(rewards), actions))
+                rollout_log.write(json.dumps({
+                    "step": progress["optimizer_steps"] + 1, "row": index, "rewards": rewards.tolist(),
+                    "lengths": [len(c) for c in completions],
+                    # The completions let the rewards be rescored on CPU (B′ and C′ validity).
+                    "completions": [processor.tokenizer.decode(c, skip_special_tokens=False) for c in completions]}) + "\n")
+            generation_seconds = time.perf_counter() - started
+            model.train()
+            model.visual.eval()
+            optimizer.zero_grad(set_to_none=True)
+            # Equal rewards give every rollout zero advantage: no policy gradient, only KL.
+            trained = [g for g in groups if g[3].std() > 0] if skip_uniform else groups
+            count = sum(len(g[2]) for g in trained)
+            loss_sum = kl_sum = 0.0
+            latent_stats = []
+            for index, prompt, completions, rewards, advantages, actions in trained:
+                for i, (completion, advantage) in enumerate(zip(completions, advantages.tolist())):
+                    action = None if actions is None else actions[i:i + 1]
+                    # The reference reads the same latent action, so KL covers the text only.
+                    with torch.no_grad(), replaying(reference_adjuster, action):
+                        reference_logprobs = token_logprobs(reference, prompt, completion, temperature)
+                    # Keep the replay open through backward: checkpointing re-runs the hook.
+                    with replaying(policy_adjuster, action) as state:
+                        policy = token_logprobs(model, prompt, completion, temperature)
+                        loss, kl = sequence_loss(policy, reference_logprobs, advantage, rl)
+                        if latent:
+                            latent_loss, stats = latent_objective(model, state["prior"], action, advantage,
+                                                                  latent, rl["clip_epsilon"])
+                            loss = loss + latent_loss
+                            latent_stats.append(stats)
+                        if not torch.isfinite(loss):
+                            raise FloatingPointError(f"Nonfinite RL loss at row {index}")
+                        (loss / count).backward()
+                    loss_sum += loss.item(); kl_sum += kl.item()
+            norm = 0.0
+            if count:
+                norm = float(torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad],
+                                                            config["max_grad_norm"], error_if_nonfinite=True))
                 optimizer.step()
-                scheduler.step()
-                progress.update(epoch=epoch, next_row=offset + len(selected), optimizer_steps=progress["optimizer_steps"] + 1)
-                rewards = torch.stack([g[3] for g in groups])
-                row = {"phase": phase, "epoch": epoch, "step": progress["optimizer_steps"],
-                       "reward": rewards.mean().item(), "zero_variance_groups": int((rewards.std(-1) == 0).sum()),
-                       "groups": len(groups), "loss": loss_sum / count, "kl": kl_sum / count,
-                       "grad_norm": float(norm), "lr": scheduler.get_last_lr()[0],
-                       "mean_completion_tokens": sum(len(c) for g in groups for c in g[2]) / count,
-                       "generation_seconds": generation_seconds, "seconds": time.perf_counter() - started,
-                       "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
-                if latent:
+            scheduler.step()
+            progress.update(**place, optimizer_steps=progress["optimizer_steps"] + 1)
+            rollouts = sum(len(g[2]) for g in groups)
+            progress["verifier_calls"] = progress.get("verifier_calls", 0) + rollouts
+            rewards = torch.stack([g[3] for g in groups])
+            row = {"phase": phase, "epoch": place["epoch"], "step": progress["optimizer_steps"],
+                   "reward": rewards.mean().item(), "zero_variance_groups": int((rewards.std(-1) == 0).sum()),
+                   "groups": len(groups), "trained_groups": len(trained), "updated": bool(count),
+                   "loss": loss_sum / count if count else None, "kl": kl_sum / count if count else None,
+                   "grad_norm": norm, "lr": scheduler.get_last_lr()[0],
+                   "mean_completion_tokens": sum(len(c) for g in groups for c in g[2]) / rollouts,
+                   "verifier_calls": progress["verifier_calls"],
+                   "generation_seconds": generation_seconds, "seconds": time.perf_counter() - started,
+                   "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
+            if latent:
+                if latent_stats:
                     row |= {key: sum(s[key] for s in latent_stats) / len(latent_stats) for key in latent_stats[0]}
-                    row["head_lr"] = scheduler.get_last_lr()[-1]
-                log.write(json.dumps(row) + "\n"); log.flush(); rollout_log.flush()
-                print(json.dumps(row), flush=True)
-                every = rl.get("checkpoint_every_steps", 0)
-                if every and progress["optimizer_steps"] % every == 0:
-                    save_checkpoint(output / f"step-{progress['optimizer_steps']}", model, processor, optimizer, scheduler, progress)
-            else:
-                progress.update(epoch=epoch + 1, next_row=0)
+                row["head_lr"] = scheduler.get_last_lr()[-1]
+            log.write(json.dumps(row) + "\n"); log.flush(); rollout_log.flush()
+            print(json.dumps(row), flush=True)
+            every = rl.get("checkpoint_every_steps", 0)
+            if every and progress["optimizer_steps"] % every == 0:
+                save_checkpoint(output / f"step-{progress['optimizer_steps']}", model, processor, optimizer, scheduler, progress)
     model.eval()
     if pilot or not save_final:
         # Pilot weights are not an experiment result; unsaved runs are evaluated by the caller.

@@ -7,6 +7,10 @@ primary has no reading on perception (EB2 78 against E2 84 of 400, p = 0.46, des
 Secondary: **round 2 helps on larger maps** (E2 84 against E 54, p = 1.5 × 10⁻⁵). See
 [Result](#result-jobs-69927986992800).
 
+Amended 2026-11-17: a third arm, E2R, reruns E2 with fewer detour rows to test whether
+the training mix caused E2's losses on no-detour benchmark maps. See
+[Amendment: a rebalanced arm, E2R](#amendment-a-rebalanced-arm-e2r-2026-11-17). Built, not run.
+
 - **Sizes:** 7 x 7 and 8 x 8 only. The user approved them and the GPU budget on
   2026-11-12.
 - **Superseded:** the 2026-11-11 version of this spec trained the latents with
@@ -428,3 +432,174 @@ python -m spara.fresh_maps --name detour-pool-78 --sizes 7,8 --detour-count 500 
   - predicting the image's features from the latents (label-free);
   - map grounding or step grounding (layout-derived targets).
 - **Perception benchmarks** (BLINK, MMVP, V*) and other problems.
+
+## Amendment: a rebalanced arm, E2R (2026-11-17)
+
+Agreed with the user on 2026-11-17. The readings below are fixed before any run.
+
+### Why
+
+Expert iteration is the one lever that has improved routes, but on the benchmark it
+trades detour gains for no-detour losses, so the overall score does not move (E2: 322
+against LIVR's 328). The question is whether the training mix causes those losses.
+
+**The losses are real.** Replaying every run's recorded benchmark answers on the 360
+no-detour test maps ([scripts/analyze_nodetour_failures.py](../scripts/analyze_nodetour_failures.py);
+the simulator agrees with the recorded success on every row of every run):
+
+| Run | Solved, of 360 | Ends short or off the goal | Failed routes with a move away from the goal |
+| --- | --- | --- | --- |
+| LIVR, original and rerun | 316, 319 | 4, 3 | 2 of 44, 5 of 41 |
+| Vanilla SFT, arms A and C | 315, 318 | 11, 8 | 3 of 45, 2 of 42 |
+| Text-only RL (B); latent RL (C) | 320; 315 | 6; 8 | 2 of 40; 10 of 45 |
+| **E, E2, EB2** | **305, 303, 308** | 7, **14**, 6 | **10 of 55, 13 of 57, 16 of 52** |
+
+- **The gap:** the six runs that never saw the expert-iteration rows solve 315–320. All
+  three expert-iteration models solve 303–308.
+- **Two signatures the others rarely show:**
+  - a move away from the goal on a map that never needs one. On test row 44, E2 answers
+    RIGHT, DOWN, DOWN, LEFT, LEFT, UP; LIVR answers DOWN, LEFT;
+  - stopping short (E2). On test row 38, E2 answers UP, UP, UP; LIVR adds LEFT.
+- **One sample per map.** Which maps a run loses is noisy; the aggregate gap and the
+  signatures are the evidence.
+
+**Why the mix is the suspect.**
+- **E2 trained on 70% detour rows:** 2,098 of 3,000. That is the released 98 plus the 2,000
+  extra rows, all from detour pools.
+- **The benchmark is 10% detour maps** (40 of 400), and so are the released training
+  maps (98 of 1,000).
+- **Both signatures fit a policy pushed toward detours and long routes.** Every detour
+  route moves away from the goal somewhere, and the found routes come from larger maps.
+
+**A from-scratch retrain did not test this.** Branch `feat/rebalanced-policy-and-rl-gate`
+built a "natural 10% detour" set from the released training maps, keeping all 902 no-detour
+maps and min(100, 98) detour maps. That is the released set itself, shuffled, so its run
+(305/400) retrained LIVR rather than rebalancing expert iteration.
+
+### The arm
+
+E2R is E2 with one change: the composition of its 3,000 training rows.
+
+| Rows | E2 | E2R |
+| --- | --- | --- |
+| Released training maps | 1,000 | 1,000 |
+| Drawn in turn from the 201 solved 7 x 7 and 8 x 8 pool maps | 1,000 | 500 |
+| Drawn in turn from the 373 solved 3 x 3 to 6 x 6 pool maps | 1,000 | 500 |
+| New no-detour maps, `fresh/nodetour-pool`, each once | 0 | 1,000 |
+| **Detour share** | **70%** (2,098) | **37%** (1,098) |
+
+Everything else is E2's:
+- the start (E);
+- the shuffle with seed 42, and the split into phases of 1,496 and 1,504 rows (187 and
+  188 optimizer steps), both unmasked;
+- round 1's optimizer recipe: learning rate 1e-5, cosine schedule with 5% warmup,
+  accumulation 8;
+- the evaluation.
+
+**The new set,** generated on CPU with `spara.fresh_maps`:
+
+| Set | Contents | Seed |
+| --- | --- | --- |
+| `fresh/nodetour-pool` | 1,000 no-detour maps, 3 x 3 to 8 x 8 drawn with equal weight, each labelled with its shortest route | 206 |
+
+It excludes every layout in the released splits and every other fresh set.
+
+### Why each choice is correct
+
+- **Only the mix changes.** Rows, steps, phases, learning rate, start and evaluation
+  match E2, so E2R against E2 isolates the composition.
+- **Every distinct solved map stays.** 500 rows cover the 201 large maps two or three
+  times each, and the 373 smaller maps once or twice. Only the repeats drop. The detour
+  scaling check showed that the number of distinct layouts, not repeats, carried the
+  gain (2,000 layouts: 107 of 240; 98 layouts repeated about 20 times: 64;
+  [detour scaling](experiments/detour-scaling-6941468/README.md)).
+- **No-detour labels counter both signatures.**
+  - **Away moves:** on a no-detour map, every move of the shortest route reduces the
+    distance to the goal, so these rows never contain an away move.
+  - **Stopping short:** the routes are complete.
+  - **Sizes 3 x 3 to 8 x 8:** without no-detour maps at 7 x 7 and 8 x 8, the larger
+    sizes would appear only in detour rows.
+- **Fresh maps, not more released maps.** Repeating the released 1,000 would add
+  memorised rows; fresh layouts add variety, as the found routes do.
+- **Labels are layout-derived, as the released answers are.** They come from the same
+  shortest-route rule (`label_route`, which reproduces 976 of the 1,000 released
+  answers). This is the released supervision on more maps, not a new kind of target.
+- **37% rather than 10%.** At the benchmark's own share, the detour rows would fall to
+  about 200, below the variety the gains need. 37% halves the share while keeping every
+  solved map. It is a judgment, fixed here.
+
+### Validity checks
+
+The readings are withheld if any fails:
+1. **Round 2's set checks.** Labels pass the reference evaluator, and no pair of sets
+   shares a layout, now including `fresh/nodetour-pool`.
+2. **The new set:** every map is solvable and needs no detour, every label passes the
+   reference evaluator, and the set shares no layout with the released splits or any
+   other fresh set.
+3. **The rows:** 3,000 in total, with the composition in the table above, recorded in the
+   run's manifest.
+
+### Readings
+
+**Primary: E2R against E2 on the benchmark's 360 no-detour maps.** One sampled answer per
+map (the reference protocol, as E2's), paired by map, exact McNemar, two-sided.
+- **Rebalancing reduces the harm:** E2R solves more, p < 0.05.
+- **Rebalancing adds harm:** E2R solves fewer, p < 0.05.
+- **No detectable difference:** otherwise.
+- **Power:** E2 and LIVR disagree on 40 of these maps (12 only E2, 28 only LIVR,
+  p = 0.017). A recovery to LIVR's level gives a split like that one, near the detection
+  limit; a partial recovery would not reach significance.
+
+**Guard: E2R against E2 on the 400 held-out 7 x 7 and 8 x 8 maps,** greedy, the same test.
+- **Kept:** E2R does not solve significantly fewer.
+- **Lost:** E2R solves fewer, p < 0.05.
+
+**Secondary:**
+- **The benchmark against LIVR** (rerun, 328): all 400 maps, the 40 detour maps and the
+  360 no-detour maps, exact McNemar. Does expert iteration now gain overall?
+- **Round 1's 240 held-out maps:** E2R against E2, greedy.
+
+**Descriptive:**
+- **The two signatures** on the no-detour benchmark maps, for E2R beside the table above.
+- **Failures on the 400 held-out maps,** as round 2's table.
+- **Masked greedy, the probes and the training losses,** as for E2.
+
+**Outcome table:**
+
+| Primary | Guard | Reading |
+| --- | --- | --- |
+| Reduces the harm | Kept | The mix caused the no-detour losses; rebalancing removes them and keeps the larger-map gains. The benchmark against LIVR says whether expert iteration now gains overall |
+| Reduces the harm | Lost | The mix trades no-detour accuracy for detour skill. Report the trade-off; a share between 37% and 70% is the next option |
+| No detectable difference | Kept | No detectable recovery. The signatures show whether the failures changed kind |
+| No detectable difference | Lost | Fewer detour rows cost the larger maps without helping no-detour maps: the mix is not the cause |
+| Adds harm | — | Unexpected. Look at the training losses and the signatures first |
+
+### Limits
+
+- **One run,** as for E2. Two LIVR runs disagree on 31 of 400 benchmark maps.
+- **Sampled benchmark answers.** The primary uses the reference protocol, not greedy
+  decoding, so sampling adds noise.
+- **The change has two parts:** fewer detour rows and new no-detour rows. The arm tests
+  the mix as a whole, not each part.
+
+### Budget
+
+- **One H200 job, about 30 minutes.** E2's job took 30 minutes 7 seconds for the same
+  steps and evaluation.
+- **Generating the set:** about 1,000 renders on CPU, a few minutes.
+- **Storage:** 15 GB of final weights; recheck scratch first.
+
+### Running
+
+```bash
+python -m spara.fresh_maps --name nodetour-pool --sizes 3,4,5,6,7,8 --nodetour-count 1000 \
+  --weights 1,1,1,1,1,1 --seed 206 \
+  --exclude probe,detour-pool,detour-heldout,jepa-train,detour-pool-78,detour-heldout-78
+python -m spara.cli expert-round2 --stage train --arm e2r --settings configs/expert_round2_rebalanced.json \
+  --checkpoint /path/to/E/stage2/final --round1-routes /path/to/round1-search/routes.jsonl \
+  --search-run /path/to/round2-search --data-root data/vsp --output /path/to/e2r
+```
+
+On PACE: [scripts/pace/expert_round2.sbatch](../scripts/pace/expert_round2.sbatch) with
+`SPARA_STAGE=train SPARA_ARM=e2r SPARA_SETTINGS=configs/expert_round2_rebalanced.json`
+and `SPARA_SEARCH_RUN`. `expert_round2.compare_rebalanced` applies the readings on CPU.

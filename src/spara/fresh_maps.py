@@ -11,6 +11,8 @@ read back with spara.data.records(root, "fresh/<name>").
 
 Detour-only sets (docs/DETOUR_SCALING_SPEC.md) draw each attempt's size by weight, keep
 only detour maps, and label every map with a shortest route in the released answer format.
+No-detour sets (--nodetour-count; the E2R amendment of docs/EXPERT_ITERATION_ROUND2_SPEC.md)
+do the same, keeping only maps whose shortest route equals the grid distance.
 
     python -m spara.fresh_maps --data-root data/vsp --name probe --sizes 5,6,7,8 --per-size 100 --seed 101
     python -m spara.fresh_maps --data-root data/vsp --name detour-pool --detour-count 2000 \
@@ -109,17 +111,24 @@ def draw_layouts(size, count, rng, exclude, hole_probability=0.2):
     return layouts
 
 
-def draw_detour_layouts(count, rng, exclude, sizes, weights, hole_probability=0.2, max_attempts=2_000_000):
-    """`count` detour layouts not in `exclude`, each attempt's size drawn by `weights`;
-    adds them to `exclude`. Returns the layouts and the number of attempts."""
+def is_direct(desc):
+    """Solvable, and the shortest safe route equals the grid distance: no detour needed."""
+    return shortest_path(desc) is not None and not is_detour(desc)
+
+
+def draw_detour_layouts(count, rng, exclude, sizes, weights, hole_probability=0.2, max_attempts=2_000_000,
+                        keep=is_detour):
+    """`count` layouts that satisfy `keep` (detour maps by default) and are not in
+    `exclude`, each attempt's size drawn by `weights`; adds them to `exclude`. Returns the
+    layouts and the number of attempts."""
     layouts, attempts = [], 0
     while len(layouts) < count:
         attempts += 1
         if attempts > max_attempts:
-            raise RuntimeError(f"Found {len(layouts)} of {count} detour layouts in {max_attempts} attempts")
+            raise RuntimeError(f"Found {len(layouts)} of {count} layouts in {max_attempts} attempts")
         desc = draw_layout(rng.choices(sizes, weights)[0], rng, hole_probability)
         key = layout_key({"map_desc": desc})
-        if key not in exclude and is_detour(desc):
+        if key not in exclude and keep(desc):
             exclude.add(key)
             layouts.append(desc)
     return layouts, attempts
@@ -141,9 +150,11 @@ def render(desc):
 
 
 def generate(root, name, sizes, per_size, seed, hole_probability=0.2, exclude_sets=(), detour_count=None,
-             weights=None):
-    """`per_size` maps of each size; or, with `detour_count`, that many labelled detour maps
-    with each attempt's size drawn by `weights`."""
+             weights=None, nodetour_count=None):
+    """`per_size` maps of each size; or, with `detour_count` (`nodetour_count`), that many
+    labelled detour (no-detour) maps with each attempt's size drawn by `weights`."""
+    if detour_count and nodetour_count:
+        raise ValueError("Give detour_count or nodetour_count, not both")
     root = Path(root)
     target = root / (FRESH + name)
     if target.exists():
@@ -157,10 +168,13 @@ def generate(root, name, sizes, per_size, seed, hole_probability=0.2, exclude_se
     exclude = released_layouts(root) | {layout_key(r) for other in exclude_sets for r in records(root, FRESH + other)}
     rng = random.Random(seed)
     rows, extra = [], {}
-    if detour_count:
+    labelled = detour_count or nodetour_count
+    if labelled:
         weights = list(weights or [1] * len(sizes))
-        layouts, attempts = draw_detour_layouts(detour_count, rng, exclude, list(sizes), weights, hole_probability)
-        extra = {"detour_count": detour_count, "weights": weights, "attempts": attempts,
+        keep, key = (is_detour, "detour_count") if detour_count else (is_direct, "nodetour_count")
+        layouts, attempts = draw_detour_layouts(labelled, rng, exclude, list(sizes), weights, hole_probability,
+                                                keep=keep)
+        extra = {key: labelled, "weights": weights, "attempts": attempts,
                  "label_rule": "shortest route, first in U, L, R, D order"}
     else:
         layouts = [desc for size in sizes for desc in draw_layouts(size, per_size, rng, exclude, hole_probability)]
@@ -169,7 +183,7 @@ def generate(root, name, sizes, per_size, seed, hole_probability=0.2, exclude_se
         (target / image).parent.mkdir(parents=True, exist_ok=True)
         render(desc).save(target / image)
         row = {"text_input": prompt, "image_input": image, "map_id": len(rows), "map_desc": desc}
-        if detour_count:
+        if labelled:
             row["text_output"] = answer_text(label_route(desc))
         rows.append(row)
     (target / "maps.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
@@ -188,16 +202,18 @@ def main():
     parser.add_argument("--sizes", required=True, help="Comma-separated grid sizes, e.g. 5,6,7,8")
     parser.add_argument("--per-size", type=int, help="Maps per size (not with --detour-count)")
     parser.add_argument("--detour-count", type=int, help="Labelled detour maps, sizes drawn by --weights")
-    parser.add_argument("--weights", default="", help="Comma-separated size weights for --detour-count")
+    parser.add_argument("--nodetour-count", type=int, help="Labelled no-detour maps, sizes drawn by --weights")
+    parser.add_argument("--weights", default="", help="Comma-separated size weights for --detour-count or --nodetour-count")
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--hole-probability", type=float, default=0.2)
     parser.add_argument("--exclude", default="", help="Comma-separated fresh set names whose layouts to avoid")
     args = parser.parse_args()
-    if (args.per_size is None) == (args.detour_count is None):
-        parser.error("Give exactly one of --per-size and --detour-count")
+    if sum(x is not None for x in (args.per_size, args.detour_count, args.nodetour_count)) != 1:
+        parser.error("Give exactly one of --per-size, --detour-count and --nodetour-count")
     manifest = generate(args.data_root, args.name, [int(s) for s in args.sizes.split(",")], args.per_size,
                         args.seed, args.hole_probability, [s for s in args.exclude.split(",") if s],
-                        args.detour_count, [float(w) for w in args.weights.split(",")] if args.weights else None)
+                        args.detour_count, [float(w) for w in args.weights.split(",")] if args.weights else None,
+                        args.nodetour_count)
     print(json.dumps(manifest, indent=2))
 
 

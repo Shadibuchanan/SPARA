@@ -34,6 +34,13 @@ Reinforcement learning from the LIVR baseline that optimizes generated route
 text against route success, without sampling or adjusting latent tokens.
 Condition B in the planned comparisons.
 
+**B′ and C′**:
+Conditions B and C rerun under fair conditions. Both start from the LIVR rerun and
+train on unseen detour maps (`fresh/detour-pool`), sampling from the model's own
+distribution, with the maps per step set by a pilot. C′'s latent adjustment lies in the
+principal basis of LIVR's latents. B′ against C′ is the main comparison. See
+docs/STRUCTURED_EXPLORATION_SPEC.md, amendment of 2026-11-17.
+
 **Step grounding**:
 An auxiliary training objective for route writing. At each move of a teacher-forced
 route, a head reads one layer's hidden state and predicts the agent's current cell
@@ -81,6 +88,12 @@ method; the benchmark never uses it.
 **Expert iteration**:
 Training a policy on the successful answers its own guided search found, then
 searching again with the updated policy.
+
+**E2R**:
+Expert iteration's round 2 arm E2 with a rebalanced training mix: half the found
+detour rows, plus 1,000 new no-detour maps, for a detour share of 37% instead of 70%.
+It tests whether the mix caused E2's losses on no-detour benchmark maps. See
+docs/EXPERT_ITERATION_ROUND2_SPEC.md, amendment of 2026-11-17.
 
 **Judge**:
 Whatever tells guided search, move by move, whether an attempt is alive, has failed or
