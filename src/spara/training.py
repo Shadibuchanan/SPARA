@@ -38,8 +38,13 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None,
     only (the first phase of docs/EXPERT_ITERATION_ROUND2_SPEC.md)."""
     if data is not None and grounding is not None and getattr(grounding, "released_only", True):
         raise ValueError("Step grounding trains on the released training split only")
-    data = data if data is not None else [("train", row) for row in records(data_root, "train")]
-    rows = [row for _, row in data]
+    if config.get("train_records"):
+        import json as _json
+        rows = [_json.loads(line) for line in Path(config["train_records"]).read_text(encoding="utf-8").splitlines()]
+        data = [("train", row) for row in rows]
+    else:
+        data = data if data is not None else [("train", row) for row in records(data_root, "train")]
+        rows = [row for _, row in data]
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     model.config.livr_stage = stage
