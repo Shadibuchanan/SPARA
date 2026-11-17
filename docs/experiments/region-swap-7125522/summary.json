@@ -1,0 +1,48 @@
+{
+  "settings": {
+    "sizes": [
+      7,
+      8
+    ],
+    "maps_per_size": 50,
+    "reproduce": 0.95,
+    "seed": 42,
+    "hide_globals": true,
+    "conditions": [
+      "block_swap",
+      "block_mean"
+    ]
+  },
+  "maps": 100,
+  "seconds": 233.96451020240784,
+  "identity": [
+    true,
+    true,
+    true,
+    true
+  ],
+  "conditions": {
+    "own": {
+      "maps": 100,
+      "solved": 15
+    },
+    "block_swap": {
+      "maps": 100,
+      "solved": 0,
+      "unchanged": 0,
+      "donor_route": 98
+    },
+    "block_mean": {
+      "maps": 100,
+      "solved": 0,
+      "unchanged": 0
+    }
+  },
+  "reproduced": {
+    "same_route": 100,
+    "maps": 100,
+    "share": 1.0
+  },
+  "reading": "the answer reads the block latents, but their content does not shape its moves",
+  "peak_gpu_gib": 15.48949909210205
+}

@@ -1905,12 +1905,12 @@ The fine-tune arms reuse the detour-scaling recipe, whose runner now accepts sup
 
 **Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
 **User request:** Use LIVR's bottleneck instead of layout-derived labels as round 2's perception arm, combined with expert iteration, and start on it.
-**AI contribution:** Explained from the LIVR paper how its Stage 1 attention mask improves perception without helper images, and set it against the project's evidence: the direct fine-tuning control, latent RL, the JEPA judge, the planning probe and step grounding. Rewrote the round 2 specification around two arms from E: E2, and EB2, whose first training phase runs under the Stage 1 mask. A separate advisor model reviewed the design, and three of its suggestions were adopted: both arms share the two-phase schedule with an optimizer restart; the rows are shuffled before the split; and the gate is a hole probe on the latents rather than masked success. Implemented the round in a new module with a CLI command, a settings file, a PACE job script and CPU tests, added an option to `train_stage` not to save the first phase's weights, and generated the two new map sets with the pinned renderer.
+**AI contribution:** Explained from the LIVR paper how its Stage 1 attention mask improves perception without helper images, and set it against the project's evidence: the direct fine-tuning control, latent RL, the JEPA judge, the planning probe and step grounding. Rewrote the round 2 specification around two arms from E: E2, and EB2, whose first training phase runs under the Stage 1 mask. A separate advisor model reviewed the design, and three of its suggestions were adopted: both arms share the two-phase schedule with an optimizer restart; the rows are shuffled before the split; and the gate is a hole probe on the latents rather than masked success. Implemented the round in a new module with a CLI command, a settings file, a PACE job script and CPU tests, added an option to `train_stage` not to save the first phase's weights, and generated the two new map sets with the pinned renderer. After the CPU precondition showed the batching gap is bfloat16 rounding, added a TF32 read precision for the search's batched reads (round 1's default unchanged), on the advisor model's suggestion, and recorded the result in the specification.
 **Contribution type:** Advice, generation and editing.
 **Initial state:** As at the end of the preceding entry; the round 2 specification described map grounding, and nothing was built.
 **Unfinished work:**
 - No GPU job is submitted. The GPU budget is the user's decision.
-- The CPU batching check (job 6989902) was submitted on `ice-cpu`; its result decides which budget line applies.
+- The TF32 batched reads are untested on a GPU; the search job's in-job check decides whether they are used, with round 1's reads as the fallback.
 - The 7–8 size range was carried over from the earlier discussion without an explicit confirmation.
 
 ### Human input and contributions
@@ -1929,6 +1929,9 @@ The fine-tune arms reuse the detour-scaling recipe, whose runner now accepts sup
 | docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | Rewritten around E2 and EB2: the two-phase schedule, the probe gate with a bootstrap, readings, validity, precondition, budget and running commands |
 | src/spara/expert_round2.py | created | E checkpoint check, CPU batching check, search over the frontier and the new pool, two-phase arms, masked greedy, latent state dumps and the comparison |
 | src/spara/training.py | modified | `save_final` option to keep a phase's weights in memory only |
+| src/spara/expert_iteration.py | modified | Read precision option for batched reads (bfloat16 autocast by default, or TF32) |
+| tests/test_expert_iteration.py | modified | Test of the read precision option |
+| docs/experiments/expert-iteration-6961874/README.md | modified | Source note: the second change to `expert_iteration.py` since round 1 |
 | src/spara/cli.py | modified | `expert-round2` command with batching-check, search and train stages; the GPU-only guard exempts that CPU batching check |
 | configs/expert_round2.json | created | Round 2 settings |
 | scripts/pace/expert_round2.sbatch | created | PACE job for the CPU batching check, the search and the arms |
@@ -1938,3 +1941,357 @@ The fine-tune arms reuse the detour-scaling recipe, whose runner now accepts sup
 
 - data/vsp/fresh/detour-heldout-78 (git-ignored): 400 generated 7 x 7 and 8 x 8 detour maps, the new held-out set.
 - data/vsp/fresh/detour-pool-78 (git-ignored): 500 generated 7 x 7 and 8 x 8 detour maps, the new search pool.
+
+## 2026-11-16 — Specify and build the latent JEPA perception objective
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Focus next on perception, find an objective that could work where LIVR's bottleneck and the JEPA judge had not, make it JEPA-like with LeJEPA's anti-collapse, and try it out.
+**AI contribution:** Recommended a dense, label-free objective acting on LIVR's latents, gated by cheap checks, then reworked it at the user's request into embedding-space prediction with LeJEPA's SIGReg. Explained why masking cannot work on these maps (holes are placed independently) and compared the design with LeVLJEPA after a delegated web-fetch agent read that paper. Wrote a CPU probe of holes in the image tokens and ran it on PACE as CPU job 7104083: balanced accuracy 1.00 at every layer and size from 3 x 3 to 6 x 6, against 0.75–0.88 for the latents, and position at chance after per-position centring. Implemented the objective (SIGReg after LeJEPA's reference, embedding queues, projectors, a small position-conditioned predictor, cell targets from the image-token states), a gate job (image-token probe at 7 x 7 and 8 x 8, centring means, the heads' warm start, the loss weight from gradient norms, swap checks on E and E2), the EJ2 arm and the comparison, plus CLI wiring, a settings file, PACE scripts, CPU tests and a specification with readings fixed before any GPU run. A separate advisor model reviewed the work three times, and its suggestions were adopted: a fix to the shuffled-context baseline, a smaller predictor with dropout and a memorisation check, the gradient-norm rule for the loss weight, clipping the heads outside the language model's norm, a descriptive first-two-moves count in the swap check, a dry run of the comparison on round 2's real outputs (which reproduced its recorded numbers), and asking for the GPU budget before the gate job. A CPU test then showed raw prediction error grows as SIGReg spreads the learned targets, so all reported errors became the share of target variance unexplained.
+**Contribution type:** Advice, generation and editing.
+**Initial state:** Round 2's code, specification and evidence were present as uncommitted changes from earlier work. The session's earlier results review, which the user asked not to log, produced the first-mistake counts cited in the specification.
+**Unfinished work:**
+- The gate job and the EJ2 arm were run afterwards under the user's budget approval; their results are recorded in the specification and its evidence folders, not in this entry.
+- The readings and assumptions in docs/PERCEPTION_JEPA_SPEC.md have not been reviewed by the team.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Proposed focusing on perception because it is more versatile; noted LIVR's objective had not helped at scale and the JEPA had not helped; asked what could work | Recommended dense, label-free reconstruction on the latents, gated by an image-token probe and a swap check |
+| 2 | User message | Asked for a more JEPA-like reconstruction, questioned the cost of a compressed variant, and noted LeJEPA works against collapse | Reframed it as embedding prediction with SIGReg; explained that cost was not the issue, that masking fails here, and where anti-collapse is needed |
+| 3 | User message | Asked whether the idea resembles LeVLJEPA | Compared the two from the paper; adopted its unnormalised embeddings and weight range, and avoided its batch norm and large predictor |
+| 4 | User message | Said to try it out | Ran the CPU image-token probe, built the objective, gate job and arm, and wrote the specification |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/perception_jepa.py | created | SIGReg, queues, heads, cell targets, the auxiliary loss for `train_stage`, the gate job, the EJ2 arm and the comparison |
+| src/spara/training.py | modified | The auxiliary-loss hook accepts objects other than step grounding (data guard, metric keys, loss key, head file, optional separate clipping of the heads); step grounding unchanged |
+| src/spara/cli.py | modified | `perception-jepa` command with gate and train stages |
+| configs/perception_jepa.json | created | Latent JEPA settings |
+| scripts/probe_image_token_holes.py | created | CPU probe of holes and of position after centring, from the latent battery's cell features |
+| scripts/pace/image_token_holes.sbatch | created | PACE CPU job for that probe |
+| scripts/pace/perception_jepa.sbatch | created | PACE job for the gate and the arm |
+| tests/test_perception_jepa.py | created | CPU tests with the stand-in model |
+| tests/test_pace_scripts.py | created | Runs `bash -n` on every PACE job script, after a quoting slip in the new job script failed the first gate submission (job 7105700) |
+| docs/PERCEPTION_JEPA_SPEC.md | created | Question, objective, gate 1 result, gate job, arm, fixed readings, budget and assumptions |
+| docs/experiments/image-token-holes-7104083/README.md | created | Evidence write-up for CPU job 7104083 |
+| docs/experiments/image-token-holes-7104083/image-token-holes.json | created | The probe's output, copied from PACE |
+| GLOSSARY.md | modified | Added the term "Latent JEPA" |
+
+### Folders created
+
+- docs/experiments/image-token-holes-7104083: evidence for the image-token hole probe.
+
+## 2026-11-16 — Build the fixed-target retry of the latent JEPA (EJF)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** After EJ2 did not take, try the retry proposed in its write-up: fixed targets, with a CPU check that the prediction depends on the latents before any training job.
+**AI contribution:** Designed the retry so EJ2's shortcut is closed by construction: targets are E's layer-4 cell states, centred per position, standardised per channel and projected once by a frozen PCA, so position alone predicts zero. SIGReg was dropped because fixed targets cannot collapse. Implemented a GPU features job that saves E's latents and cells. Implemented a CPU gate 3:
+- the targets must show holes;
+- the hole label must explain a set share of their variance, with a pre-declared fallback to fewer components;
+- after the warm start, the predictions must depend on the latents (shuffled gap and holes read from the predictions), with a linear ceiling reported beside it.
+
+Extended the EJ2 arm to read the stored per-map targets and set the loss weight from pilot rows at its start. Also wrote CLI and PACE wiring, a settings file, CPU tests, and a specification section with thresholds fixed before any run. A separate advisor model reviewed the plan, and two of its suggestions were adopted: storing the targets per map so they cannot drift as layer 4 trains, and the hole-share check. After gate 3 failed, diagnosed the cause on CPU: E's latents have a few large constant channels, so the context projector's layer norm left the predictor almost the same input for every map. With the user's approval, added a fixed per-channel standardisation of the latents to the heads, replaced the unreachable holes threshold with a descriptive hole-direction measure (on the advisor's suggestion), and recorded both as a dated amendment in the specification. When the first EJF job failed at phase 1, traced it to map IDs that repeat across levels within the released training split, which had merged 88 training maps into others. Maps are now keyed by split and image; the saved features were re-keyed on CPU, and the arm computes the missing maps' targets before any update.
+**Contribution type:** Generation and editing.
+**Initial state:** The latent JEPA code, specification and EJ2 evidence from the previous entry were present as uncommitted changes, alongside round 2's uncommitted changes.
+**Unfinished work:**
+- These ran afterwards: the features job (7116225), gate 3 (CPU job 7116395, failed), the amended gate 3 (CPU jobs 7117800 and 7118222, passed), a first EJF job (7117889, failed on the map key) and EJF (job 7118300). Their results are recorded in the specification, not in this entry.
+- The new thresholds in docs/PERCEPTION_JEPA_SPEC.md have not been reviewed by the team.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Said a fixed-target retry sounds good, replying to a proposal of about 5 GPU-minutes for features and the roughly 30-minute training job only if a CPU check passes | Built the retry; recorded an allowance of 2,400 GPU-seconds on PACE and submitted the features job |
+| 2 | User message | Approved 2,600 GPU-seconds after gate 3 failed and the standardisation fix was proposed; said the code packet is now due on the 19th | Built the fix, reran gate 3 on CPU, and submitted EJF with a time limit inside the allowance |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/perception_jepa.py | modified | Fixed-target heads and stored per-map targets, the no-SIGReg objective, the features job, gate 3 on CPU (fixed projection, hole share, holes read from values, shuffled gap, linear ceiling, hole-direction share), a fixed standardisation of the latents in the heads, maps keyed by split and image, the EJF path in the arm (missing targets, loss-weight pilot), the shuffled gap in the monitor, and `compare` by arm name |
+| src/spara/cli.py | modified | `features` stage of the `perception-jepa` command |
+| configs/perception_jepa_fixed.json | created | Settings and thresholds for the retry |
+| scripts/fixed_target_gate.py | created | Runs gate 3 on saved features, on CPU |
+| scripts/rekey_features.py | created | Re-keys a features file saved with map-ID keys by split and image, on CPU |
+| scripts/pace/jepa_fixed_gate.sbatch | created | PACE CPU job for gate 3 |
+| scripts/pace/perception_jepa.sbatch | modified | `features` and `train-fixed` stages |
+| tests/test_perception_jepa.py | modified | Tests of the fixed projection, the gate's measures, gate 3 on synthetic features (including latents with large constant channels, as E's), fixed-target training, and features → gate 3 → EJF on the stand-in model, including a repeated map ID and a target added at the arm's start |
+| tests/test_expert_round2.py | modified | The stand-in rows carry image paths, with IDs repeating across levels as in the data |
+| docs/PERCEPTION_JEPA_SPEC.md | modified | The retry's design, gates, failure readings, budget, commands and status, and the dated amendment after gate 3 |
+| GLOSSARY.md | modified | Added EJF to the latent JEPA entry |
+
+### Folders created
+
+- None
+
+## 2026-11-16 — Build region latents (EJR): one latent token per map block
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Try an adaptive number of latent tokens instead of LIVR's fixed four.
+**AI contribution:** Checked on CPU, before any design, whether more tokens could help.
+- E's and EB2's four latents are near-copies: one token reads holes as well as all four, and their per-cell maps are 85–88% alike.
+- So I recommended tying each token to its own 2 x 2 block of cells, with the token count set by grid size, rather than a free adaptive count. The user agreed.
+
+Implemented it:
+- added region tokens 4 to 15, copied from LIVR's with noise;
+- per-size latent selection in `encode`, used only when region latents are installed, so earlier runs are unchanged;
+- loading saved region checkpoints;
+- a shared linear readout from each token to its block's fixed targets, with a per-token standardisation and a ridge warm start;
+- a start block: a small-map identity check on final-layer states, the missing targets and the loss weight's rule;
+- the arm on EB2's recipe, and a count-matched block probe for the readings;
+- CLI and PACE wiring, CPU tests, and a pre-registered specification section.
+
+A separate advisor model reviewed the design. Its suggestions were adopted:
+- state that one arm cannot separate the extra tokens from the objective;
+- use a JSON dict of tokens per size instead of hidden global state;
+- the order of the start block;
+- a reload round trip test;
+- a time limit below the allowance.
+
+A CPU bound it suggested showed that extra uninformative tokens lower round 2's all-tokens probe (0.657 to between 0.548 and 0.651), so the manipulation check was changed, before the run, to one token per block. The stand-in model showed that tied embeddings let new rows move the output softmax, so the identity check compares hidden states instead of losses.
+**Contribution type:** Advice, generation and editing.
+**Initial state:** The latent JEPA, EJF and round 2 work from earlier entries were present as uncommitted changes.
+**Unfinished work:**
+- The EJR arm (job 7120944) ran afterwards; its results are recorded in the specification, not in this entry.
+- The new readings in docs/PERCEPTION_JEPA_SPEC.md have not been reviewed by the team.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked about allowing an adaptive number of latent tokens instead of a fixed number | Ran the CPU token-redundancy check and proposed region-assigned tokens with the count set by grid size |
+| 2 | User message | "sgtm", replying to that recommendation and its cost of about 35–40 GPU-minutes | Built EJR; recorded an allowance of 2,400 GPU-seconds |
+| 3 | User-reported action | Reconnected the SSH session to PACE after it expired | Allowed syncing code and submitting the job |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/region_latents.py | created | Region tokens and their extension, blocks, the readout and its loss, the start block, the EJR arm, the block probe and `compare_region` |
+| src/spara/serialization.py | modified | `encode` accepts latent tokens per grid size; `latent_kwargs` passes them only for region models |
+| src/spara/runtime.py | modified | Loads checkpoints saved with region latents |
+| src/spara/expert_round2.py | modified | Latent states use the model's latents |
+| src/spara/detour_scaling.py | modified | Greedy evaluation uses the model's latents |
+| src/spara/perception_jepa.py | modified | `compare` accepts a supplied manipulation check and start check; the features pass and gradient norms use the model's latents |
+| src/spara/cli.py | modified | `region-latents` command |
+| configs/region_latents.json | created | EJR settings |
+| scripts/pace/region_latents.sbatch | created | PACE job for EJR |
+| tests/test_region_latents.py | created | Blocks, the readout loss and mask with 16 latents, ridge, the block probe, the arm end to end on the stand-in model, the withheld path, and a real-tokenizer save and reload |
+| tests/test_perception_jepa.py | modified | Test of `compare`'s new hooks |
+| docs/PERCEPTION_JEPA_SPEC.md | modified | The EJR section: evidence, design, start block, readings, budget |
+
+### Folders created
+
+- None
+
+## 2026-11-16 — Build global + region latents with a block mask (EGR)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** After EJR, think about a different latent design; then build the global + region design.
+**AI contribution:** Argued from the four perception arms that the latents are copies by construction, because every latent sees the whole image. Proposed making the separation structural instead: E's four global latents unchanged, plus one block latent per 2 x 2 block, each masked to see only the prompt before the image, its own block's image tokens and itself, in both stages. The alternative reading was also stated: in Stage 2 the answer reads the image directly, so latent content may not limit routes.
+
+Implemented:
+- an explicit attention-mask path in the LIVR model for masked region latents, with each map's grid size carried in the encoded batch and through generation;
+- the global + region token layout and the block restriction;
+- a layout-aware start check over E's shared prefix;
+- a monitor-only readout on detached states, with no loss weight;
+- an option to skip the benchmark;
+- the readings: token separation, the count-matched probe, and masked greedy against EB2.
+
+A separate advisor model reviewed the design, and its suggestions were adopted:
+- run the mask alone, with the readout as a monitor;
+- pre-register masked greedy as the discriminating reading, with an outcome table;
+- require token separation (similarity below 0.6) for "took";
+- budget for the slower masked Stage 2;
+- tests at the attention level and for path equivalence.
+**Contribution type:** Advice, generation and editing.
+**Initial state:** The latent JEPA, EJF, EJR and round 2 work from earlier entries were present as uncommitted changes.
+**Unfinished work:**
+- The EGR arm (job 7122822) ran afterwards; its results are recorded in the specification, not in this entry.
+- The new readings in docs/PERCEPTION_JEPA_SPEC.md have not been reviewed by the team.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Suggested thinking about a different latent design after EJR | Proposed masked global + region latents, and named the competing reading that the limit is downstream of the latents |
+| 2 | User message | Said global + region latents make sense, replying to one arm of about 31 GPU-minutes | Built EGR; recorded an allowance of 2,100 GPU-seconds with a 34-minute limit, and dropped the benchmark to fit |
+| 3 | User-reported action | Reconnected the SSH session to PACE | Allowed syncing code and submitting the job |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/model.py | modified | The boolean mask (`allowed_mask`), and an explicit-mask forward path for masked region latents in both stages, taking `livr_grid_size` |
+| src/spara/region_latents.py | modified | The global + region layout and block tokens, `restrict_regions`, the monitor-only readout, the layout-aware start check, the loss-weight helper, the optional benchmark, `token_similarity`, and `compare_region` with separation and masked greedy |
+| src/spara/serialization.py | modified | Region prompts carry the grid size in the encoded batch |
+| src/spara/perception_jepa.py | modified | `compare` accepts a further condition on "took", and (after the run) an arm without a benchmark |
+| configs/region_latents_masked.json | created | EGR settings |
+| scripts/pace/region_latents.sbatch | modified | Settings and arm name chosen at submission |
+| tests/test_region_latents.py | modified | The mask rows, zero attention across blocks, path equivalence without block latents, generation in both stages, the monitor-only readout, token separation, the arm end to end, `compare_region`'s gates, and a real-tokenizer round trip with the mask |
+| docs/PERCEPTION_JEPA_SPEC.md | modified | The EGR section: design, mask, start block, readings, outcome table, budget |
+
+### Folders created
+
+- None
+
+## 2026-11-16 — Build the swap test for EGR's block latents
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Find out whether EGR's answer uses its block latents, as the first step toward making the model use what the latents hold.
+**AI contribution:** Explained that EGR's latents now hold the map because of the mask, and that the image tokens always did. Showed on CPU that when EGR stepped into a hole beside a safe toward-goal move, its latent for that block had flagged the hole in 89% of cases, the same rate as for holes in general. Proposed a test to separate "ignores the block latents" from "reads them, but the moves do not change", with a fix for each outcome.
+
+Implemented the test: masked greedy on EGR's saved weights under four conditions:
+- own;
+- block latents from a same-size donor map, at every layer;
+- block latents replaced by their mean;
+- global latents from the donor.
+
+It also includes reproduction and identity checks, a pre-declared reading, a CLI stage, settings, the PACE job mode, and a stand-in test. The design and readings were written into the specification before the run.
+**Contribution type:** Advice, generation and editing.
+**Initial state:** The latent JEPA, EJF, EJR, EGR and round 2 work from earlier entries were present as uncommitted changes.
+**Unfinished work:**
+- The swap test (job 7123991) ran afterwards; its results are recorded in the specification, not in this entry.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked whether perception improved but the model is not using the latents | Ran the CPU check of mistakes against the latents' hole content, and proposed the swap test |
+| 2 | User message | Said latent perception seems better and the next step is changing how the model uses the latents, which could also help shared perception Q&A tasks | Framed the test's two outcomes and their fixes; noted the block mask would need a region grid for general images |
+| 3 | User message | Approved the swap test, about 7 GPU-minutes | Built it; recorded an allowance of 480 GPU-seconds with a 7-minute limit; kept EGR's weights for it |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/region_latents.py | modified | `run_latent_swap`, `first_maps`, `swap_readings`, `swap_reading` |
+| src/spara/cli.py | modified | The `swap` stage of `region-latents`; training arguments now checked only for training |
+| configs/region_swap.json | created | Swap-test settings |
+| scripts/pace/region_latents.sbatch | modified | Swap mode on EGR's weights |
+| tests/test_region_latents.py | modified | The swap test on a masked stand-in model |
+| docs/PERCEPTION_JEPA_SPEC.md | modified | The swap test's design, validity checks, reading table and budget |
+
+### Folders created
+
+- None
+
+## 2026-11-16 — Build global dropout from EGR (EGD)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Run the proposed next step after the swap test: make the block latents the answer's only map by hiding the global latents.
+**AI contribution:** Implemented the arm:
+- the mask hides the global latents from every non-latent token, on rows flagged through the encoded batch and through generation;
+- training from EGR's weights, with the globals hidden on every phase-1 row and every other phase-2 row;
+- evaluation on the held-out maps: masked greedy with the globals hidden and shown, unmasked greedy, the latent states, and the swap test with the globals hidden;
+- CPU readings (whether the answer uses the block latents, and McNemar tests against EGR, EB2 and E2);
+- a CLI stage, settings, the PACE job mode and stand-in tests.
+
+The design, its confound (one more pass over the rows than EGR) and the readings were written into the specification before the run.
+**Contribution type:** Generation and editing.
+**Initial state:** The latent JEPA, EJF, EJR, EGR, swap-test and round 2 work from earlier entries were present as uncommitted changes.
+**Unfinished work:**
+- The EGD arm (job 7124258) ran afterwards and timed out before its swap test, which then ran as job 7125522; the results are recorded in the specification, not in this entry.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | "lets start with what you just proposed" (global dropout from EGR's weights, about 35 GPU-minutes) | Built EGD; recorded an allowance of 2,100 GPU-seconds with a 34-minute limit; dropped round 1's held-out maps, test detours, seen maps and the benchmark from the evaluation to fit |
+| 2 | User message | After EGD timed out before its swap test: run the swap test, and drop GPU allowances in favour of reasonable time limits | Added a swap mode that hides the global latents, ran it as a separate job with a 15-minute limit, and saved the preference |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/model.py | modified | The forward pass takes `livr_hide_globals` |
+| src/spara/serialization.py | modified | Flagged rows carry `livr_hide_globals` in the encoded batch |
+| src/spara/region_latents.py | modified | `hide_globals`, `hidden`, `every_other`, `run_global_dropout`, `compare_dropout` (which can read a separately run swap test); the swap test can hide the globals and choose its conditions |
+| src/spara/cli.py | modified | The `dropout` stage of `region-latents` |
+| configs/region_dropout.json | created | EGD settings |
+| configs/region_swap_hidden.json | created | The swap test with the global latents hidden, for EGD's weights |
+| scripts/pace/region_latents.sbatch | modified | Dropout mode on EGR's weights; the swap mode's settings and recorded routes chosen at submission |
+| tests/test_region_latents.py | modified | Hidden globals in the mask, the attention and generation; the arm and its readings end to end on the stand-in model |
+| docs/PERCEPTION_JEPA_SPEC.md | modified | The EGD section: design, evaluation, readings, outcome table |
+
+### Folders created
+
+- None
+
+## 2026-11-16 — Build the planning probe's state probe for region-latent checkpoints
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Run the 10–15 minute probe on EGD: does the model know where it is when it steps into a hole its latents flag?
+**AI contribution:** Extended the planning probe so its state probe (position and hole-ahead probes, S1 to S3) runs on a region-latent checkpoint:
+- prompts carry the block latents;
+- a new `tracking` run collects greedy routes on round 2's held-out 7 x 7 / 8 x 8 maps and teacher-forced states on its pool maps, in two answer modes (unmasked, and masked with the global latents hidden);
+- each mode checks that its routes reproduce the run's recorded routes, and applies a pre-declared floor on probe strength.
+
+Added a CLI stage, a PACE job mode that needs no gate run, CPU tests, and the design and readings in the specification before submission. Made the post hoc analysis script work without a headroom file.
+**Contribution type:** Generation and editing.
+**Initial state:** The latent JEPA, EJF, EJR, EGR, EGD, swap-test and round 2 work from earlier entries were present as uncommitted changes.
+**Unfinished work:**
+- The probe ran as job 7128341; its results are recorded in the specification and its evidence folder, not in this entry.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked why the model cannot avoid holes it can see | Pointed to the image-token probe and LIVR's planning probe, and proposed rerunning its state probe on EGD |
+| 2 | User message | "do the 10-15 minute probe on EGD" | Built the tracking stage; set a 30-minute limit |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/planning_probe.py | modified | Prompts carry region latents; `tracking`, `reproduction` and `tracking_reading` |
+| src/spara/cli.py | modified | The `tracking` stage of `region-latents` |
+| scripts/pace/region_latents.sbatch | modified | Tracking mode on a run's weights |
+| scripts/analyze_planning_probe.py | modified | Runs without a headroom file |
+| tests/test_region_latents.py | modified | The tracking run in both modes on a masked stand-in model; the reading rule |
+| docs/PERCEPTION_JEPA_SPEC.md | modified | The tracking probe's design, readings and outcome table |
+
+### Folders created
+
+- None
+
+## 2026-11-16 — Build global + patch latents for images without a grid
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Make the patch variation of the region latents for perception images: latents tied to fixed tiles of each image, not to FrozenLake cells.
+**AI contribution:** Added a "global+patch" layout:
+- LIVR's four global latents, then one latent per 4 x 4 tile of each image, for up to 4 images, each slot with its own token;
+- a mask that limits each patch latent to its tile's image tokens, itself and the prompt text (all of it, or only before the first image);
+- the model applies this mask without a map grid size;
+- `encode` accepts rows with several images and inserts one set of patch latents per image.
+
+Single-image prompts were checked to encode identically before and after on 60 real FrozenLake prompts. Added CPU tests, including a two-image prompt through the real processor with a save and load round trip, and the design in the specification. The MMVP, V* and BLINK data loaders, scoring and a training arm were not built.
+**Contribution type:** Generation and editing.
+**Initial state:** As the previous entry, plus the tracking stage.
+**Unfinished work:**
+- No benchmark data, evaluator or training arm for perception images; not run on GPU.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Said region latents should at least help the other perception Q&A benchmarks, those LIVR and Scaffolding Minds share | Identified MMVP, V* and BLINK; noted that EGD's block mask depends on the FrozenLake grid and would need a fixed image tiling |
+| 2 | User message | "let's make the patch variation for the perception images" | Built the global+patch layout, its mask and multi-image encoding |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/region_latents.py | modified | `PATCH_TOKENS`, `patch_latents`, `patch_tiles`, `image_runs`, `restrict_patches`; `extend_latents` installs the patch layout |
+| src/spara/model.py | modified | The forward pass applies the patch mask, which needs no grid size |
+| src/spara/serialization.py | modified | `pictures`; `encode` takes several images and patch latents per image |
+| src/spara/data.py | modified | `image_paths` for rows with several images |
+| tests/test_region_latents.py | modified | Tiles, image runs, the mask, attention, generation, hidden globals, empty tiles, settings checks, and the real-processor round trip |
+| docs/PERCEPTION_JEPA_SPEC.md | modified | The global + patch section; the options list |
+
+### Folders created
+
+- None

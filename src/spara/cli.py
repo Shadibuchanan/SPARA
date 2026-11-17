@@ -16,7 +16,7 @@ def main():
     fetch.add_argument("--processor-only", action="store_true")
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
-                    "expert-iteration", "expert-round2"):
+                    "expert-iteration", "expert-round2", "perception-jepa", "region-latents"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -74,6 +74,8 @@ def main():
             cmd.add_argument("--stage", choices=["batching-check", "search", "train"], required=True)
             cmd.add_argument("--settings", default="configs/expert_round2.json")
             cmd.add_argument("--batch", type=int, help="search: policy reads per pass, overriding the settings")
+            cmd.add_argument("--read-precision", choices=["bf16", "tf32"],
+                             help="search: precision of policy reads, overriding the settings")
             cmd.add_argument("--check-split", default="fresh/jepa-train",
                              help="batching-check: a fresh set with maps of every size from 3 to 8")
             cmd.add_argument("--round1-routes", help="search, train: routes.jsonl of round 1's search")
@@ -81,6 +83,30 @@ def main():
             cmd.add_argument("--livr-checkpoint", help="search: LIVR's final Stage 2 checkpoint, for L's answers")
             cmd.add_argument("--arm", choices=["e2", "eb2"], help="train: E2, or EB2 under the bottleneck")
             cmd.add_argument("--search-run", help="train: the round 2 search job's output")
+        if command == "perception-jepa":
+            cmd.add_argument("--stage", choices=["gate", "train", "features"], required=True,
+                             help="features: E's latents and cells for the fixed-target retry (gate 3 runs on CPU, "
+                                  "scripts/fixed_target_gate.py); train: EJ2, or EJF from gate 3's output")
+            cmd.add_argument("--settings", default="configs/perception_jepa.json")
+            cmd.add_argument("--round2-settings", default="configs/expert_round2.json")
+            cmd.add_argument("--round1-routes", required=True, help="routes.jsonl of round 1's search")
+            cmd.add_argument("--search-run", required=True, help="the round 2 search job's output")
+            cmd.add_argument("--e2-checkpoint", help="gate: E2's final weights, for its descriptive swap check")
+            cmd.add_argument("--gate-run", help="train: the gate job's output (heads, centring means, weight)")
+        if command == "region-latents":
+            cmd.add_argument("--stage", choices=["train", "swap", "dropout", "tracking"], default="train",
+                             help="swap: the swap test on a masked global + region checkpoint (EGR); "
+                                  "dropout: EGD, global dropout from EGR's weights; "
+                                  "tracking: the planning probe's state probe on a region-latent run's weights")
+            cmd.add_argument("--recorded-masked", help="swap: masked.jsonl of the EGR run, for the reproduction check")
+            cmd.add_argument("--recorded-run", help="tracking: the run whose greedy.jsonl and masked_hidden.jsonl "
+                                                    "the routes must reproduce")
+            cmd.add_argument("--modes", default="greedy,masked_hidden", help="tracking: answer modes, in order")
+            cmd.add_argument("--settings", default="configs/region_latents.json")
+            cmd.add_argument("--round2-settings", default="configs/expert_round2.json")
+            cmd.add_argument("--round1-routes", help="train: routes.jsonl of round 1's search")
+            cmd.add_argument("--search-run", help="train: the round 2 search job's output")
+            cmd.add_argument("--gate-run", help="train: gate 3's output, the fixed targets (job 7118222)")
         if command == "jepa-judge":
             cmd.add_argument("--settings", default="configs/jepa_judge.json")
             cmd.add_argument("--probe-points", required=True, help="points.jsonl of a detour-probe run (validity check)")
@@ -383,6 +409,8 @@ def main():
         settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
         if args.batch:
             settings["batch"] = args.batch
+        if args.read_precision:
+            settings["read_precision"] = args.read_precision
         round2.require_round1_checkpoint(args.checkpoint, config, settings)
         if args.stage == "batching-check":
             model, processor = load_model(config, args.checkpoint, device="cpu")
@@ -418,6 +446,97 @@ def main():
         else:
             round2.run_arm(model, processor, evaluator, config, args.data_root, args.output, settings, args.arm,
                            args.round1_routes, args.search_run, base)
+    elif args.command == "perception-jepa":
+        from . import expert_round2 as round2
+        from . import perception_jepa as jepa
+        from .evaluation import ReferenceEvaluator
+        if not args.checkpoint:
+            parser.error("The latent JEPA arm starts from E, round 1's fine-tune on found routes")
+        round2_settings = json.loads(Path(args.round2_settings).read_text(encoding="utf-8"))
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        round2.require_round1_checkpoint(args.checkpoint, config, round2_settings)
+        needed = {"gate": "e2_checkpoint", "train": "gate_run", "features": None}[args.stage]
+        if needed and not getattr(args, needed):
+            parser.error(f"The {args.stage} stage needs --{needed.replace('_', '-')}")
+        if args.stage == "gate":
+            jepa.require_round2_checkpoint(args.e2_checkpoint, config, round2_settings)
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (round2_settings["pool_split"], round2_settings["heldout_split"])}
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("The latent JEPA arm requires a Stage 2 checkpoint")
+        base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                    "fresh_manifests": fresh}
+        evaluator = ReferenceEvaluator(args.data_root)
+        if args.stage == "gate":
+            def load_e2():
+                e2, _ = load_model(config, args.e2_checkpoint, device="cuda")
+                e2.requires_grad_(False)
+                return e2
+            jepa.run_gate(model, processor, evaluator, config, args.data_root, args.output, settings, round2_settings,
+                          args.round1_routes, args.search_run, load_e2,
+                          base | {"e2_checkpoint": str(args.e2_checkpoint)})
+        elif args.stage == "features":
+            model.requires_grad_(False)
+            jepa.run_features(model, processor, config, args.data_root, args.output, settings, round2_settings,
+                              args.round1_routes, args.search_run, base)
+        else:
+            jepa.run_jepa_arm(model, processor, evaluator, config, args.data_root, args.output, round2_settings,
+                              args.gate_run, args.round1_routes, args.search_run,
+                              base | {"gate_run": str(args.gate_run)})
+    elif args.command == "region-latents":
+        from . import expert_round2 as round2
+        from .evaluation import ReferenceEvaluator
+        from .region_latents import run_global_dropout, run_latent_swap, run_region_arm
+        if not args.checkpoint:
+            parser.error("Give --checkpoint: E for training, the EGR checkpoint for the swap test")
+        round2_settings = json.loads(Path(args.round2_settings).read_text(encoding="utf-8"))
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        if args.stage == "swap":  # load_model checks the checkpoint is complete; run_latent_swap that it is EGR
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            model.requires_grad_(False)
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)}
+            run_latent_swap(model, processor, ReferenceEvaluator(args.data_root), args.data_root, args.output, settings,
+                            round2_settings, base, args.recorded_masked)
+            return
+        if args.stage == "tracking":  # the state probe of docs/PLANNING_PROBE_SPEC.md on round 2's 7 x 7 / 8 x 8 maps
+            from .planning_probe import tracking
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            if not getattr(model.config, "livr_region_latents", None):
+                parser.error("The tracking stage reads a region-latent checkpoint")
+            model.requires_grad_(False)
+            modes = [m for m in args.modes.split(",") if m]
+            recorded = ({m: Path(args.recorded_run) / f"{m}.jsonl" for m in modes} if args.recorded_run else {})
+            missing = [str(p) for p in recorded.values() if not p.exists()]
+            if missing:
+                parser.error("Missing recorded routes: " + ", ".join(missing))
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)}
+            tracking(model, processor, args.data_root, args.output, base, config["seed"],
+                     round2_settings["heldout_split"], round2_settings["pool_split"], modes, recorded,
+                     max_new_tokens=round2_settings["max_new_tokens"])
+            return
+        if args.stage == "dropout":  # from EGR's weights; run_global_dropout checks that they are EGR's
+            if not args.round1_routes or not args.search_run:
+                parser.error("Global dropout needs --round1-routes and --search-run")
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)}
+            run_global_dropout(model, processor, ReferenceEvaluator(args.data_root), config, args.data_root, args.output,
+                               settings, round2_settings, args.round1_routes, args.search_run, base)
+            return
+        missing = [name for name in ("round1_routes", "search_run", "gate_run") if not getattr(args, name)]
+        if missing:
+            parser.error("Training needs --" + ", --".join(m.replace("_", "-") for m in missing))
+        round2.require_round1_checkpoint(args.checkpoint, config, round2_settings)
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (round2_settings["pool_split"], round2_settings["heldout_split"])}
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("The region-latent arm requires a Stage 2 checkpoint")
+        base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                    "fresh_manifests": fresh,
+                                                                    "gate_run": str(args.gate_run)}
+        run_region_arm(model, processor, ReferenceEvaluator(args.data_root), config, args.data_root, args.output,
+                       settings, round2_settings, args.gate_run, args.round1_routes, args.search_run, base)
     elif args.command == "detour-scaling":
         from .detour_scaling import run_arm
         from .evaluation import ReferenceEvaluator

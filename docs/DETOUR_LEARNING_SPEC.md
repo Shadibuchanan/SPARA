@@ -11,6 +11,11 @@ Status, 2026-11-11:
     [expert iteration spec](EXPERT_ITERATION_SPEC.md#result-jobs-69618746961876)).
   - **Its readings:** expert iteration helps (88 against 42 of 240 held-out maps), with
     no detectable difference between found routes and labels.
+  - **Round 2,** on 7 x 7 and 8 x 8 maps from E's weights (jobs 6992798–6992800,
+    [round 2 spec](EXPERT_ITERATION_ROUND2_SPEC.md#result-jobs-69927986992800)):
+    - **It helps on larger maps:** 84 against E's 54 of 400 held-out maps.
+    - **LIVR's bottleneck:** in the first phase it did not change what the latents hold,
+      so it gives no reading on perception.
 - **Step 2:** run as a JEPA judge in LIVR's latent space (job 6951675,
   [JEPA judge spec](JEPA_JUDGE_SPEC.md#result-job-6951675)).
   - **The judge:** it hurts search, and it misses three in four holes. LIVR's frozen

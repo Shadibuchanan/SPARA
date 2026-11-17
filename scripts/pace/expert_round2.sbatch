@@ -7,6 +7,8 @@
 #     pool maps and the new pool; then L's greedy answers. Needs SPARA_LIVR_CHECKPOINT.
 #   SPARA_STAGE=train: SPARA_ARM=e2 or eb2, from E, on the search's routes; SPARA_SEARCH_RUN
 #     is the search job's output directory.
+#   SPARA_BATCH and SPARA_READ_PRECISION (bf16 or tf32) override the search's policy reads;
+#     SPARA_BATCH=1 SPARA_READ_PRECISION=bf16 gives round 1's reads.
 # Submit only within the agreed GPU budget; this script does not submit itself.
 set -euo pipefail
 module load python/3.11.9
@@ -38,6 +40,7 @@ case "$STAGE" in
     [ -f "$ROUND1_ROUTES" ] || { echo "Missing round 1 routes: $ROUND1_ROUTES" >&2; exit 1; }
     BATCH=()
     [ -n "${SPARA_BATCH:-}" ] && BATCH=(--batch "$SPARA_BATCH")
+    [ -n "${SPARA_READ_PRECISION:-}" ] && BATCH+=(--read-precision "$SPARA_READ_PRECISION")
     nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
     if [ "$STAGE" = search ]; then
       LIVR="${SPARA_LIVR_CHECKPOINT:?set SPARA_LIVR_CHECKPOINT to the final Stage 2 checkpoint of the LIVR rerun}"

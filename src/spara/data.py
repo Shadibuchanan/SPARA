@@ -105,6 +105,16 @@ def image_path(root, split, row):
     return path
 
 
+def image_paths(root, split, row):
+    """Several images of one row (`image_inputs`, relative to the split's folder), each inside that folder."""
+    base = (Path(root) / split).resolve()
+    paths = [base.joinpath(*Path(p.replace("\\", "/")).parts).resolve() for p in row["image_inputs"]]
+    for path in paths:
+        if not path.is_relative_to(base) or not path.is_file():
+            raise ValueError(f"Missing or unsafe input image: {path}")
+    return paths
+
+
 def layout_key(row):
     return json.dumps(row["map_desc"], separators=(",", ":"))
 

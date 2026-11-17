@@ -23,11 +23,15 @@ reject?
   - **The detour-learning line so far:** 10,614 GPU-seconds (2 h 57 min). That is the reach
     check (286), detour scaling (4,210), the JEPA judge (1,715) and this run (4,403).
 - **Source:** the hashes in each manifest match the local code for every file this run
-  uses, with one exception, `src/spara/expert_iteration.py`. Since the run, its
-  `compare` renames one output key, so the search job's seconds are no longer
-  overwritten. Reverting that one line reproduces the hash the run recorded. Files
-  differ that the run does not import: the protected PACE files and the package's
-  `SOURCES.txt`.
+  uses, with one exception, `src/spara/expert_iteration.py`. It has two changes since
+  the run, and reverting both reproduces the hash the run recorded:
+  - `compare` renames one output key, so the search job's seconds are no longer
+    overwritten.
+  - For round 2, batched reads take a precision option. Its default, bfloat16
+    autocast, is this run's behaviour.
+
+  Files differ that the run does not import: the protected PACE files and the
+  package's `SOURCES.txt`.
 - **Weights:** E's and M's final weights (15 GB each) are on PACE scratch at
   `$SPARA_REMOTE_ROOT/results/expert-train-*-696187*/stage2/final`. E's are kept for a
   possible second round.

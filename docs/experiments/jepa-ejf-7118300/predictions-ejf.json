@@ -1,0 +1,23 @@
+{
+ "states": "results/jepa-ejf-7118300/states.pt",
+ "heads": "results/jepa-ejf-7118300/phase2/jepa_heads.pt",
+ "layer": 12,
+ "by_size": {
+  "7": {
+   "maps": 198,
+   "within_position_share": 0.9581480622291565,
+   "hole_balanced_accuracy": 0.5182764540241176,
+   "unexplained": 0.8619864583015442,
+   "shuffled_gap": 0.2861369252204895,
+   "hole_direction_share": 0.11032658815383911
+  },
+  "8": {
+   "maps": 202,
+   "within_position_share": 0.9629803895950317,
+   "hole_balanced_accuracy": 0.5003115183796555,
+   "unexplained": 0.9531399607658386,
+   "shuffled_gap": 0.0957370400428772,
+   "hole_direction_share": 0.01994180679321289
+  }
+ }
+}

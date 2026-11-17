@@ -18,7 +18,7 @@ from .explore_probe import GREEDY, score
 from .fresh_maps import is_detour
 from .latent_battery import mcnemar
 from .runtime import json_write, seed_all
-from .serialization import encode
+from .serialization import encode, latent_kwargs
 from .training import amp, to_device, train_stage
 
 AGREEMENT, TOOK, ALPHA = 38, 0.9, 0.05  # validity: reproduced test routes, seen-map success; test level
@@ -66,7 +66,8 @@ def greedy_eval(model, processor, evaluator, data_root, items, log, max_new_toke
     model.eval()
     results = []
     for count, (population, split, index, row) in enumerate(items):
-        prompt = to_device(encode(processor, data_root, split, row, training=False), model.device)
+        prompt = to_device(encode(processor, data_root, split, row, training=False, **latent_kwargs(model)),
+                           model.device)
         with amp(model.device):
             generated = model.generate(**prompt, **GREEDY, max_new_tokens=max_new_tokens, use_cache=True)
         (route, success), = score(evaluator, processor, row, generated)

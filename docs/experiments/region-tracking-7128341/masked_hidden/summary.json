@@ -1,0 +1,65 @@
+{
+  "mode": "masked_hidden",
+  "solved": 63,
+  "maps": 400,
+  "reproduced": {
+    "maps": 400,
+    "recorded": 400,
+    "same": 400,
+    "share": 1.0
+  },
+  "state_probe": {
+    "held_out_position_accuracy": {
+      "4": 0.05158264947245018,
+      "8": 0.06096131301289566,
+      "12": 0.06096131301289566,
+      "16": 0.0914419695193435,
+      "20": 0.15240328253223914,
+      "24": 0.1488862837045721,
+      "28": 0.14536928487690504,
+      "32": 0.15474794841735054,
+      "36": 0.1324736225087925
+    },
+    "layer": 32,
+    "splits": {
+      "test": {
+        "maps": 400,
+        "failed_maps": 337,
+        "steps": 1491,
+        "dropped_steps": 0,
+        "solved_step_accuracy": 0.16272189349112426,
+        "S1": {
+          "fatal_steps": 307,
+          "fatal_first_moves": 63,
+          "fatal_first_move_accuracy": 0.2698412698412698,
+          "tested": 244,
+          "nearest_k_used": 1,
+          "unmatched": 0,
+          "correct": 41,
+          "accuracy": 0.1680327868852459,
+          "expected_accuracy": 0.1442809108112615,
+          "gap": -0.023751876073984407,
+          "p_one_sided": 0.8762756004671022,
+          "reading": "tracking intact"
+        },
+        "S2": {
+          "fatal_steps_with_wrong_cell": 203,
+          "safe_from_decoded_cell": 0.8472906403940886,
+          "safe_from_other_cells": 0.8183983250495843
+        },
+        "S3": {
+          "fatal_holes": 307,
+          "fatal_read_as_hole": 0.5537459283387622,
+          "avoided_holes": 242,
+          "avoided_read_as_hole": 0.5454545454545454,
+          "bias_check": {
+            "taken_direction_mean_score": 0.6132768824569875,
+            "other_safe_mean_score": 0.19425203362201046
+          }
+        }
+      }
+    }
+  },
+  "reading": "inconclusive: the position probe is too weak",
+  "seconds": 738.5065433979034
+}

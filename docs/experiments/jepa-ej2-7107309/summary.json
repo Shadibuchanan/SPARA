@@ -1,0 +1,90 @@
+{
+  "arm": "ej2",
+  "checks": {
+    "labels_accepted": [
+      900,
+      900
+    ],
+    "shared_layouts": {
+      "fresh/detour-heldout-78|fresh/detour-pool-78": 0,
+      "fresh/detour-heldout-78|fresh/probe": 0,
+      "fresh/detour-heldout-78|fresh/detour-pool": 0,
+      "fresh/detour-heldout-78|fresh/detour-heldout": 0,
+      "fresh/detour-heldout-78|fresh/jepa-train": 0,
+      "fresh/detour-heldout-78|train": 0,
+      "fresh/detour-heldout-78|test": 0,
+      "fresh/detour-pool-78|fresh/probe": 0,
+      "fresh/detour-pool-78|fresh/detour-pool": 0,
+      "fresh/detour-pool-78|fresh/detour-heldout": 0,
+      "fresh/detour-pool-78|fresh/jepa-train": 0,
+      "fresh/detour-pool-78|train": 0,
+      "fresh/detour-pool-78|test": 0
+    },
+    "valid": true
+  },
+  "counts": {
+    "new_maps": 201,
+    "old_maps": 373,
+    "frontier_maps": 47,
+    "rows": 3000
+  },
+  "training": {
+    "phase1": {
+      "optimizer_steps": 187,
+      "first_loss": 0.10009044378602994,
+      "mean_loss": 0.11232667997562061,
+      "last_quarter_loss": 0.07290333511077338,
+      "seconds": 419.0740792751312,
+      "stage": 1
+    },
+    "phase2": {
+      "optimizer_steps": 188,
+      "first_loss": 0.0633240350507549,
+      "mean_loss": 0.09139087647312628,
+      "last_quarter_loss": 0.05505222366028125,
+      "seconds": 426.75384855270386,
+      "stage": 2
+    },
+    "jepa_error": {
+      "start": {
+        "validation": 0.6492444276809692,
+        "training": 0.5266485810279846
+      },
+      "phase1": {
+        "validation": 0.2202935814857483,
+        "training": 0.1490786373615265
+      },
+      "phase2": {
+        "validation": 0.10580283403396606,
+        "training": 0.07104941457509995
+      }
+    }
+  },
+  "evaluation": {
+    "loading": null,
+    "greedy": {
+      "heldout": [
+        83,
+        200
+      ],
+      "test_detour": [
+        17,
+        40
+      ],
+      "heldout78": [
+        68,
+        400
+      ],
+      "seen78": [
+        33,
+        98
+      ]
+    },
+    "masked": [
+      59,
+      400
+    ]
+  },
+  "seconds": 1641.2812843322754,
+  "peak_gpu_gib": 55.50115728378296
+}

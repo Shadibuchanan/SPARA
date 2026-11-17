@@ -1,0 +1,44 @@
+{
+ "e": {
+  "7": {
+   "unexplained": 0.8446608781814575,
+   "shuffled_gap": 0.77701735496521,
+   "holes_from_predictions": 0.5367400110390764,
+   "hole_direction_share": 0.12108570337295532
+  },
+  "8": {
+   "unexplained": 0.9340273141860962,
+   "shuffled_gap": 0.6725324392318726,
+   "holes_from_predictions": 0.5311378427270511,
+   "hole_direction_share": 0.06138598918914795
+  }
+ },
+ "ejf": {
+  "7": {
+   "unexplained": 0.831601619720459,
+   "shuffled_gap": 0.806370735168457,
+   "holes_from_predictions": 0.5499752088537135,
+   "hole_direction_share": 0.12281560897827148
+  },
+  "8": {
+   "unexplained": 0.9445463418960571,
+   "shuffled_gap": 0.7021375894546509,
+   "holes_from_predictions": 0.5349261477658485,
+   "hole_direction_share": 0.03071606159210205
+  }
+ },
+ "eb2": {
+  "7": {
+   "unexplained": 0.8244836330413818,
+   "shuffled_gap": 0.7793456315994263,
+   "holes_from_predictions": 0.5479083055017635,
+   "hole_direction_share": 0.16101253032684326
+  },
+  "8": {
+   "unexplained": 0.9173383712768555,
+   "shuffled_gap": 0.6720229387283325,
+   "holes_from_predictions": 0.5347453463345547,
+   "hole_direction_share": 0.09422731399536133
+  }
+ }
+}

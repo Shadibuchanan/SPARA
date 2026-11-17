@@ -81,7 +81,9 @@ def load_model(config, checkpoint=None, device="cpu"):
                                     attn_implementation=config["attention_backend"], **revision)
     latents = config.get("latent_tokens", 4)
     if checkpoint:
-        ids = processor.tokenizer.convert_tokens_to_ids(LATENT_TOKENS) if latents else []
+        region = getattr(model.config, "livr_region_latents", None)  # spara.region_latents
+        tokens = region["tokens"] if region else LATENT_TOKENS
+        ids = processor.tokenizer.convert_tokens_to_ids(tokens) if latents else []
         if ids != model.config.livr_latent_ids:
             raise ValueError("Checkpoint tokenizer/latent IDs disagree")
     elif latents:

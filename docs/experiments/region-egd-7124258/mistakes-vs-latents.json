@@ -1,0 +1,33 @@
+{
+ "hole_recall_all_cells": 0.9163522012578617,
+ "masked_hidden": {
+  "toward": {
+   "maps": 74,
+   "flagged": 68
+  },
+  "forced": {
+   "maps": 141,
+   "flagged": 118
+  }
+ },
+ "masked": {
+  "toward": {
+   "maps": 83,
+   "flagged": 74
+  },
+  "forced": {
+   "maps": 144,
+   "flagged": 120
+  }
+ },
+ "greedy": {
+  "toward": {
+   "maps": 89,
+   "flagged": 80
+  },
+  "forced": {
+   "maps": 121,
+   "flagged": 101
+  }
+ }
+}

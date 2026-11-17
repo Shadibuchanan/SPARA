@@ -1,0 +1,182 @@
+{
+  "arm": "egr",
+  "checks": {
+    "labels_accepted": [
+      900,
+      900
+    ],
+    "shared_layouts": {
+      "fresh/detour-heldout-78|fresh/detour-pool-78": 0,
+      "fresh/detour-heldout-78|fresh/probe": 0,
+      "fresh/detour-heldout-78|fresh/detour-pool": 0,
+      "fresh/detour-heldout-78|fresh/detour-heldout": 0,
+      "fresh/detour-heldout-78|fresh/jepa-train": 0,
+      "fresh/detour-heldout-78|train": 0,
+      "fresh/detour-heldout-78|test": 0,
+      "fresh/detour-pool-78|fresh/probe": 0,
+      "fresh/detour-pool-78|fresh/detour-pool": 0,
+      "fresh/detour-pool-78|fresh/detour-heldout": 0,
+      "fresh/detour-pool-78|fresh/jepa-train": 0,
+      "fresh/detour-pool-78|train": 0,
+      "fresh/detour-pool-78|test": 0
+    },
+    "valid": true
+  },
+  "counts": {
+    "new_maps": 201,
+    "old_maps": 373,
+    "frontier_maps": 47,
+    "rows": 3000
+  },
+  "start_check": {
+    "small_rows": 8,
+    "large_rows": 8,
+    "rows_checked": 16,
+    "loss_before": [
+      1.5794828868820332e-05,
+      0.0003757936938200146,
+      4.032889046357013e-05,
+      0.026026148349046707,
+      0.003149281023070216,
+      0.00019008824892807752,
+      0.00012669981515500695,
+      4.304559115553275e-05,
+      0.0956900492310524,
+      0.15505503118038177,
+      0.0005296190502122045,
+      2.3820744900149293e-05,
+      0.02547554485499859,
+      0.03211053088307381,
+      8.761760000197683e-06,
+      0.021739359945058823
+    ],
+    "loss_after": [
+      1.931128826981876e-05,
+      0.000477155001135543,
+      7.167222065618262e-05,
+      0.05391153320670128,
+      0.007663004565984011,
+      0.0004759211733471602,
+      5.6058226618915796e-05,
+      0.00011270566028542817,
+      0.20389068126678467,
+      0.2983521819114685,
+      0.0015479380963370204,
+      2.8251031835679896e-05,
+      0.03560771048069,
+      0.039407309144735336,
+      1.2948837138537783e-05,
+      0.04473326355218887
+    ],
+    "max_relative_state_difference": 0.0,
+    "tolerance": 0.0001,
+    "matched": true,
+    "small_loss_change": 0.004102522612811299,
+    "insertion_disturbance": 0.036618445833937585,
+    "mean_loss_change": 0.020360484223374442
+  },
+  "targets_added": 88,
+  "warm_start": {
+    "maps": 350,
+    "rows": 4312,
+    "alpha": 0.1,
+    "maps_per_token": [
+      350,
+      350,
+      350,
+      350,
+      301,
+      301,
+      301,
+      301,
+      301,
+      201,
+      201,
+      201,
+      201,
+      201,
+      201,
+      201
+    ],
+    "seconds": 51.61724400520325
+  },
+  "weight": null,
+  "training": {
+    "phase1": {
+      "optimizer_steps": 187,
+      "first_loss": 0.18694657578816987,
+      "mean_loss": 0.1149697016449416,
+      "last_quarter_loss": 0.07571350568258348,
+      "seconds": 417.7845506668091,
+      "stage": 1
+    },
+    "phase2": {
+      "optimizer_steps": 188,
+      "first_loss": 0.0744164255920623,
+      "mean_loss": 0.10333090949576638,
+      "last_quarter_loss": 0.06537077214090188,
+      "seconds": 448.04623341560364,
+      "stage": 2
+    },
+    "jepa_error": {
+      "start": {
+        "validation": {
+          "unexplained": 0.5597851836639469,
+          "shuffled_gap": 0.7432575274315888
+        },
+        "training": {
+          "unexplained": 0.6458315841765059,
+          "shuffled_gap": 0.9384957737515282
+        }
+      },
+      "phase1": {
+        "validation": {
+          "unexplained": 41.779738055892935,
+          "shuffled_gap": 0.8234742061781467
+        },
+        "training": {
+          "unexplained": 19.10514543545746,
+          "shuffled_gap": 0.8940117527707245
+        }
+      },
+      "phase2": {
+        "validation": {
+          "unexplained": 15.286634100109577,
+          "shuffled_gap": 0.7454475478707587
+        },
+        "training": {
+          "unexplained": 7.189925560093919,
+          "shuffled_gap": 0.8153277196183446
+        }
+      }
+    }
+  },
+  "evaluation": {
+    "loading": null,
+    "greedy": {
+      "heldout": [
+        76,
+        200
+      ],
+      "test_detour": [
+        14,
+        40
+      ],
+      "heldout78": [
+        75,
+        400
+      ],
+      "seen78": [
+        32,
+        98
+      ]
+    },
+    "masked": [
+      68,
+      400
+    ]
+  },
+  "peak_gpu_gib": 55.37743043899536,
+  "reading": "complete",
+  "seconds": 1672.9772810935974
+}

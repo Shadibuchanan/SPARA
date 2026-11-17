@@ -1,0 +1,76 @@
+{
+  "arm": "e2",
+  "checks": {
+    "labels_accepted": [
+      900,
+      900
+    ],
+    "shared_layouts": {
+      "fresh/detour-heldout-78|fresh/detour-pool-78": 0,
+      "fresh/detour-heldout-78|fresh/probe": 0,
+      "fresh/detour-heldout-78|fresh/detour-pool": 0,
+      "fresh/detour-heldout-78|fresh/detour-heldout": 0,
+      "fresh/detour-heldout-78|fresh/jepa-train": 0,
+      "fresh/detour-heldout-78|train": 0,
+      "fresh/detour-heldout-78|test": 0,
+      "fresh/detour-pool-78|fresh/probe": 0,
+      "fresh/detour-pool-78|fresh/detour-pool": 0,
+      "fresh/detour-pool-78|fresh/detour-heldout": 0,
+      "fresh/detour-pool-78|fresh/jepa-train": 0,
+      "fresh/detour-pool-78|train": 0,
+      "fresh/detour-pool-78|test": 0
+    },
+    "valid": true
+  },
+  "counts": {
+    "new_maps": 201,
+    "old_maps": 373,
+    "frontier_maps": 47,
+    "rows": 3000
+  },
+  "training": {
+    "phase1": {
+      "optimizer_steps": 187,
+      "first_loss": 0.08181277939092979,
+      "mean_loss": 0.09641793358532462,
+      "last_quarter_loss": 0.06111505822842327,
+      "seconds": 405.2523105144501,
+      "stage": 2
+    },
+    "phase2": {
+      "optimizer_steps": 188,
+      "first_loss": 0.10656903244307614,
+      "mean_loss": 0.09190286113251941,
+      "last_quarter_loss": 0.06048949780628551,
+      "seconds": 413.6143798828125,
+      "stage": 2
+    }
+  },
+  "evaluation": {
+    "loading": null,
+    "greedy": {
+      "heldout": [
+        85,
+        200
+      ],
+      "test_detour": [
+        17,
+        40
+      ],
+      "heldout78": [
+        84,
+        400
+      ],
+      "seen78": [
+        34,
+        98
+      ]
+    },
+    "masked": [
+      66,
+      400
+    ]
+  },
+  "seconds": 1593.6561033725739,
+  "peak_gpu_gib": 55.32947301864624
+}

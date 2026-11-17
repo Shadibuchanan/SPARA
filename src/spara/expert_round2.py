@@ -29,7 +29,7 @@ from .jepa import decide
 from .latent_battery import MODES, latent_positions
 from .route_search import FrozenLakeEnvironment
 from .runtime import json_write, seed_all
-from .serialization import encode
+from .serialization import encode, latent_kwargs
 from .training import amp, to_device, train_stage
 
 ARMS = {"e2": 2, "eb2": MODES["bottleneck"]}  # the stage each arm's first phase trains in
@@ -141,7 +141,8 @@ def latent_states(model, processor, data_root, items, layers, path):
         raise ValueError("Latent states are read unmasked")
     states = []
     for count, (population, split, index, row) in enumerate(items):
-        prompt = to_device(encode(processor, data_root, split, row, training=False), model.device)
+        prompt = to_device(encode(processor, data_root, split, row, training=False, **latent_kwargs(model)),
+                           model.device)
         positions = latent_positions(prompt["input_ids"], model.config.livr_latent_ids)
         with amp(model.device):
             hidden = model(**prompt, output_hidden_states=True, use_cache=False).hidden_states
@@ -192,13 +193,19 @@ def loading_check(round1_greedy, agreement):
 
 # Search --------------------------------------------------------------------------------------
 
+def single_read(policy, problem, prefix):
+    """One request in its own pass, at the policy's read precision (a one-row batch has no
+    padding; round 1 found it equal to `jepa.decide` within 5e-7)."""
+    return batched_decide(policy.model, policy.processor.tokenizer, [policy.prompt(problem)], [prefix],
+                          policy.precision)[0]
+
+
 def step_zero_differences(policy, chosen):
     """Validity: batched first-move reads against one pass each, computed in this job."""
     batched = policy.many([(p, "") for p in chosen])
     out = []
     for problem, probs in zip(chosen, batched):
-        prompt = {k: v.to(policy.model.device) for k, v in policy.prompt(problem).items()}
-        single = decide(policy.model, policy.processor.tokenizer, prompt, "", 0)[0]
+        single = single_read(policy, problem, "")
         out.append(max(abs(single[k] - probs[k]) for k in single))
     return out
 
@@ -210,8 +217,7 @@ def cached_differences(policy, chosen, rng, count=SAMPLE):
     by_id = {p["id"]: p for p in chosen}
     out = []
     for problem_id, prefix in rng.sample(keys, min(count, len(keys))):
-        prompt = {k: v.to(policy.model.device) for k, v in policy.prompt(by_id[problem_id]).items()}
-        single = decide(policy.model, policy.processor.tokenizer, prompt, prefix, 0)[0]
+        single = single_read(policy, by_id[problem_id], prefix)
         out.append(max(abs(single[k] - policy.cache[(problem_id, prefix)][k]) for k in single))
     return out
 
@@ -239,13 +245,14 @@ def run_search(model, processor, evaluator, data_root, output, settings, run_man
     pool = problems(data_root, settings["pool_split"])
     if len(pool) != settings["maps"]:
         raise ValueError(f"The pool has {len(pool)} maps, not {settings['maps']}")
-    policy = BatchedLivr(model, processor, data_root, settings["batch"])
+    policy = BatchedLivr(model, processor, data_root, settings["batch"], settings["read_precision"])
     rng = random.Random(settings["seed"])
     chosen = rng.sample(pool, settings["check_maps"])
 
-    # Validity check 1, as in round 1, with single passes computed here: before the search,
-    # and on cached reads after the frontier search. One request per pass if either fails.
-    checks = {"batch": settings["batch"]}
+    # Validity check 1, as in round 1, with single passes at the same precision computed here:
+    # before the search, and on cached reads after the frontier search. If either fails, round
+    # 1's reads: one request per pass under bfloat16 autocast.
+    checks = {"batch": settings["batch"], "read_precision": settings["read_precision"]}
     first = step_zero_differences(policy, chosen)
     frontier_rows, frontier_cost = searched(env, policy, frontier, settings)
     after = cached_differences(policy, frontier, rng)
@@ -253,10 +260,11 @@ def run_search(model, processor, evaluator, data_root, output, settings, run_man
     agrees = max(first) <= settings["probe_tolerance"] and max(after) <= settings["probe_tolerance"]
     if not agrees and settings["batch"] > 1:
         checks["batched_failed"] = {k: checks[k] for k in ("step_zero_max_difference", "single_max_difference")}
-        policy.reset(1)
+        policy.reset(1, "bf16")
         first = step_zero_differences(policy, chosen)
         frontier_rows, frontier_cost = searched(env, policy, frontier, settings)
-        checks |= {"batch": 1, "step_zero_max_difference": max(first), "single_max_difference": None}
+        checks |= {"batch": 1, "read_precision": "bf16", "step_zero_max_difference": max(first),
+                   "single_max_difference": None}
         agrees = max(first) <= settings["probe_tolerance"]
     checks["policy_agrees"] = agrees
     with (output / "frontier.jsonl").open("w", encoding="utf-8") as log:
