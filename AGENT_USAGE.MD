@@ -2325,7 +2325,9 @@ Single-image prompts were checked to encode identically before and after on 60 r
 | Path | Action | Contribution |
 | --- | --- | --- |
 | configs/livr_seed43.json | created | Config for seed 43 rerun |
+| docs/POLICY_ROUTING_AND_REDUNDANCY_SYNTHESIS.md | created | Comparative analysis between PR #9 and PR #10 on perception ceilings, hole checks, and distribution balance |
 | docs/experiments/probe_holes_results.json | created | Image-token hole probe results (AUROC 1.0000) |
+| docs/experiments/rebalanced-7109628/ | created | Benchmark evaluation evidence (305/400) for 10% rebalanced fine-tuning |
 | docs/experiments/rl_gate-7128300/ | created | Rollout logs and summary for the 8-sample RL feasibility check |
 | scripts/analyze_map_detours.py | created | BFS shortest path vs Manhattan detour distribution analysis |
 | scripts/prepare_rebalanced_data.py | created | Data generation script for 10% and 20% detour distributions |
@@ -2341,3 +2343,4 @@ Single-image prompts were checked to encode identically before and after on 60 r
 ### Folders created
 
 - docs/experiments/rl_gate-7128300/ — RL feasibility rollout evidence and summary.
+- docs/experiments/rebalanced-7109628/ — Evaluation evidence for 10% rebalanced fine-tuning.
