@@ -2295,3 +2295,112 @@ Single-image prompts were checked to encode identically before and after on 60 r
 ### Folders created
 
 - None
+
+## 2026-11-18 — Survey of perception benchmarks beyond V*
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Get the main branch, then look at perception benchmarks similar to V*.
+**AI contribution:** Confirmed the worktree branch already matches `origin/main` (a7b6fd6), so no merge was needed. Read the benchmark sections of the LIVR and Scaffolding Minds papers stored in `docs/related_literature/` and searched the web for which benchmarks recent latent visual reasoning papers report. Gave the user a comparison of V*, HR-Bench, MME-RealWorld-Lite, MMVP, BLINK, CV-Bench, MMStar and others, noted that the two papers' base-model numbers disagree, and recommended an order for adopting them.
+**Contribution type:** advice
+
+### Human input and contributions
+
+| Order | Source             | Input or contribution                                                        | Effect on the work                                                        |
+| ----- | ------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 1     | User; user message | Asked to clone the main branch and then look at perception benchmarks like V* | Checked the branch against `origin/main`, then surveyed related benchmarks |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-18 — V* evaluation and its first PACE job
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Use the main branch and queue the V* experiments on PACE-ICE.
+**AI contribution:** Found that no V* loader, scorer or job script existed and that the code on the user's PACE scratch dated from October, so wrote a V* module (hash-checked download, question audit, answer parsing, image resizing to a stated token limit, greedy evaluation), a `vstar` CLI command, a Slurm script and tests. Deployed the source to PACE through the user's `pace` SSH alias, downloaded the 191 questions and images there, and submitted job 7155372 (one H200, 30-minute limit): base Qwen2.5-VL-3B in two prompt formats at two image-token limits. Advised the user that V* is the most relevant benchmark but small (191 questions), and reported which branches hold the newest trained models. No training arm was built or submitted.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source             | Input or contribution                                              | Effect on the work                                                                 |
+| ----- | ------------------ | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| 1     | User; user message | Judged V* the most relevant benchmark and asked for an opinion     | V* became the target; the agent suggested HR-Bench 4K as a larger companion         |
+| 2     | User; user message | Asked which model is most up to date and whether it is on Raymond's branch | The agent compared remote branches and reported their latest results         |
+| 3     | User; user message | Said to use the main branch                                        | Work stayed on the worktree branch, which matches `main`                            |
+| 4     | User; user message | Said PACE should be connected and asked to queue the experiments   | The agent built the V* evaluation, deployed it and submitted the base-model job     |
+| 5     | User; user message | Confirmed the cluster is PACE-ICE                                  | Confirmed the `pace` alias (login-ice) was the right target                         |
+
+### Files
+
+| Path                        | Action   | Contribution                                                                                   |
+| --------------------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `src/spara/vstar.py`        | created  | V* download, audit, prompt encoding, answer parsing, summary and greedy evaluation             |
+| `src/spara/cli.py`          | modified | Added the `vstar` command with `fetch` and `evaluate` stages                                   |
+| `scripts/pace/vstar.sbatch` | created  | Slurm script that runs the V* evaluation for the base model or a given checkpoint              |
+| `tests/test_vstar.py`       | created  | Tests for parsing, auditing, resizing, summaries, latent selection and real-processor encoding |
+
+### Folders created
+
+- None
+
+## 2026-11-18 — Perception training arms on Visual-CoT, read on V*
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Build the training comparison of plain LIVR against global + patch latents for V*.
+**AI contribution:** Wrote a Visual-CoT sampler that keeps answer-only rows and extracts only the sampled images from the 139 GB archive as a hash-checked stream, and an arm runner that trains direct SFT, LIVR and global + patch latents from the base model on the same rows and steps, then scores held-out rows and V*. Added a settings file, a Slurm script, CLI stages, tests, and a section in the perception spec; extended V* scoring to count replies given in an option's words. Deployed to PACE and submitted CPU job 7155589 to sample 10,000 training and 500 validation rows and extract their images. Chose the sample size, the 1,280-token image cap and the 2 + 3 epoch split without user input. After the base V* job finished (143 of 191 with the chat template at native size), fixed the archive reader to resume when a part ends early (job 7155589 failed on it; 7155734 completed), relaxed V* scoring to drop leading full stops and colons, ran three 64-row smoke jobs (7155879 to 7155881), and submitted the full arms as jobs 7156097 to 7156099, one H200 each with a 7-hour limit.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source             | Input or contribution                                   | Effect on the work                                                                |
+| ----- | ------------------ | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 1     | User; user message | Told the agent to build the training comparison         | The agent built the data preparation, the three arms and their job script          |
+| 2     | User; user message | Said jobs can also run on the 5090s on the ISyE cluster | The agent noted that 32 GB cards fit evaluation but not this training (about 55 GB) |
+| 3     | User; user message | Asked how the work was going                            | The agent reported the baseline score and the extraction status                    |
+| 4     | User; user message | Asked for a mini report or table once the experiments finish | The agent submitted the full runs and will compile the report from their results |
+
+### Files
+
+| Path                             | Action   | Contribution                                                                        |
+| -------------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| `src/spara/viscot.py`            | created  | Visual-CoT answer-only rows, seeded sampling, streamed image extraction             |
+| `src/spara/perception.py`        | created  | The three arms: model setup, two training segments, validation and V* scoring       |
+| `src/spara/vstar.py`             | modified | Replies in an option's words are scored and counted; optional hidden global latents |
+| `src/spara/cli.py`               | modified | Added the `perception` command (`select`, `images`, `train`) and `--hide-globals`   |
+| `configs/perception_viscot.json` | created  | Sample sizes, image cap, epochs, V* pixel limits and smoke-test counts              |
+| `scripts/pace/perception.sbatch` | created  | Slurm script for data preparation on CPU and for training one arm on a GPU          |
+| `tests/test_viscot.py`           | created  | Tests for row conversion, sampling, the part stream, image extraction and arm rows  |
+| `tests/test_vstar.py`            | modified | Tests for the new scoring rule and summary field                                    |
+| `docs/PERCEPTION_JEPA_SPEC.md`   | modified | Recorded the V* evaluation, the training data and the arms under global + patch     |
+
+### Folders created
+
+- None
+
+## 2026-11-18 — V* results report for the three perception arms
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Compile a mini report or table of results once the experiments finish.
+**AI contribution:** After jobs 7156097 to 7156099 completed on PACE-ICE, read each arm's summary, compared the arms' V* replies question by question with the untuned model and with each other (exact sign tests), broke held-out accuracy down by source dataset, and read the per-epoch training loss. Wrote a results document reporting that direct SFT is level with the untuned model on V*, that both latent arms score 12 to 16 questions lower, and that the patch latents do not differ from plain LIVR, with the caveats (one seed, 191 questions, 10,000-row sample, likely memorisation). The choice of analyses and the interpretation are the agent's and were not reviewed by the user.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source             | Input or contribution                                        | Effect on the work                                                  |
+| ----- | ------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| 1     | User; user message | Asked for a mini report or table once the experiments finish | The agent waited for the three jobs and wrote the results document   |
+| 2     | User; user message | Asked how the runs were doing                                | The agent reported two arms finished and gave their interim scores   |
+
+### Files
+
+| Path                              | Action  | Contribution                                                                         |
+| --------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `docs/PERCEPTION_VSTAR_RESULTS.md` | created | V* and held-out results for the base model and three arms, paired tests and caveats |
+
+### Folders created
+
+- None

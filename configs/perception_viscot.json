@@ -1,0 +1,8 @@
+{
+  "data": {"train": 10000, "validation": 500, "seed": 42, "max_image_tokens": 1280},
+  "epochs": [2, 3],
+  "save_weights": true,
+  "validation_max_new_tokens": 32,
+  "vstar_max_image_tokens": [16384, 1280],
+  "smoke": {"train": 64, "validation": 16, "vstar": 16}
+}

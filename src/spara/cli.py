@@ -14,6 +14,29 @@ def main():
     fetch.add_argument("--config", default="configs/livr.json")
     fetch.add_argument("--output", required=True)
     fetch.add_argument("--processor-only", action="store_true")
+    vstar = sub.add_parser("vstar", help="V* questions: fetch them, or evaluate a model on them (spara.vstar)")
+    vstar.add_argument("--stage", choices=["fetch", "evaluate"], default="evaluate")
+    vstar.add_argument("--data-root", default="data/vstar")
+    vstar.add_argument("--config", default="configs/livr.json")
+    vstar.add_argument("--base-model", help="Verified local model downloaded by fetch-model")
+    vstar.add_argument("--checkpoint", help="Trained weights; without it, the base model with no latent tokens")
+    vstar.add_argument("--output", help="New directory; one folder per format and image-token limit")
+    vstar.add_argument("--formats", default="chat", help="Prompt formats, comma-separated: chat, livr")
+    vstar.add_argument("--max-image-tokens", default="16384",
+                       help="Image-token limits, comma-separated; an image is resized to at most this many")
+    vstar.add_argument("--limit", type=int, help="Only the first N questions (a smoke test, not a score)")
+    vstar.add_argument("--hide-globals", action="store_true",
+                       help="A global + patch checkpoint trained with its global latents hidden from the answer")
+    perception = sub.add_parser("perception", help="Perception arms on Visual-CoT, read on V* (spara.perception)")
+    perception.add_argument("--stage", choices=["select", "images", "train"], default="train")
+    perception.add_argument("--settings", default="configs/perception_viscot.json")
+    perception.add_argument("--config", default="configs/livr.json")
+    perception.add_argument("--data-root", default="data/viscot")
+    perception.add_argument("--vstar-root", default="data/vstar")
+    perception.add_argument("--base-model", help="Verified local model downloaded by fetch-model")
+    perception.add_argument("--arm", choices=["sft", "livr", "patch"])
+    perception.add_argument("--smoke", action="store_true", help="A few rows only: does it run, and how fast")
+    perception.add_argument("--output", help="New run directory (train)")
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
                     "expert-iteration", "expert-round2", "perception-jepa", "region-latents"):
@@ -145,8 +168,60 @@ def main():
         config = json.loads(Path(args.config).read_text())
         print(fetch_model(config["model_id"], config["model_revision"], args.output, not args.processor_only))
         return
+    if args.command == "vstar" and args.stage == "fetch":
+        from .vstar import fetch
+        print(fetch(args.data_root))
+        return
+    if args.command == "perception" and args.stage != "train":
+        from . import viscot
+        data = json.loads(Path(args.settings).read_text(encoding="utf-8"))["data"]
+        if args.stage == "select":
+            report = viscot.select(args.data_root, data["train"], data["validation"], data["seed"])
+        else:
+            report = viscot.take_images(args.data_root, data["max_image_tokens"])
+        print(json.dumps(report, indent=2))
+        return
     import torch
     from .runtime import read_config, seed_all, load_model, manifest, json_write, require_final_checkpoint
+    if args.command == "perception":
+        from .perception import run_arm
+        if not args.arm or not args.output or Path(args.output).exists():
+            parser.error("Give --arm and --output, a directory that does not exist yet")
+        if not torch.cuda.is_available():
+            raise RuntimeError("Use an allocated GPU for the actual 3B model")
+        config = read_config(args.config)
+        if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        print(json.dumps(run_arm(args.arm, config, settings, args.data_root, args.vstar_root, args.output,
+                                 args.smoke), indent=2))
+        return
+    if args.command == "vstar":
+        from . import vstar
+        formats = args.formats.split(",")
+        limits = [int(value) for value in args.max_image_tokens.split(",")]
+        if not args.output or Path(args.output).exists():
+            parser.error("Give --output, a directory that does not exist yet")
+        if set(formats) - set(vstar.FORMATS) or (args.checkpoint and "chat" in formats):
+            parser.error("Formats are chat and livr; a trained checkpoint is read in the livr format only")
+        if not torch.cuda.is_available():
+            raise RuntimeError("Use an allocated GPU for the actual 3B model")
+        config = read_config(args.config)
+        if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
+        if not args.checkpoint: config["latent_tokens"] = 0  # the base model as released: no latent tokens
+        seed_all(config["seed"])
+        vstar.questions(args.data_root)
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        run_manifest = manifest(config, model, processor, args.data_root) | {"checkpoint": args.checkpoint}
+        summaries = {}
+        for prompt_format in formats:
+            for tokens in limits:
+                name = f"{prompt_format}-{tokens}"
+                summaries[name] = vstar.evaluate(model, processor, args.data_root, Path(args.output) / name,
+                                                 tokens * vstar.PATCH ** 2, prompt_format, run_manifest, args.limit,
+                                                 args.hide_globals)
+        json_write(Path(args.output) / "summary.json", summaries)
+        print(json.dumps(summaries, indent=2))
+        return
     from .data import audit
     config = read_config(args.config)
     if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
