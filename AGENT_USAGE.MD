@@ -2309,7 +2309,7 @@ Single-image prompts were checked to encode identically before and after on 60 r
 6. **Refused Route Filter & Pipeline:** Built `scripts/filter_refused_routes.py` to strip out degenerate off-grid wall padding and construct DPO preference pairs ($y_w, y_l$), and built `scripts/pace/unified_phase2_pipeline.sbatch` for single-allocation execution.
 **Contribution type:** Analysis, implementation, training, evaluation, and documentation.
 **Initial state:** Repo at `eddacca`, fast-forwarded to `a7b6fd6`.
-**Unfinished work:** Seed 43 rerun (Job 7128306) queued on PACE.
+**Unfinished work:** None. Seed 43 rerun (Job 7140531) completed successfully scoring 311/400 (77.75%), validating run-to-run stability across seeds (308.0 ± 3.0 / 400).
 
 ### Human input and contributions
 
@@ -2327,7 +2327,8 @@ Single-image prompts were checked to encode identically before and after on 60 r
 | configs/livr_seed43.json | created | Config for seed 43 rerun |
 | docs/POLICY_ROUTING_AND_REDUNDANCY_SYNTHESIS.md | created | Comparative analysis between PR #9 and PR #10 on perception ceilings, hole checks, and distribution balance |
 | docs/experiments/probe_holes_results.json | created | Image-token hole probe results (AUROC 1.0000) |
-| docs/experiments/rebalanced-7109628/ | created | Benchmark evaluation evidence (305/400) for 10% rebalanced fine-tuning |
+| docs/experiments/rebalanced-7109628/ | created | Benchmark evaluation evidence (305/400) for 10% rebalanced fine-tuning (Seed 42) |
+| docs/experiments/rebalanced-seed43-7140531/ | created | Benchmark evaluation evidence (311/400) for 10% rebalanced fine-tuning (Seed 43) |
 | docs/experiments/rl_gate-7128300/ | created | Rollout logs and summary for the 8-sample RL feasibility check |
 | scripts/analyze_map_detours.py | created | BFS shortest path vs Manhattan detour distribution analysis |
 | scripts/prepare_rebalanced_data.py | created | Data generation script for 10% and 20% detour distributions |
@@ -2343,4 +2344,5 @@ Single-image prompts were checked to encode identically before and after on 60 r
 ### Folders created
 
 - docs/experiments/rl_gate-7128300/ — RL feasibility rollout evidence and summary.
-- docs/experiments/rebalanced-7109628/ — Evaluation evidence for 10% rebalanced fine-tuning.
+- docs/experiments/rebalanced-7109628/ — Evaluation evidence for 10% rebalanced fine-tuning (Seed 42).
+- docs/experiments/rebalanced-seed43-7140531/ — Evaluation evidence for 10% rebalanced fine-tuning (Seed 43).
