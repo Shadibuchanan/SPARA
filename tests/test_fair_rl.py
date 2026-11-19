@@ -75,14 +75,17 @@ def rl_settings(path, **extra):
     return rl | extra
 
 
-def run_loop(model, tiny_batch, tmp_path, monkeypatch, name, scorer, rl):
+def run_loop(model, tiny_batch, tmp_path, monkeypatch, name, scorer, rl, noise=None):
     monkeypatch.setattr(text_rl, "records", lambda root, split: list(range(5)))
     monkeypatch.setattr(text_rl, "encode", lambda *args, training=True: prompt_of(tiny_batch))
     config = read_config("configs/livr.json") | {"gradient_checkpointing": False}
     reference = copy.deepcopy(model).requires_grad_(False)
+    adjusters = None
+    if noise is not None:  # C″: fixed latent noise at rl["noise"]["layer"]
+        adjusters = (LatentAdjuster(model, rl["noise"]["layer"]), LatentAdjuster(reference, rl["noise"]["layer"]))
     torch.manual_seed(0)
     final = text_rl.train_text_rl(model, reference, Processor(), "unused", tmp_path / name, config, rl,
-                                  "livr/final", scorer=scorer)
+                                  "livr/final", scorer=scorer, adjusters=adjusters, noise=noise)
     steps = [json.loads(line) for line in (tmp_path / name / "steps.jsonl").read_text().splitlines()]
     rollouts = [json.loads(line) for line in (tmp_path / name / "rollouts.jsonl").read_text().splitlines()]
     return final, steps, rollouts, config
@@ -107,6 +110,20 @@ def test_the_loop_streams_full_batches_and_trains_only_on_mixed_groups(tiny_mode
     assert progress["optimizer_steps"] == 3 and progress["verifier_calls"] == 24
     with pytest.raises(ValueError, match="completed text-only RL"):
         require_final_rl_checkpoint(final, config, rl | {"steps": 4})
+
+
+def test_the_offloaded_optimizer_trains_like_the_plain_one(tiny_model, tiny_batch, tmp_path, monkeypatch):
+    """--low-memory keeps AdamW's state on the CPU; the loop's rollouts and weights must not change."""
+    scorer = lambda row, text: float(row == 0 or int(text.split()[-1]) % 2 == 0)
+    rl = rl_settings("configs/text_rl_fair.json")
+    plain, offloaded = stage2(copy.deepcopy(tiny_model)), stage2(copy.deepcopy(tiny_model))
+    _, steps_a, rollouts_a, _ = run_loop(plain, tiny_batch, tmp_path, monkeypatch, "plain", scorer, rl)
+    _, steps_b, rollouts_b, _ = run_loop(offloaded, tiny_batch, tmp_path, monkeypatch, "offloaded", scorer,
+                                         rl | {"offload_optimizer": True})
+    assert any(s["updated"] for s in steps_a)
+    assert [r["rewards"] for r in rollouts_a] == [r["rewards"] for r in rollouts_b]
+    for (name, a), (_, b) in zip(plain.named_parameters(), offloaded.named_parameters()):
+        torch.testing.assert_close(a, b, atol=1e-6, rtol=1e-5, msg=name)
 
 
 def test_a_step_without_mixed_groups_changes_nothing(tiny_model, tiny_batch, tmp_path, monkeypatch):
@@ -330,3 +347,118 @@ def test_pilot_arms_and_readings_end_to_end(world, tiny_model, tmp_path):
     # A policy that did not move from LIVR gives no reading on latent exploration.
     unmoved = compare(runs, tmp_path / "pilot", settings | {"moved_maps": 99}, livr_outcomes, "unused")
     assert unmoved["policy_moved"]["extend_to"] == 250
+
+
+def noise_family(seed=0):
+    from spara import latent_diagnostics
+    basis = basis_for(seed=seed)
+    return latent_diagnostics.matched(basis, latent_diagnostics.slot_energy(basis))
+
+
+def noise_rl(scale, layer=2, sha256="unused"):
+    rl = rl_settings("configs/latent_noise_fair.json")
+    rl["noise"] |= {"layer": layer, "scale": scale, "sha256": sha256}
+    return rl
+
+
+def test_noise_offsets_match_the_diagnostics_draw():
+    from spara import latent_diagnostics
+    from spara.latent_rl import noise_offsets
+    family = noise_family()
+    a, eps_a = noise_offsets(family, 0.25, 8, torch.Generator().manual_seed(3), "cpu")
+    b, eps_b = latent_diagnostics.draw(family, 0.25, 8, torch.Generator().manual_seed(3), "cpu")
+    torch.testing.assert_close(a, b, atol=0, rtol=0)
+    torch.testing.assert_close(eps_a, eps_b, atol=0, rtol=0)
+
+
+def test_c_double_prime_at_zero_noise_is_b_prime(tiny_model, tiny_batch, tmp_path, monkeypatch):
+    """C″ differs from B′ only by the noise: at scale 0, the same rollouts and the same weights."""
+    scorer = lambda row, text: float(row == 0 or int(text.split()[-1]) % 2 == 0)
+    b, n = stage2(copy.deepcopy(tiny_model)), stage2(copy.deepcopy(tiny_model))
+    _, steps_b, rollouts_b, _ = run_loop(b, tiny_batch, tmp_path, monkeypatch, "b", scorer,
+                                         rl_settings("configs/text_rl_fair.json"))
+    _, steps_n, rollouts_n, _ = run_loop(n, tiny_batch, tmp_path, monkeypatch, "n", scorer, noise_rl(0.0),
+                                         noise=noise_family())
+    assert any(s["updated"] for s in steps_b)
+    assert [r["completions"] for r in rollouts_b] == [r["completions"] for r in rollouts_n]
+    assert [s["loss"] for s in steps_b] == [s["loss"] for s in steps_n]
+    for (name, x), (_, y) in zip(b.named_parameters(), n.named_parameters()):
+        torch.testing.assert_close(x, y, atol=0, rtol=0, msg=name)
+
+
+def test_c_double_prime_draws_logs_and_replays_its_noise(tiny_model, tiny_batch, tmp_path, monkeypatch):
+    from spara.latent_rl import noise_offsets
+    scorer = lambda row, text: float(row == 0 or int(text.split()[-1]) % 2 == 0)
+    b, n = stage2(copy.deepcopy(tiny_model)), stage2(copy.deepcopy(tiny_model))
+    run_loop(b, tiny_batch, tmp_path, monkeypatch, "b", scorer, rl_settings("configs/text_rl_fair.json"))
+    family, rl = noise_family(), noise_rl(4.0)
+    _, steps, rollouts, _ = run_loop(n, tiny_batch, tmp_path, monkeypatch, "n", scorer, rl, noise=family)
+    # Each group's noise is the run seed's stream, logged per rollout as (G, K, k) coordinates.
+    generator = torch.Generator().manual_seed(rl.get("seed", read_config("configs/livr.json")["seed"]))
+    for record in rollouts:
+        _, eps = noise_offsets(family, 4.0, rl["group_size"], generator, "cpu")
+        assert torch.allclose(torch.tensor(record["eps"]), eps, atol=6e-4)
+    assert all(len(s["noise_size_ratio"]) == 4 and all(0.2 < r < 5 for r in s["noise_size_ratio"]) for s in steps)
+    assert any(not torch.equal(x, y) for x, y in zip(b.parameters(), n.parameters()))
+
+    # The update replays the rollout's offset: with it, the policy scores a completion as at
+    # rollout time (a = z + offset on the recomputed z); without it, differently.
+    model = stage2(copy.deepcopy(tiny_model)).eval()
+    adjuster = LatentAdjuster(model, 2)
+    prompt = prompt_of(tiny_batch)
+    offsets, _ = noise_offsets(family, 4.0, 1, torch.Generator().manual_seed(0), "cpu")
+    completion = torch.tensor([7, 8, 9])
+    with torch.no_grad():
+        with adjuster.offset(offsets):
+            noisy = text_rl.token_logprobs(model, prompt, completion, 1.0)
+            again = text_rl.token_logprobs(model, prompt, completion, 1.0)
+        plain = text_rl.token_logprobs(model, prompt, completion, 1.0)
+    torch.testing.assert_close(noisy, again, atol=0, rtol=0)
+    assert not torch.allclose(noisy, plain)
+
+
+def test_c_double_prime_arm_trains_evaluates_and_reads_against_b(world, tiny_model, tmp_path):
+    from spara.latent_rl import tensor_digest
+    sets, settings = world
+    config = read_config("configs/livr.json") | {"gradient_checkpointing": False, "seed": 0}
+    base = stage2(tiny_model).eval()
+    family = noise_family()
+    torch.save({"families": {2: {"pca": family}}}, tmp_path / "bases.pt")
+    rl_b = rl_settings("configs/text_rl_fair.json", steps=2, train_split="fresh/pool")
+    rl_n = noise_rl(1.0, sha256=tensor_digest(family)) | {"steps": 2, "train_split": "fresh/pool"}
+    pilot = run_pilot(copy.deepcopy(base), Processor(), Evaluator(), "unused", tmp_path / "pilot", settings, rl_b, {})
+    summary = json.loads((tmp_path / "pilot/summary.json").read_text())
+    summary["rules"] |= {"prompts_per_step": 2, "scale": 0.5, "stop": []}
+    summary["proceed"] = True
+    (tmp_path / "pilot/summary.json").write_text(json.dumps(summary))
+
+    with pytest.raises(ValueError, match="sha256"):
+        fair_rl.load_noise(noise_rl(1.0, sha256="0" * 64), tmp_path / "bases.pt")
+    with pytest.raises(ValueError, match="noise-basis"):
+        train_arm(copy.deepcopy(base), copy.deepcopy(base), Processor(), Evaluator(), config, "unused",
+                  tmp_path / "nobasis", settings, rl_n, "n", 1, tmp_path / "pilot", "livr/final", {})
+    with pytest.raises(ValueError, match="latent_noise_fair"):
+        recipe(rl_b, "n", 1, summary, settings)
+
+    runs = {"b": {}, "n": {}}
+    for seed in (1, 2):
+        for arm, rl in (("b", rl_b), ("n", rl_n)):
+            model, reference = copy.deepcopy(base), copy.deepcopy(base)
+            out = tmp_path / f"{arm}{seed}"
+            adjuster = train_arm(model, reference, Processor(), Evaluator(), config, "unused", out, settings, rl, arm,
+                                 seed, tmp_path / "pilot", "livr/final", {}, noise_basis=tmp_path / "bases.pt")
+            assert adjuster is None
+            assert not model.model.layers[1]._forward_hooks  # C″'s hooks are gone before evaluation
+            evaluate_arm(model, Processor(), Evaluator(), config, "unused", out, settings, arm, adjuster, {})
+            runs[arm][seed] = out
+    arm_n = json.loads((tmp_path / "n1/arm-summary.json").read_text())
+    assert set(arm_n["greedy"]) == {"plain"} and arm_n["rl"]["noise"]["scale"] == 1.0
+    assert json.loads((tmp_path / "n1/manifest.json").read_text())["noise_sha256"] == tensor_digest(family)
+    livr_outcomes = tmp_path / "livr.jsonl"
+    livr_outcomes.write_text("".join(json.dumps({"row_index": i, "success": True}) + "\n" for i in range(2)))
+    result = compare(runs, tmp_path / "pilot", settings, livr_outcomes, "unused", evaluator=Evaluator(), other="n")
+    assert result["validity"]["valid"], result["validity"]
+    assert result["arms"] == ["b", "n"] and result["validity"]["identity"] is None
+    assert result["primary"]["maps"] == 3 and set(result["diagnostics"]["rescues_and_breaks"]) == {1, 2}
+    assert "C′" not in result["primary"]["reading"]
+    assert set(result["secondary"]["benchmark_vs_l"]) == {"b1", "b2", "n1", "n2"}

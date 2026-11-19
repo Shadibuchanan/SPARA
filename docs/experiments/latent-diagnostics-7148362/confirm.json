@@ -1,0 +1,190 @@
+{
+  "rule": {
+    "mixed_gain": 0.02,
+    "max_success_drop": 0.02,
+    "bootstrap": 2000,
+    "break_drop": 0.5,
+    "group": 8
+  },
+  "config": "pca/24/0.25",
+  "checks": {
+    "maps": 104,
+    "expected_maps": 104,
+    "complete": true,
+    "rows_follow_the_range": true,
+    "greedy_route_mismatches": 0,
+    "greedy_success_mismatches": 0
+  },
+  "null": {
+    "maps": 104,
+    "success": 0.1622596153846154,
+    "text_success": 0.16758241758241754,
+    "success_drop": 0.005322802197802149,
+    "mixed_share": 0.18269230769230768,
+    "mixed_gain": -0.0013986619747617913,
+    "mixed_gain_ci": [
+      -0.04470167954928476,
+      0.04524774213886433
+    ],
+    "rescues": 0,
+    "breaks": 0,
+    "pass_at_group": 0.27884615384615385,
+    "text_pass_at_group": 0.2823119582597452
+  },
+  "primary": {
+    "maps": 104,
+    "groups_per_map": 2,
+    "mixed_gain": 0.12055684710659044,
+    "mixed_gain_ci": [
+      0.0653706060006804,
+      0.18046439797654873
+    ],
+    "success": 0.1502403846153846,
+    "text_success": 0.16691706730769232,
+    "success_drop": 0.016676682692307692,
+    "rescues": 3,
+    "breaks": 3,
+    "first_group": {
+      "maps": 104,
+      "success": 0.13581730769230768,
+      "text_success": 0.16691706730769232,
+      "success_drop": 0.031099759615384616,
+      "mixed_share": 0.2692307692307692,
+      "mixed_gain": 0.08690300095274425,
+      "mixed_gain_ci": [
+        0.023471865943952595,
+        0.15792809968756544
+      ],
+      "rescues": 3,
+      "breaks": 3,
+      "pass_at_group": 0.28846153846153844,
+      "text_pass_at_group": 0.2809928289562932
+    },
+    "soft": {
+      "greedy_failures": {
+        "draws": 352,
+        "label_logp_change": -0.31628498841415753,
+        "label_logp_improved_share": 0.41761363636363635,
+        "first_move_kl": 0.15859911358976955,
+        "label_first_move_probability_change": 0.012187749999999995
+      },
+      "all": {
+        "draws": 416,
+        "label_logp_change": -0.37812602207808454,
+        "label_logp_improved_share": 0.3918269230769231,
+        "first_move_kl": 0.174127937696183,
+        "label_first_move_probability_change": -0.007415093750000009
+      }
+    },
+    "energy_ratio": {
+      "mean": [
+        0.9813519230769235,
+        0.9948067307692308,
+        0.9989490384615384,
+        0.984705769230769
+      ],
+      "min": [
+        0.7135,
+        0.639,
+        0.729,
+        0.655
+      ],
+      "max": [
+        1.4297,
+        1.4426,
+        1.4643,
+        1.3515
+      ]
+    },
+    "confirmed": true
+  },
+  "confirmed": true,
+  "secondary": {
+    "pca/24/0.1": {
+      "maps": 104,
+      "groups_per_map": 2,
+      "mixed_gain": 0.043633770183513505,
+      "mixed_gain_ci": [
+        0.0032840039013513986,
+        0.08405361435068523
+      ],
+      "success": 0.16646634615384615,
+      "text_success": 0.16691706730769232,
+      "success_drop": 0.00045072115384615387,
+      "rescues": 3,
+      "breaks": 0,
+      "first_group": {
+        "maps": 104,
+        "success": 0.16826923076923078,
+        "text_success": 0.16691706730769232,
+        "success_drop": -0.0013521634615384615,
+        "mixed_share": 0.23076923076923078,
+        "mixed_gain": 0.048441462491205796,
+        "mixed_gain_ci": [
+          -0.0006226413623268412,
+          0.10046364179316782
+        ],
+        "rescues": 3,
+        "breaks": 0,
+        "pass_at_group": 0.3076923076923077,
+        "text_pass_at_group": 0.2809928289562932
+      },
+      "soft": {
+        "greedy_failures": {
+          "draws": 352,
+          "label_logp_change": -0.055255278436975044,
+          "label_logp_improved_share": 0.5142045454545454,
+          "first_move_kl": 0.04570500048906772,
+          "label_first_move_probability_change": 0.004103855113636362
+        },
+        "all": {
+          "draws": 416,
+          "label_logp_change": -0.06460374786351727,
+          "label_logp_improved_share": 0.49278846153846156,
+          "first_move_kl": 0.04344193761125577,
+          "label_first_move_probability_change": 0.001899935096153847
+        }
+      },
+      "energy_ratio": {
+        "mean": [
+          1.025526923076923,
+          0.9973076923076927,
+          1.0292903846153845,
+          0.9900740384615381
+        ],
+        "min": [
+          0.6891,
+          0.6157,
+          0.7165,
+          0.6006
+        ],
+        "max": [
+          1.4948,
+          1.4825,
+          1.8118,
+          1.4473
+        ]
+      },
+      "confirmed": true
+    }
+  },
+  "pooled_first_group": {
+    "reference_maps": 96,
+    "reading": {
+      "maps": 200,
+      "success": 0.14625,
+      "text_success": 0.1653125,
+      "success_drop": 0.0190625,
+      "mixed_share": 0.28,
+      "mixed_gain": 0.08609337597844581,
+      "mixed_gain_ci": [
+        0.03217120561840697,
+        0.13699558742401696
+      ],
+      "rescues": 9,
+      "breaks": 4,
+      "pass_at_group": 0.315,
+      "text_pass_at_group": 0.2836723640473345
+    }
+  }
+}

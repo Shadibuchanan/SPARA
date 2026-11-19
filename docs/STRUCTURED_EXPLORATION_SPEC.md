@@ -8,7 +8,8 @@ Amended 2026-11-17: after an audit of B and C, B′ and C′ are redesigned so t
 comparison can show an effect if there is one. See
 [Amendment: rerun under fair conditions](#amendment-rerun-under-fair-conditions-2026-11-17).
 It replaces the reading and budget sections below. Built and tested on CPU on 2026-11-17
-(see [Built](#built-2026-11-17)); not run.
+(see [Built](#built-2026-11-17)). Run on 2026-11-17 (jobs 7142592, 7143007, 7143008); see
+[Result](#result-jobs-7142592-7143007-and-7143008).
 
 ## Why
 
@@ -517,3 +518,35 @@ independent and can run at the same time. `fair_rl.compare` applies the readings
 - From C: layer 16, head learning rate 2e-5.
 - New: 16 directions per slot; a target of four informative groups per step; the
   16-map policy-moved threshold; seeds 42 and 43.
+
+### Result (jobs 7142592, 7143007 and 7143008)
+
+Evidence: [docs/experiments/fair-rl-7142592/](experiments/fair-rl-7142592/), with
+`comparison.json` holding every reading.
+
+**What changed from the plan.** The runs used 48 GB Blackwell MIG slices, so they trained with
+`fair-rl --low-memory` (AdamW state on the CPU, the same update; a bfloat16 KL reference) on
+PyTorch 2.7.1 + CUDA 12.8; both arms identically. The four runs ran in parallel jobs from one
+pilot. LIVR's benchmark was rerun on the same stack (328 of 400, as on H200).
+
+**Validity: all checks passed,** including the CPU rescore of all 96,000 rollouts. Every run
+moved from LIVR (63–73 of 200 pilot maps), so none was extended.
+
+**Primary: C′ is worse.** On the 240 held-out detour maps, B′ solves 92 and 96, C′ 77 and 86,
+LIVR 42. Summed over seeds, B′ is ahead on 34 maps and C′ on 12 (p = 0.0016), both seeds the
+same way: "C′ worse: latent exploration hurt in this recipe."
+
+**Secondary.**
+- **Transfer (400 maps, 7 x 7 and 8 x 8):** B′ 73 and 67, C′ 61 and 54, LIVR 19; C′ worse
+  (p = 0.010).
+- **δ = μ against δ = 0:** one map apart per seed; C′'s heads barely moved (σ 4.0 to 3.86 and
+  4.13; mean |μ| 0.11 and 0.15).
+- **The benchmark:** every run gains on the 40 detour maps (B′ 18 and 17, C′ 15 and 13, LIVR 9)
+  and loses on the 360 others (B′ 287 and 281, C′ 300 and 296, LIVR 319); overall B′ 305 and
+  298, C′ 315 and 309, LIVR 328.
+
+**What this says.** Under fair conditions text-only RL more than doubles held-out detour
+success in 125 steps. Structured latent noise adds reward variance mostly by breaking routes
+already solved; its heads do not learn and its text policy moves less. Training only on detour
+maps costs the no-detour maps for both arms.
+

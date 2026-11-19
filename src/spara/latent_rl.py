@@ -9,6 +9,7 @@ final-layer adjustment would change nothing, since later tokens read a position
 only through the layers before the last.
 """
 import contextlib
+import hashlib
 import json
 import math
 import random
@@ -204,6 +205,27 @@ class LatentAdjuster:
     def remove(self):
         for handle in self.handles:
             handle.remove()
+
+
+def tensor_digest(family):
+    """sha256 of a family's tensors (float32, sorted keys): shows two runs drew from the same basis."""
+    digest = hashlib.sha256()
+    for key in sorted(family):
+        if torch.is_tensor(family[key]):
+            digest.update(key.encode())
+            digest.update(family[key].detach().float().cpu().contiguous().numpy().tobytes())
+    return digest.hexdigest()
+
+
+def noise_offsets(family, scale, count, generator, device):
+    """C″'s fixed latent noise: `count` offsets (count, K, d) = scale * sum_j u_j w_j eps_j per
+    slot, eps ~ N(0, 1), in a norm-matched principal basis (latent_diagnostics.matched); also
+    eps (count, K, k). The same draw as latent_diagnostics.draw for the "slots" family."""
+    if family["kind"] != "slots":
+        raise ValueError("C″ draws in a per-slot principal basis")
+    directions, weights = family["directions"].to(device), family["weights"].to(device)
+    eps = torch.randn((count, *weights.shape), generator=generator, device=device)
+    return scale * torch.einsum("sdk,sk,nsk->nsd", directions, weights, eps), eps
 
 
 def replaying(adjuster, actions):

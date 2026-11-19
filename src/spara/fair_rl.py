@@ -9,6 +9,9 @@ from the LIVR rerun, on unseen detour maps, with the model's full sampling distr
 - `train_arm` and `evaluate_arm`: one arm and seed. C′ first checks that its fresh heads
   leave LIVR's routes unchanged.
 - `compare` (CPU): the readings fixed in the specification.
+- C″ (arm "n"; docs/LATENT_DIAGNOSTICS_SPEC.md, C″ amendment): B′ plus fixed latent noise at
+  layer 24 in a saved principal basis, replayed as an offset; no heads, no latent term. It
+  trains and evaluates like B′, and `compare(..., other="n")` reads it against B′.
 """
 import contextlib
 import json
@@ -24,7 +27,7 @@ from .detour_scaling import greedy_eval, jsonl, paired
 from .explore_probe import GREEDY, latent_states, noise_probe, principal_basis, structured_offsets, summarise_noise
 from .fresh_maps import is_detour
 from .latent_battery import mcnemar
-from .latent_rl import LatentAdjuster, add_latent_heads, sigma_bounds
+from .latent_rl import LatentAdjuster, add_latent_heads, sigma_bounds, tensor_digest
 from .runtime import json_write, seed_all
 from .serialization import encode
 from .text_rl import repeat_prompt, rollout, stream_batch, train_text_rl
@@ -32,6 +35,8 @@ from .training import amp, to_device
 
 ALPHA = 0.05
 ARMS = ("b", "c")
+NOISE_ARM = "n"  # C″
+NAMES = {"c": "C′", "n": "C″"}
 PRIMARY = ("heldout", "test_detour")  # round 1's 240 held-out maps
 
 
@@ -201,12 +206,13 @@ def counts(greedy):
 
 def recipe(rl, arm, seed, pilot, settings):
     """The arm's RL settings with the pilot's maps per step (and, for C′, its scale)."""
-    if arm not in ARMS:
-        raise ValueError(f"arm must be one of {ARMS}")
+    if arm not in ARMS + (NOISE_ARM,):
+        raise ValueError(f"arm must be one of {ARMS + (NOISE_ARM,)}")
     if rl.get("train_split") != settings["pool_split"]:
         raise ValueError(f"The RL recipe trains on {rl.get('train_split')}, but the pilot measured {settings['pool_split']}")
-    if bool(rl.get("latent")) != (arm == "c"):
-        raise ValueError("B′ uses configs/text_rl_fair.json and C′ configs/latent_rl_fair.json")
+    if bool(rl.get("latent")) != (arm == "c") or bool(rl.get("noise")) != (arm == NOISE_ARM):
+        raise ValueError("B′ uses configs/text_rl_fair.json, C′ configs/latent_rl_fair.json and C″ "
+                         "configs/latent_noise_fair.json")
     if not pilot["proceed"] or not pilot["checks"]["valid"]:
         raise ValueError("The pilot stopped or failed a validity check; no run is read without it")
     rl = json.loads(json.dumps(rl)) | {"prompts_per_step": pilot["rules"]["prompts_per_step"], "seed": seed}
@@ -231,15 +237,34 @@ class NullLog:
     def flush(self): pass
 
 
+def load_noise(rl, basis_path):
+    """C″'s basis: the saved family at `rl["noise"]["layer"]` (latent_diagnostics' bases.pt),
+    checked against the sha256 fixed in the recipe."""
+    noise = rl["noise"]
+    saved = torch.load(Path(basis_path) / "bases.pt" if Path(basis_path).is_dir() else basis_path)
+    family = saved["families"][noise["layer"]][noise["family"]]
+    digest = tensor_digest(family)
+    if digest != noise["sha256"]:
+        raise ValueError(f"C″'s basis {basis_path} has sha256 {digest}, not the confirmed {noise['sha256']}")
+    return family
+
+
 def train_arm(model, reference, processor, evaluator, config, data_root, output, settings, rl, arm, seed,
-              pilot_run, source, run_manifest):
-    """Train one arm and seed from LIVR; returns the latent adjuster for C′ (None for B′)."""
+              pilot_run, source, run_manifest, noise_basis=None):
+    """Train one arm and seed from LIVR; returns the latent adjuster for C′ (None for B′ and C″,
+    which are evaluated without any adjustment)."""
     pilot_run, output = Path(pilot_run), Path(output)
     pilot = json.loads((pilot_run / "summary.json").read_text())
     rl = recipe(rl, arm, seed, pilot, settings)
     output.mkdir(parents=True, exist_ok=False)
     manifest = run_manifest | {"arm": arm, "seed": seed, "rl": rl, "settings": settings, "pilot_run": str(pilot_run)}
-    adjusters, identity = None, None
+    adjusters, identity, noise = None, None, None
+    if arm == NOISE_ARM:
+        if not noise_basis:
+            raise ValueError("C″ needs the confirmed basis (--noise-basis)")
+        noise = load_noise(rl, noise_basis)
+        manifest |= {"noise_basis": str(noise_basis), "noise_sha256": rl["noise"]["sha256"]}
+        adjusters = (LatentAdjuster(model, rl["noise"]["layer"]), LatentAdjuster(reference, rl["noise"]["layer"]))
     if arm == "c":
         basis = torch.load(pilot_run / "basis.pt")
         add_latent_heads(model, rl["latent"], basis)
@@ -255,9 +280,13 @@ def train_arm(model, reference, processor, evaluator, config, data_root, output,
     started = time.time()
     train_text_rl(model, reference, processor, data_root, output / "rl", config, rl, source,
                   scorer=lambda row, text: float(bool(evaluator.score(row, text)["success"])),
-                  final_weights_only=True, adjusters=adjusters)
+                  final_weights_only=True, adjusters=adjusters, noise=noise)
     json_write(output / "arm-summary.json", {"arm": arm, "seed": seed, "rl": rl, "identity": identity,
                                              "training_seconds": time.time() - started})
+    if arm == NOISE_ARM:  # evaluated like B′: no noise at test time
+        for adjuster in adjusters:
+            adjuster.remove()
+        return None
     if adjusters:
         adjusters[1].remove()
     return adjusters[0] if adjusters else None
@@ -270,7 +299,7 @@ def evaluate_arm(model, processor, evaluator, config, data_root, output, setting
     model.eval()
     model.config.livr_stage = 2
     items = populations(data_root, settings)
-    modes = ({"plain": (contextlib.nullcontext, items)} if arm == "b" else
+    modes = ({"plain": (contextlib.nullcontext, items)} if arm in ("b", NOISE_ARM) else
              {"mean": (adjuster.mean, items), "zero": (contextlib.nullcontext, items),
               "sample": (adjuster.sample, [i for i in items if i[0] in PRIMARY])})
     results = {}
@@ -279,7 +308,7 @@ def evaluate_arm(model, processor, evaluator, config, data_root, output, setting
         with context(), (output / f"greedy-{mode}.jsonl").open("w", encoding="utf-8") as log:
             results[mode] = counts(greedy_eval(model, processor, evaluator, data_root, chosen, log,
                                                settings["max_new_tokens"]))
-    benchmark_mode = "plain" if arm == "b" else "mean"
+    benchmark_mode = "mean" if arm == "c" else "plain"
     with modes[benchmark_mode][0]():
         run_benchmark(model, processor, config, data_root, output / f"benchmark-{benchmark_mode}",
                       run_manifest | {"arm": arm, "latent_mode": benchmark_mode})
@@ -304,16 +333,16 @@ def sign_test(first, second, keys):
             "maps_second_ahead": worse, "p": mcnemar(better, worse)}
 
 
-def verdict(test, valid, moved):
+def verdict(test, valid, moved, name="C′"):
     if not valid:
         return "withheld: the measurement failed a validity check"
     if not moved:
         return "RL did not move the policy at this budget; no reading on latent exploration"
     each = [a - b for a, b in zip(test["first"], test["second"])]
     if test["p"] < ALPHA and test["maps_first_ahead"] > test["maps_second_ahead"] and all(e >= 0 for e in each):
-        return "C′ better: latent exploration adds value beyond text exploration on unseen detour maps"
+        return f"{name} better: latent exploration adds value beyond text exploration on unseen detour maps"
     if test["p"] < ALPHA and test["maps_first_ahead"] < test["maps_second_ahead"] and all(e <= 0 for e in each):
-        return "C′ worse: latent exploration hurt in this recipe"
+        return f"{name} worse: latent exploration hurt in this recipe"
     return "no detectable difference: no gain of about 7 points or more from latent exploration in this recipe"
 
 
@@ -354,14 +383,19 @@ def rescues_and_breaks(b_run, c_run):
             "both_mixed": sum(mixed(b[k]) and mixed(c[k]) for k in keys)}
 
 
-def compare(runs, pilot_run, settings, livr_outcomes, data_root, evaluator=None, e_round1=None, e_round2=None):
-    """`runs`: {"b": {seed: run}, "c": {seed: run}}. `livr_outcomes`: the LIVR rerun's
-    benchmark outcomes. `evaluator` rescores the rollouts (validity); `e_round1`, `e_round2`:
-    E's greedy.jsonl files on round 1's and round 2's held-out maps, for context."""
+def compare(runs, pilot_run, settings, livr_outcomes, data_root, evaluator=None, e_round1=None, e_round2=None,
+            other="c"):
+    """`runs`: {"b": {seed: run}, other: {seed: run}}, `other` "c" (C′) or "n" (C″), read
+    against B′ by the same rules. `livr_outcomes`: the LIVR rerun's benchmark outcomes.
+    `evaluator` rescores the rollouts (validity); `e_round1`, `e_round2`: E's greedy.jsonl
+    files on round 1's and round 2's held-out maps, for context."""
+    ARMS = ("b", other)
+    label = NAMES[other]
+    mode_of = lambda arm: "mean" if arm == "c" else "plain"
     pilot = json.loads((Path(pilot_run) / "summary.json").read_text())
     livr = {(r["population"], r["row_index"]): bool(r["success"]) for r in jsonl(Path(pilot_run) / "greedy-livr.jsonl")}
     seeds = sorted(runs["b"])
-    if sorted(runs["c"]) != seeds:
+    if sorted(runs[other]) != seeds:
         raise ValueError("Each seed needs both arms")
     arms = {name: [Path(runs[name][s]) for s in seeds] for name in ARMS}
     summaries = {name: [json.loads((run / "arm-summary.json").read_text()) for run in arms[name]] for name in ARMS}
@@ -369,14 +403,14 @@ def compare(runs, pilot_run, settings, livr_outcomes, data_root, evaluator=None,
     completed = all(p["optimizer_steps"] == s["rl"]["steps"] for name in ARMS
                     for p, s in zip(progress[name], summaries[name]))
     pairing = {seed: [r["row"] for r in jsonl(b / "rl/rollouts.jsonl")] == [r["row"] for r in jsonl(c / "rl/rollouts.jsonl")]
-               for seed, b, c in zip(seeds, arms["b"], arms["c"])}
-    identity = all(s["identity"]["valid"] for s in summaries["c"])
+               for seed, b, c in zip(seeds, arms["b"], arms[other])}
+    identity = all(s["identity"]["valid"] for s in summaries["c"]) if other == "c" else None
     rescored = ({f"{name}{seed}": rescore(evaluator, data_root, settings["pool_split"], run)
                  for name in ARMS for seed, run in zip(seeds, arms[name])} if evaluator else None)
-    valid = (pilot["checks"]["valid"] and completed and all(pairing.values()) and identity
+    valid = (pilot["checks"]["valid"] and completed and all(pairing.values()) and identity is not False
              and (rescored is None or all(r["valid"] for r in rescored.values())))
 
-    plain = {"b": [greedy_of(run, "plain") for run in arms["b"]], "c": [greedy_of(run, "mean") for run in arms["c"]]}
+    plain = {arm: [greedy_of(run, mode_of(arm)) for run in arms[arm]] for arm in ARMS}
     keys = sorted(plain["b"][0])
     if any(sorted(g) != keys for name in ARMS for g in plain[name]):
         raise ValueError("The runs evaluated different maps")
@@ -387,10 +421,10 @@ def compare(runs, pilot_run, settings, livr_outcomes, data_root, evaluator=None,
              for name in ARMS for seed, g in zip(seeds, plain[name])}
     policy_moved = all(m >= settings["moved_maps"] for m in moved.values())
 
-    primary = sign_test(plain["c"], plain["b"], primary_keys)
-    transfer = sign_test(plain["c"], plain["b"], transfer_keys)
-    zero = [greedy_of(run, "zero") for run in arms["c"]]
-    sampled = [greedy_of(run, "sample") for run in arms["c"]]
+    primary = sign_test(plain[other], plain["b"], primary_keys)
+    transfer = sign_test(plain[other], plain["b"], transfer_keys)
+    zero = [greedy_of(run, "zero") for run in arms["c"]] if other == "c" else []
+    sampled = [greedy_of(run, "sample") for run in arms["c"]] if other == "c" else []
     test_rows = records(data_root, "test")
     detour_rows = {i for i, r in enumerate(test_rows) if is_detour(r["map_desc"])}
     livr_bench = {r["row_index"]: bool(r["success"]) for r in jsonl(livr_outcomes)}
@@ -412,18 +446,19 @@ def compare(runs, pilot_run, settings, livr_outcomes, data_root, evaluator=None,
                      "identity": identity, "rescored": rescored, "valid": valid},
         "policy_moved": {"differs_from_l": moved, "threshold": settings["moved_maps"], "moved": policy_moved,
                          "extend_to": None if policy_moved else settings["extended_steps"]},
-        "primary": primary | {"reading": verdict(primary, valid, policy_moved)},
+        "arms": ["b", other],
+        "primary": primary | {"reading": verdict(primary, valid, policy_moved, label)},
         "secondary": {
-            "transfer": transfer | {"reading": verdict(transfer, valid, policy_moved)},
-            "mean_vs_zero": {seed: paired(m, z, primary_keys) for seed, m, z in zip(seeds, plain["c"], zero)},
+            "transfer": transfer | {"reading": verdict(transfer, valid, policy_moved, label)},
+            "mean_vs_zero": {seed: paired(m, z, primary_keys) for seed, m, z in zip(seeds, plain[other], zero)},
             "sampled_delta": {seed: sum(s[k] for k in primary_keys) for seed, s in zip(seeds, sampled)},
-            "benchmark_vs_l": {f"{name}{seed}": benchmark(run, "plain" if name == "b" else "mean")
-                               for name in ARMS for seed, run in zip(seeds, arms[name])},
-            "each_vs_l": {f"{name}{seed}": paired(g, livr, primary_keys)
-                          for name in ARMS for seed, g in zip(seeds, plain[name])}},
+            "benchmark_vs_l": {f"{arm}{seed}": benchmark(run, mode_of(arm))
+                               for arm in ARMS for seed, run in zip(seeds, arms[arm])},
+            "each_vs_l": {f"{arm}{seed}": paired(g, livr, primary_keys)
+                          for arm in ARMS for seed, g in zip(seeds, plain[arm])}},
         "diagnostics": {
             "training": {f"{name}{seed}": training_signal(run) for name in ARMS for seed, run in zip(seeds, arms[name])},
-            "rescues_and_breaks": {seed: rescues_and_breaks(b, c) for seed, b, c in zip(seeds, arms["b"], arms["c"])},
+            "rescues_and_breaks": {seed: rescues_and_breaks(b, c) for seed, b, c in zip(seeds, arms["b"], arms[other])},
             "l_success": {"primary": sum(livr[k] for k in primary_keys), "transfer": sum(livr[k] for k in transfer_keys)}},
         "context": context,
         "pilot_rules": pilot["rules"]}

@@ -1,0 +1,66 @@
+{
+  "phase": "text-rl",
+  "stage": 2,
+  "epoch": 1,
+  "next_row": 3000,
+  "optimizer_steps": 125,
+  "config": {
+    "model_id": "Qwen/Qwen2.5-VL-3B-Instruct",
+    "model_revision": "66285546d2b821cf421d4f5eb2576359d3770cd3",
+    "seed": 42,
+    "epochs_per_stage": 10,
+    "microbatch": 1,
+    "gradient_accumulation": 8,
+    "learning_rate": 1e-05,
+    "weight_decay": 0.01,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "epsilon": 1e-08,
+    "warmup_ratio": 0.05,
+    "max_grad_norm": 1.0,
+    "precision": "bf16-mixed-fp32-parameters",
+    "attention_backend": "sdpa",
+    "gradient_checkpointing": true,
+    "generation": {
+      "do_sample": true,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "max_new_tokens": 1024
+    }
+  },
+  "rl": {
+    "method": "C\u2033: B\u2032 plus fixed latent noise at the output of decoder layer 24, in C\u2032's principal basis at that layer, at the scale confirmed by the latent diagnostics; replayed as an offset, no heads, no latent term (docs/LATENT_DIAGNOSTICS_SPEC.md, C\u2033 amendment)",
+    "train_split": "fresh/detour-pool",
+    "steps": 125,
+    "prompts_per_step": 24,
+    "group_size": 8,
+    "learning_rate": 1e-06,
+    "clip_epsilon": 0.2,
+    "kl_coefficient": 0.001,
+    "skip_uniform_groups": true,
+    "reference_policy": "final Stage 2 LIVR checkpoint",
+    "checkpoint_every_steps": 0,
+    "generation": {
+      "do_sample": true,
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "repetition_penalty": 1.0,
+      "max_new_tokens": 128
+    },
+    "noise": {
+      "layer": 24,
+      "family": "pca",
+      "scale": 0.25,
+      "basis": "results/latent-diag-sweep-L16-24-7148362/bases.pt",
+      "sha256": "c848988a0ce8989af7191aaf18c5a5d5a53c036599632bd335d49f23ebd8418a"
+    },
+    "offload_optimizer": true,
+    "reference_dtype": "bfloat16",
+    "seed": 42
+  },
+  "source_checkpoint": "/storage/ice1/5/6/psomu3/SPARA/spara_results/baseline-6253300/stage2/final",
+  "verifier_calls": 24000
+}

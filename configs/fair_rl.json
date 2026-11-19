@@ -1,5 +1,6 @@
 {
-  "rl_configs": {"b": "configs/text_rl_fair.json", "c": "configs/latent_rl_fair.json"},
+  "rl_configs": {"b": "configs/text_rl_fair.json", "c": "configs/latent_rl_fair.json",
+                 "n": "configs/latent_noise_fair.json"},
   "pool_split": "fresh/detour-pool",
   "round1_heldout_split": "fresh/detour-heldout",
   "heldout_split": "fresh/detour-heldout-78",

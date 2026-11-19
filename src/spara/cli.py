@@ -16,7 +16,8 @@ def main():
     fetch.add_argument("--processor-only", action="store_true")
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
-                    "expert-iteration", "expert-round2", "perception-jepa", "region-latents", "fair-rl"):
+                    "expert-iteration", "expert-round2", "perception-jepa", "region-latents", "fair-rl",
+                    "latent-diagnostics"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -113,9 +114,33 @@ def main():
             cmd.add_argument("--stage", choices=["pilot", "train"], required=True,
                              help="pilot: on LIVR, before any run; train: one arm and seed, then its evaluation")
             cmd.add_argument("--settings", default="configs/fair_rl.json")
-            cmd.add_argument("--arm", choices=["b", "c"], help="train: B′ (text only) or C′ (structured latent)")
+            cmd.add_argument("--arm", choices=["b", "c", "n"],
+                             help="train: B′ (text only), C′ (structured latent) or C″ (fixed latent noise)")
+            cmd.add_argument("--noise-basis", help="train, C″: the confirmed basis (a latent-diagnostics sweep's "
+                                                   "bases.pt or its directory)")
             cmd.add_argument("--seed", type=int, help="train: map order and sampling seed")
             cmd.add_argument("--pilot-run", help="train: the pilot's output (maps per step, scale, basis)")
+            cmd.add_argument("--low-memory", action="store_true",
+                             help="train: AdamW state on the CPU and a bfloat16 KL reference, for GPUs under 80 GB")
+        if command == "latent-diagnostics":
+            cmd.add_argument("--part", choices=["sweep", "gradients", "checkpoints", "weights", "analyse", "confirm"],
+                             required=True,
+                             help="docs/LATENT_DIAGNOSTICS_SPEC.md: sweep, gradients (+ search) and checkpoints on a "
+                                  "GPU; weights, analyse and confirm on the CPU")
+            cmd.add_argument("--settings", default="configs/latent_diagnostics.json")
+            cmd.add_argument("--pilot-run", help="The B′/C′ pilot's output (basis, maps per step, scale)")
+            cmd.add_argument("--layers", help="sweep: comma-separated decoder layers, or none (text baseline only; default: the settings')")
+            cmd.add_argument("--text-baseline", action="store_true", help="sweep: also the T = 1 text rollouts")
+            cmd.add_argument("--answer-noise", action="store_true", help="sweep: also noise on the answer tokens")
+            cmd.add_argument("--runs", help="checkpoints, weights: JSON {name: final checkpoint dir}, LIVR as 'livr'")
+            cmd.add_argument("--sweeps", help="analyse: comma-separated sweep outputs")
+            cmd.add_argument("--gradients-run", help="analyse: the gradients part's output")
+            cmd.add_argument("--checkpoints-run", help="analyse: the checkpoints part's output")
+            cmd.add_argument("--weights-run", help="analyse: the weights part's output")
+            cmd.add_argument("--bases-from", help="sweep: reuse this earlier sweep's bases.pt (no capture)")
+            cmd.add_argument("--text-run", help="confirm: the sweep holding the text baseline")
+            cmd.add_argument("--reference-run", help="confirm: the earlier sweep, for the pooled (descriptive) reading")
+            cmd.add_argument("--smoke", action="store_true", help="A few maps and draws per part (in-job check)")
         if command == "jepa-judge":
             cmd.add_argument("--settings", default="configs/jepa_judge.json")
             cmd.add_argument("--probe-points", required=True, help="points.jsonl of a detour-probe run (validity check)")
@@ -162,7 +187,8 @@ def main():
     seed_all(config["seed"])
     audit(args.data_root)
     # Round 2's batching check runs the real model on CPU by design (full-precision reference).
-    cpu_check = args.command == "expert-round2" and args.stage == "batching-check"
+    cpu_check = ((args.command == "expert-round2" and args.stage == "batching-check")
+                 or (args.command == "latent-diagnostics" and args.part in ("weights", "analyse", "confirm")))
     if not torch.cuda.is_available() and not cpu_check:
         raise RuntimeError("Use an allocated GPU for the actual 3B model; CPU correctness tests use tiny random weights")
     if args.command == "pilot":
@@ -464,6 +490,8 @@ def main():
         require_final_checkpoint(args.checkpoint, 2, config)
         if args.stage == "train" and (args.arm is None or args.seed is None or not args.pilot_run):
             parser.error("The train stage needs --arm, --seed and --pilot-run")
+        if args.stage == "train" and args.arm == "n" and not args.noise_basis:
+            parser.error("C″ needs --noise-basis (the confirmed latent-diagnostics basis)")
         output = Path(args.output)
         if output.exists():
             parser.error("Output already exists; choose a new directory")
@@ -480,6 +508,10 @@ def main():
             fair_rl.run_pilot(model, processor, evaluator, args.data_root, output, settings, rl, base)
         else:
             reference, _ = load_model(config, args.checkpoint, device="cuda")
+            if args.low_memory:
+                # Same update and loss; about 35 GiB of GPU memory instead of about 70.
+                reference.to(torch.bfloat16)
+                rl |= {"offload_optimizer": True, "reference_dtype": "bfloat16"}
             model, processor = load_model(config, args.checkpoint, device="cuda")
             base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
                                                                         "fresh_manifests": fresh}
@@ -489,16 +521,75 @@ def main():
                 "rl_sampler": "the model's own distribution: temperature, top-p, top-k and repetition penalty all set "
                               "so generate samples from the softmax the loss differentiates (checked in the pilot)",
                 "rl_maps": "a stream of seeded permutations of the pool, cut into full batches; the same per seed for both arms"}
+            if arm == "n":
+                base["assumptions"]["latent_noise"] = (
+                    f"a = z + offset at the output of decoder layer {rl['noise']['layer']}: offset = c * sum_j u_j w_j eps_j "
+                    f"per latent slot, eps ~ N(0, 1), c = {rl['noise']['scale']}, in the confirmed {rl['noise']['family']} "
+                    "basis; one draw per rollout; the update replays the offset on the recomputed z; no heads, no latent "
+                    "term; no noise at evaluation")
             if arm == "c":
                 base["assumptions"]["latent_policy"] = ("a = z + sum_j u_j s_j c_j at the output of decoder layer "
                                                         f"{rl['latent']['layer']}, c ~ N(mu, sigma^2) from heads over "
                                                         "the pilot's principal basis; log-probability summed over the coefficients")
             adjuster = fair_rl.train_arm(model, reference, processor, evaluator, config, args.data_root, output,
-                                         settings, rl, arm, args.seed, args.pilot_run, args.checkpoint, base)
+                                         settings, rl, arm, args.seed, args.pilot_run, args.checkpoint, base,
+                                         args.noise_basis)
             del reference
             torch.cuda.empty_cache()
             fair_rl.evaluate_arm(model, processor, evaluator, config, args.data_root, output, settings, arm, adjuster,
                                  base)
+    elif args.command == "latent-diagnostics":
+        from . import latent_diagnostics as diagnostics
+        from .evaluation import ReferenceEvaluator
+        settings = diagnostics.load_settings(args.settings, smoke=args.smoke)
+        output = Path(args.output)
+        if output.exists() and args.part not in ("analyse", "confirm"):
+            parser.error("Output already exists; choose a new directory")
+        runs = json.loads(args.runs) if args.runs else {}
+        if args.part == "weights":
+            diagnostics.run_weights(runs, output)
+            return
+        if args.part == "analyse":
+            sweeps = [p for p in (args.sweeps or "").split(",") if p]
+            diagnostics.analyse(sweeps, args.gradients_run, args.checkpoints_run, args.weights_run, output, settings,
+                                [name for name in runs])
+            return
+        if args.part == "confirm":
+            if not (args.sweeps and args.text_run):
+                parser.error("confirm needs --sweeps (the confirmation sweep) and --text-run")
+            diagnostics.confirm(args.sweeps, args.text_run, settings, output, args.reference_run)
+            return
+        if not args.pilot_run:
+            parser.error("The GPU parts need --pilot-run (the B′/C′ pilot)")
+        evaluator = ReferenceEvaluator(args.data_root)
+        if args.part == "checkpoints":
+            for name, path in runs.items():
+                if not (Path(path) / "complete.json").is_file():
+                    parser.error(f"{name}: {path} is not a completed checkpoint")
+            diagnostics.run_checkpoints(lambda path: load_model(config, path, device="cuda"), runs, evaluator,
+                                        args.data_root, output, settings, args.pilot_run)
+            return
+        if not args.checkpoint:
+            parser.error("The sweep and gradients parts run on the LIVR rerun's final Stage 2 checkpoint")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        if args.part == "sweep":
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)}
+            layers = ([] if args.layers == "none" else [int(x) for x in args.layers.split(",")]) if args.layers \
+                else settings["layers"]
+            diagnostics.run_sweep(model, processor, evaluator, args.data_root, output, settings, layers,
+                                  args.text_baseline, args.answer_noise, base, args.bases_from)
+        else:
+            # As C′ trained in low-memory mode: a bfloat16 reference; no optimizer is built here.
+            reference, _ = load_model(config, args.checkpoint, device="cuda")
+            reference.to(torch.bfloat16)
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)}
+            diagnostics.run_gradients(model, reference, processor, evaluator, config, args.data_root, output,
+                                      settings, args.pilot_run, base)
+            del reference
+            torch.cuda.empty_cache()
+            diagnostics.run_search(model, processor, evaluator, args.data_root, output, settings, args.pilot_run)
     elif args.command == "perception-jepa":
         from . import expert_round2 as round2
         from . import perception_jepa as jepa
