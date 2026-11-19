@@ -2295,3 +2295,77 @@ Single-image prompts were checked to encode identically before and after on 60 r
 ### Folders created
 
 - None
+
+## 2026-11-18 — Build the perception benchmark runs (MMVP, V*, BLINK)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5 (claude-opus-5-5).
+**User request:** Run the patch latents on the perception benchmarks, with LIVR and Scaffolding Minds baselines trained on the same data, then decide what to fix.
+**AI contribution:** Built the pipeline:
+- a data-preparation script for 8,000 Zebra-CoT training rows (visual search, jigsaw, multi-hop counting, with each trace's first reasoning image as a helper) and for MMVP, V* and BLINK val, every image resized to at most 1,024 merged tokens;
+- a `spara.perception` module with four arms from base Qwen2.5-VL-3B (no training; LIVR; global + patch latents with the globals hidden on EGD's schedule; Scaffolding Minds Stage 1), greedy evaluation with option-letter scoring, MMVP pair accuracy, and paired McNemar readings;
+- changes so the Scaffolding Minds code takes rows with several images, a helper image from the row and a configurable row count;
+- configs, a PACE job script, CPU tests and a specification whose readings were fixed before any GPU run.
+**Contribution type:** Generation and editing.
+**Initial state:** The latent JEPA, region-latent, tracking-probe and patch-layout work from earlier entries were present as uncommitted changes.
+**Unfinished work:**
+- The pilot and the four arms had not run at the time of this entry.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Run it on the perception benchmarks, then see what to fix | Planned base zero-shot plus trained arms on MMVP, V* and BLINK |
+| 2 | User message | Chose 8k training examples | Set the training set's size |
+| 3 | User message | Asked for LIVR and Scaffolding Minds baselines on the same smaller dataset | Proposed Zebra-CoT, since SAT has no helper images |
+| 4 | User message | Chose Zebra-CoT 8k with three trained arms | Built the data, arms and readings for it |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| scripts/prepare_perception.py | created | Zebra-CoT training rows and the MMVP, V* and BLINK evaluation rows |
+| src/spara/perception.py | created | The arms, evaluation, scoring, readings and entry point |
+| src/spara/scaffolding/serialization.py | modified | Prompts with several images; a sample's split |
+| src/spara/scaffolding/helper.py | modified | Helper images taken from the row |
+| src/spara/scaffolding/runtime.py | modified | The "row" helper; the expected step count follows the configured row count |
+| src/spara/scaffolding/training.py | modified | Both Stage 1 phases take a list of rows |
+| configs/perception.json | created | Epochs, answer length and patch settings |
+| configs/scaffolding_perception.json | created | Scaffolding Minds Stage 1 for the perception rows |
+| scripts/pace/perception.sbatch | created | One arm or pilot per job |
+| tests/test_perception.py | created | Scoring, three arms end to end on a stand-in model, readings |
+| tests/test_scaffolding_training.py | modified | The stubbed sample takes a split |
+| docs/PERCEPTION_BENCHMARKS_SPEC.md | created | Data, arms, readings and budget, fixed before the runs |
+
+### Folders created
+
+- None
+
+## 2026-11-19 — Fix the perception runs after the pilots
+
+**Agent/tool:** Claude Code, Opus 5.5
+**User request:** Run the perception benchmark arms at the size the user chose after the pilots, and rerun the arms that failed.
+**AI contribution:** Added option-text matching to answer scoring (an answer with no letter counts when it names exactly one option) with a CPU rescoring function, after the patch pilot answered in words. Capped training at a configurable row count (4,000) after the user chose to halve the runs. After the first patch and Scaffolding Minds jobs failed on the PACE scratch quota, let the Scaffolding Minds phases save their final checkpoints without optimizer state, saving about 30 GB per run. Updated the specification with these amendments and the run status.
+**Contribution type:** Editing and debugging.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Chose to halve the training set to 4,000 rows | Added the `train_rows` setting |
+| 2 | User message | Approved deleting the pilot weights, the failed patch output and an unrelated homework folder on PACE scratch | Freed space for the reruns |
+| 3 | User message | Asked for a new branch and a pull request | Committed the perception work on a branch |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/perception.py | modified | Option-text scoring, `rescore`, the training-row cap |
+| configs/perception.json | modified | `train_rows` 4000 |
+| src/spara/scaffolding/training.py | modified | Final checkpoints can omit optimizer state |
+| configs/scaffolding_perception.json | modified | `final_weights_only` on |
+| tests/test_perception.py | modified | Option-text scoring cases |
+| docs/PERCEPTION_BENCHMARKS_SPEC.md | modified | Amendments and run status |
+
+### Folders created
+
+- None

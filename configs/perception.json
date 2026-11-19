@@ -1,0 +1,8 @@
+{
+  "epochs_per_stage": 1,
+  "max_new_tokens": 16,
+  "grid": 4,
+  "patch_text": "all",
+  "save_weights": true,
+  "train_rows": 4000
+}

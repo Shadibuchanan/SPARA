@@ -1,25 +1,24 @@
 """Released prompts and answers, plus training-only helper inputs."""
-from PIL import Image
 from qwen_vl_utils import process_vision_info
 
-from ..data import image_path
+from ..serialization import pictures
 from .helper import helper_image
 
 ASSISTANT = "<|im_start|>assistant"
 
 
 def prompt(processor, root, split, row):
-    """The released user turn with its image, then the assistant header without a
-    trailing newline, matching the LIVR baseline's Mirage-derived serialization."""
+    """The released user turn with its images (one, or several for perception questions), then the
+    assistant header without a trailing newline, matching the LIVR baseline's Mirage-derived serialization."""
     text = row["text_input"]
-    if text.count("<image>") != 1 or "<|scaffold_" in text:
-        raise ValueError("Expected one released image placeholder and no scaffold tokens")
-    before, after = text.split("<image>")
-    with Image.open(image_path(root, split, row)) as source:
-        picture = source.convert("RGB")
-    messages = [{"role": "user", "content": [
-        {"type": "text", "text": before}, {"type": "image", "image": picture},
-        {"type": "text", "text": after}]}]
+    images = pictures(root, split, row)
+    if text.count("<image>") != len(images) or "<|scaffold_" in text:
+        raise ValueError("Expected one image placeholder per image and no scaffold tokens")
+    pieces = text.split("<image>")
+    content = [{"type": "text", "text": pieces[0]}]
+    for picture, piece in zip(images, pieces[1:]):
+        content += [{"type": "image", "image": picture}, {"type": "text", "text": piece}]
+    messages = [{"role": "user", "content": content}]
     chat = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False) + ASSISTANT
     images, _ = process_vision_info(messages)
     return dict(processor(text=[chat], images=images, padding=False, return_tensors="pt"))
@@ -38,8 +37,8 @@ def helper(processor, root, row, config):
     return {"pixel_values": batch["pixel_values"], "image_grid_thw": batch["image_grid_thw"]}
 
 
-def training_sample(processor, root, row, config, with_helper=False):
-    sample = {"prompt": prompt(processor, root, "train", row), "answer": answer(processor, row)}
+def training_sample(processor, root, row, config, with_helper=False, split="train"):
+    sample = {"prompt": prompt(processor, root, split, row), "answer": answer(processor, row)}
     if with_helper:
         sample["helper"] = helper(processor, root, row, config)
     return sample

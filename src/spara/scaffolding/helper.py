@@ -63,10 +63,22 @@ def released_helper(root, row):
         return source.convert("RGB")
 
 
+def row_helper(root, row):
+    """`helper_input`, relative to the data root (scripts/prepare_perception.py)."""
+    base = Path(root).resolve()
+    path = base.joinpath(*Path(row["helper_input"]).parts).resolve()
+    if not path.is_relative_to(base) or not path.is_file():
+        raise ValueError(f"Missing or unsafe helper image: {path}")
+    with Image.open(path) as source:
+        return source.convert("RGB")
+
+
 def helper_image(root, row, config):
     if config["helper_image"] == "value_heatmap":
         settings = config["value_iteration"]
         return value_heatmap(row["map_desc"], config["helper_size"], settings["gamma"], settings["theta"])
     if config["helper_image"] == "released":
         return released_helper(root, row)
+    if config["helper_image"] == "row":  # a dataset's own helper (Zebra-CoT's first reasoning image)
+        return row_helper(root, row)
     raise ValueError(f"Unknown helper image: {config['helper_image']}")
