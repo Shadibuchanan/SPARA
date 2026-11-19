@@ -95,6 +95,12 @@ detour rows, plus 1,000 new no-detour maps, for a detour share of 37% instead of
 It tests whether the mix caused E2's losses on no-detour benchmark maps. See
 docs/EXPERT_ITERATION_ROUND2_SPEC.md, amendment of 2026-11-17.
 
+**Latent distillation**:
+Searching LIVR's latent states per map (random pushes at one layer, kept when the
+verifier accepts the answer), then fine-tuning the model on the found routes while
+pulling its own latent states toward the pushed states that produced them (arm D),
+against the same routes without that pull (arm S). See docs/LATENT_DISTILLATION_SPEC.md.
+
 **Judge**:
 Whatever tells guided search, move by move, whether an attempt is alive, has failed or
 is finished. The exact step simulator is one; a learned transition model would be an

@@ -17,7 +17,7 @@ def main():
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
                     "expert-iteration", "expert-round2", "perception-jepa", "region-latents", "fair-rl",
-                    "latent-diagnostics"):
+                    "latent-diagnostics", "latent-distillation"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -141,6 +141,21 @@ def main():
             cmd.add_argument("--text-run", help="confirm: the sweep holding the text baseline")
             cmd.add_argument("--reference-run", help="confirm: the earlier sweep, for the pooled (descriptive) reading")
             cmd.add_argument("--smoke", action="store_true", help="A few maps and draws per part (in-job check)")
+        if command == "latent-distillation":
+            cmd.add_argument("--part", choices=["search", "train", "compare"], required=True,
+                             help="docs/LATENT_DISTILLATION_SPEC.md: search and train on a GPU; compare on the CPU")
+            cmd.add_argument("--settings", default="configs/latent_distillation.json")
+            cmd.add_argument("--noise-basis", help="search, train: the confirmed basis (bases.pt or its directory)")
+            cmd.add_argument("--arm", choices=["S", "D"], help="train: S (found routes) or D (plus the latent target)")
+            cmd.add_argument("--seed", type=int, help="train: data order and benchmark sampling seed")
+            cmd.add_argument("--search-run", help="train, compare: the search's output")
+            cmd.add_argument("--offload-optimizer", action="store_true", help="train: AdamW state on the CPU")
+            cmd.add_argument("--accept-search", action="store_true",
+                             help="train: accept a search that failed only its replay bar (spec amendment of 2026-11-19)")
+            cmd.add_argument("--smoke", action="store_true", help="A few maps; two training steps; no benchmark")
+            cmd.add_argument("--runs", help="compare: JSON {S42, S43, D42, D43: run directory}")
+            cmd.add_argument("--livr-greedy", help="compare: LIVR's greedy answers (fair pilot's greedy-livr.jsonl)")
+            cmd.add_argument("--livr-benchmark", help="compare: LIVR's benchmark responses.jsonl")
         if command == "jepa-judge":
             cmd.add_argument("--settings", default="configs/jepa_judge.json")
             cmd.add_argument("--probe-points", required=True, help="points.jsonl of a detour-probe run (validity check)")
@@ -188,7 +203,8 @@ def main():
     audit(args.data_root)
     # Round 2's batching check runs the real model on CPU by design (full-precision reference).
     cpu_check = ((args.command == "expert-round2" and args.stage == "batching-check")
-                 or (args.command == "latent-diagnostics" and args.part in ("weights", "analyse", "confirm")))
+                 or (args.command == "latent-diagnostics" and args.part in ("weights", "analyse", "confirm"))
+                 or (args.command == "latent-distillation" and args.part == "compare"))
     if not torch.cuda.is_available() and not cpu_check:
         raise RuntimeError("Use an allocated GPU for the actual 3B model; CPU correctness tests use tiny random weights")
     if args.command == "pilot":
@@ -538,6 +554,42 @@ def main():
             torch.cuda.empty_cache()
             fair_rl.evaluate_arm(model, processor, evaluator, config, args.data_root, output, settings, arm, adjuster,
                                  base)
+    elif args.command == "latent-distillation":
+        from . import latent_distillation as distillation
+        from .evaluation import ReferenceEvaluator
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        output = Path(args.output)
+        evaluator = ReferenceEvaluator(args.data_root)
+        if args.part == "compare":
+            if not (args.runs and args.search_run and args.livr_greedy and args.livr_benchmark):
+                parser.error("compare needs --runs, --search-run, --livr-greedy and --livr-benchmark")
+            result = distillation.compare(json.loads(args.runs), args.search_run, args.livr_greedy,
+                                          args.livr_benchmark, args.data_root, evaluator, settings)
+            json_write(output, result)
+            print(json.dumps({k: result[k] for k in ("validity", "primary")}, indent=1, default=str))
+            return
+        if output.exists():
+            parser.error("Output already exists; choose a new directory")
+        if not (args.checkpoint and args.noise_basis):
+            parser.error("search and train start from the LIVR rerun's final Stage 2 checkpoint and need --noise-basis")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        if args.part == "train" and (args.arm is None or args.seed is None or not args.search_run):
+            parser.error("The train part needs --arm, --seed and --search-run")
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (settings["pool_split"], settings["heldout_split"], settings["transfer_split"])}
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("Latent distillation starts from Stage 2")
+        base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                    "fresh_manifests": fresh}
+        if args.part == "search":
+            model.requires_grad_(False)
+            distillation.run_search(model, processor, evaluator, args.data_root, output, settings, args.noise_basis,
+                                    base, smoke=args.smoke)
+        else:
+            distillation.run_train(model, processor, evaluator, config, args.data_root, output, settings, args.arm,
+                                   args.seed, args.search_run, args.noise_basis, base, offload=args.offload_optimizer,
+                                   smoke=args.smoke, accept_search=args.accept_search)
     elif args.command == "latent-diagnostics":
         from . import latent_diagnostics as diagnostics
         from .evaluation import ReferenceEvaluator

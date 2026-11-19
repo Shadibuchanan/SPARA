@@ -1,0 +1,20 @@
+{
+  "pool_split": "fresh/detour-pool",
+  "heldout_split": "fresh/detour-heldout",
+  "transfer_split": "fresh/detour-heldout-78",
+  "other_fresh": ["fresh/probe", "fresh/detour-heldout-78"],
+  "maps": 500,
+  "smoke_maps": 8,
+  "max_new_tokens": 128,
+  "noise": {"layer": 24, "family": "pca",
+            "sha256": "c848988a0ce8989af7191aaf18c5a5d5a53c036599632bd335d49f23ebd8418a"},
+  "search": {"scales": [1, 2, 4], "draws": [32, 16, 16], "smoke_draws": [16, 0, 16], "batch": 16, "seed": 42,
+             "min_reproduced": 0.95},
+  "extra_examples": 2000,
+  "seen_maps": 98,
+  "epochs": 1,
+  "learning_rate": 0.00001,
+  "warmup_ratio": 0.05,
+  "latent": {"ratio": 0.5, "calibration_rows": 8},
+  "seeds": [42, 43]
+}
