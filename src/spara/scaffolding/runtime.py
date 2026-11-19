@@ -58,7 +58,7 @@ def read_config(path):
         raise ValueError("predict.latent_projection must be null or 'linear'")
     if int(rl["stop_after_zero_reward_steps"]) < 0:
         raise ValueError("rl.stop_after_zero_reward_steps must be >= 0 (0 disables)")
-    if config["helper_image"] not in {"value_heatmap", "released"}:
+    if config["helper_image"] not in {"value_heatmap", "released", "row"}:
         raise ValueError(f"Unknown helper image: {config['helper_image']}")
     return config
 
@@ -74,7 +74,7 @@ def expected_steps(config, phase):
     if phase == "rl":
         return config["rl"]["steps"] * config["rl"]["ppo_epochs"]
     settings = config[phase]
-    return settings["epochs"] * math.ceil(TRAIN_ROWS / settings["gradient_accumulation"])
+    return settings["epochs"] * math.ceil(config.get("train_rows", TRAIN_ROWS) / settings["gradient_accumulation"])
 
 
 def require_final(path, phase, config):

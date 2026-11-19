@@ -134,14 +134,22 @@ def supervised_epochs(rows, phase, config, output, microstep, optimizer, schedul
                     save(output / f"step-{progress['optimizer_steps']}")
             progress.update(epoch=epoch + 1, next_row=0)
     progress["completed"] = True
-    save(output / "final")
+    save(output / "final", not config.get("final_weights_only", False))
     json_write(output / "summary.json", progress)
     return output / "final"
 
 
-def train_scaffold(vlm, encoder, processor, data_root, output, config, resume=None):
-    """Scaffolding Phase: update only psi through the frozen base VLM's answer loss."""
-    phase, rows, output = config["scaffold"], records(data_root, "train"), Path(output)
+def split_rows(data_root, data):
+    """`data`, a list of (split, row), or the released training split."""
+    data = data if data is not None else [("train", row) for row in records(data_root, "train")]
+    return [split for split, _ in data], [row for _, row in data]
+
+
+def train_scaffold(vlm, encoder, processor, data_root, output, config, resume=None, data=None):
+    """Scaffolding Phase: update only psi through the frozen base VLM's answer loss. `data` replaces the
+    released training split (the perception benchmarks)."""
+    phase, output = config["scaffold"], Path(output)
+    splits, rows = split_rows(data_root, data)
     vlm.requires_grad_(False)
     vlm.train(); vlm.visual.eval()
     vlm.config.use_cache = False
@@ -154,20 +162,22 @@ def train_scaffold(vlm, encoder, processor, data_root, output, config, resume=No
     progress = begin(output, "scaffold", config, optimizer, scheduler, resume, {})
 
     def microstep(index, count):
-        sample = to_device(serialization.training_sample(processor, data_root, rows[index], config, True), vlm.device)
+        sample = to_device(serialization.training_sample(processor, data_root, rows[index], config, True,
+                                                         splits[index]), vlm.device)
         with amp(vlm.device):
             loss, stats = scaffold_loss(vlm, encoder, sample)
         check_finite(loss)
         (loss / count).backward()
         return stats
 
-    save = lambda path: save_checkpoint(path, encoder, processor, optimizer, scheduler, progress)
+    save = lambda path, state=True: save_checkpoint(path, encoder, processor, optimizer, scheduler, progress, state)
     return supervised_epochs(rows, phase, config, output, microstep, optimizer, scheduler, progress, parameters, save)
 
 
-def train_predict(model, processor, targets, data_root, output, config, resume=None, encoder_path=None):
+def train_predict(model, processor, targets, data_root, output, config, resume=None, encoder_path=None, data=None):
     """Latent-Prediction Phase: fine-tune the language model (vision tower frozen)."""
-    phase, rows, output = config["predict"], records(data_root, "train"), Path(output)
+    phase, output = config["predict"], Path(output)
+    splits, rows = split_rows(data_root, data)
     if targets.shape[0] != len(rows):
         raise ValueError("Expected one scaffold target per training row")
     train_language(model)
@@ -182,7 +192,8 @@ def train_predict(model, processor, targets, data_root, output, config, resume=N
     progress = begin(output, "predict", config, optimizer, scheduler, resume, {"encoder": str(encoder_path)})
 
     def microstep(index, count):
-        sample = to_device(serialization.training_sample(processor, data_root, rows[index], config), model.device)
+        sample = to_device(serialization.training_sample(processor, data_root, rows[index], config,
+                                                         split=splits[index]), model.device)
         target = targets[index].to(model.device)
         # Backward each pass separately so only one graph is alive at a time.
         with amp(model.device):
@@ -195,7 +206,7 @@ def train_predict(model, processor, targets, data_root, output, config, resume=N
         (phase["lambda_task"] * ce / count).backward()
         return latent_stats | ce_stats
 
-    save = lambda path: save_checkpoint(path, model, processor, optimizer, scheduler, progress)
+    save = lambda path, state=True: save_checkpoint(path, model, processor, optimizer, scheduler, progress, state)
     return supervised_epochs(rows, phase, config, output, microstep, optimizer, scheduler, progress, parameters, save)
 
 
@@ -325,7 +336,7 @@ def train_rl(model, reference, processor, data_root, output, config, evaluator, 
                                {"latent_heads.": heads} if heads else None)
     scheduler = schedule(optimizer, rl["steps"] * rl["ppo_epochs"], config)
     progress = begin(output, "rl", config, optimizer, scheduler, resume, {"reference": str(source)})
-    save = lambda path: save_checkpoint(path, model, processor, optimizer, scheduler, progress)
+    save = lambda path, state=True: save_checkpoint(path, model, processor, optimizer, scheduler, progress, state)
     patience, unrewarded = rl["stop_after_zero_reward_steps"], 0
     with (output / "steps.jsonl").open("w", encoding="utf-8") as log:
         for step in range(progress["rl_steps"], rl["steps"]):
@@ -360,6 +371,6 @@ def train_rl(model, reference, processor, data_root, output, config, evaluator, 
             if every and progress["rl_steps"] % every == 0:
                 save(output / f"step-{progress['rl_steps']}")
     progress["completed"] = True
-    save(output / "final")
+    save(output / "final", not config.get("final_weights_only", False))
     json_write(output / "summary.json", progress)
     return output / "final"

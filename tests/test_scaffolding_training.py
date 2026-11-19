@@ -39,7 +39,7 @@ def tiny_recipe(**overrides):
 
 @pytest.fixture
 def fake_data(monkeypatch, tiny_sample):
-    def sample(processor, root, row, config, with_helper=False):
+    def sample(processor, root, row, config, with_helper=False, split="train"):
         batch = {"prompt": {k: v.clone() for k, v in tiny_sample["prompt"].items()},
                  "answer": torch.tensor([[14 + row % 3, 15, 6]])}
         batch["prompt"]["pixel_values"] += row * 0.01
