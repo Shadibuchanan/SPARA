@@ -31,8 +31,9 @@ original instructions for the baseline, text-only RL and Scaffolding Minds.
 - **The limit is the route decision, not perception.** LIVR's failures are mostly walks
   into holes, but its image tokens show every hole, and giving the latents more map
   content did not change routes.
-- **Expert iteration is the one lever that improved routes.** It more than doubles
-  success on held-out detour maps, but loses no-detour maps, so the benchmark does not move.
+- **Training on unseen detour maps is what improved routes.** Expert iteration and
+  text-only RL on those maps (B′) each more than double success on held-out detour maps,
+  but lose no-detour maps, so the benchmark does not improve.
 - **Latent exploration has not beaten text-only RL** on held-out detour maps in three
   attempts (worse, then no detectable difference twice).
 - **On real images (V\*), training with latents lowers perception accuracy** against the
@@ -47,7 +48,7 @@ original instructions for the baseline, text-only RL and Scaffolding Minds.
 | LIVR baseline, 10+10 epochs | 323/400 (80.75%); a rerun scored 328/400. LIVR's paper reports 66% | [results](docs/LIVR_BASELINE_RESULTS.md) |
 | Audit of the gap to the paper | No scoring or answer-leakage error found; the cause of the gap is unknown | [audit](docs/LIVR_REPRODUCTION_AUDIT.md) |
 | Direct SFT control (no latents) | 320/400 continuous, 323/400 staged: no difference from LIVR detected | [results](docs/SFT_CONTROL_RESULTS.md), [ADR-0004](docs/adr/0004-reinstate-vanilla-sft-control.md) |
-| Scaffolding Minds (helper-supervised reference) | First run 0/400 (the paper-literal latent loss collapsed the model); the two fixed variants have not run | [specification](docs/SCAFFOLDING_BASELINE_SPEC.md) |
+| Scaffolding Minds (helper-supervised reference) | First run 0/400 (the paper-literal latent loss collapsed the model). The two fixed variants score 191 and 223/400 at Stage 1; RL raises the better one to 270/400, with the gain in the language-model weights, not the latent adjustment | [specification](docs/SCAFFOLDING_BASELINE_SPEC.md#results-2026-10-27) |
 
 ### RL from the LIVR checkpoint
 
@@ -333,8 +334,10 @@ assumptions and checks are in [the specification](docs/SCAFFOLDING_BASELINE_SPEC
 The first PACE run (job 6257067, logs in `spara_results/`) scored 0/400 because
 the paper-literal latent loss collapsed the language model. The default recipe is
 now variant B (a zero-initialized linear latent projection plus MSE), and
-`configs/scaffolding-mse.json` is variant A (MSE only); neither has run on PACE
-yet. See [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md#first-run-job-6257067).
+`configs/scaffolding-mse.json` is variant A (MSE only). At Stage 1, B scored
+223/400 and A 191/400; RL then raised B to 270/400. See
+[the first run](docs/SCAFFOLDING_BASELINE_SPEC.md#first-run-job-6257067) and
+[the results](docs/SCAFFOLDING_BASELINE_SPEC.md#results-2026-10-27).
 
 On a GPU machine, one script runs the whole baseline. It trains all three
 phases and evaluates both the Stage 1 and the Stage 2 checkpoints, writing logs

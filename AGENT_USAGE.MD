@@ -3378,3 +3378,27 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-19 — Correct out-of-date README statements
+
+**Agent/tool:** Claude Code (Claude Opus 5.5)
+**User request:** Make the minimal README edits needed to correct statements that disagree with the result documents.
+**AI contribution:** Compared the updated README with the result documents and the user's audit-packet text, and found two errors: the Scaffolding Minds row and section said the fixed variants had not run, though the specification records 191, 223 and 270 of 400, and a summary bullet named expert iteration as the only method that improved routes, though text-only RL on unseen maps (B′) also more than doubles held-out detour success. Edited those three passages to match the specifications, linking the Scaffolding Minds results section.
+**Contribution type:** editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| ----- | ------ | --------------------- | ------------------ |
+| 1 | User; user message | Asked to pull main and check whether a teammate's README update aligns with the user's audit-packet writing | Comparison identified the out-of-date Scaffolding Minds statements and the expert-iteration summary bullet |
+| 2 | User; user message | Asked for the minimal README edit to correct it | Three passages in README.md edited; nothing else changed |
+
+### Files
+
+| Path | Action | Contribution |
+| ---- | ------ | ------------ |
+| README.md | modified | Scaffolding Minds table row and section now give the recorded results (191, 223, 270 of 400); the summary bullet credits both expert iteration and B′ for the held-out detour gains |
+
+### Folders created
+
+- None
