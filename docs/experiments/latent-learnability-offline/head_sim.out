@@ -1,0 +1,16 @@
+h=2048 lr=2e-05   seed=42 dObj=+3.152 sigma=0.245 spread=0.0006 rho=-0.104 |mu|=0.0990 muAUC=0.4994218837910186 bound=0.000 ok=True held=313/263
+h=2048 lr=2e-05   seed=43 dObj=+0.532 sigma=0.245 spread=0.0006 rho=+0.113 |mu|=0.1066 muAUC=0.49742135062281573 bound=0.000 ok=True held=280/235
+h=2048 lr=0.001   seed=42 dObj=+22.621 sigma=0.326 spread=0.0035 rho=+0.217 |mu|=0.2500 muAUC=0.5126958828383741 bound=0.999 ok=True held=313/263
+h=2048 lr=0.001   seed=43 dObj=+5.525 sigma=0.377 spread=0.0006 rho=+0.184 |mu|=0.2500 muAUC=0.5134034935651081 bound=0.823 ok=True held=280/235
+h=2048 lr=0.01    seed=42 dObj=+10.996 sigma=0.270 spread=0.0000 rho=+nan |mu|=0.2500 muAUC=0.5363798934145095 bound=1.000 ok=True held=313/263
+h=2048 lr=0.01    seed=43 dObj=+27.140 sigma=0.240 spread=0.0000 rho=+nan |mu|=0.2500 muAUC=0.4819961807823607 bound=1.000 ok=True held=280/235
+h=  64 lr=0.001   seed=42 dObj=+13.012 sigma=0.338 spread=0.0076 rho=-0.022 |mu|=0.2404 muAUC=0.48280466240815845 bound=0.552 ok=True held=313/263
+h=  64 lr=0.001   seed=43 dObj=+3.080 sigma=0.326 spread=0.0058 rho=-0.147 |mu|=0.2182 muAUC=0.4985161634960345 bound=0.364 ok=True held=280/235
+h=  64 lr=0.01    seed=42 dObj=+10.468 sigma=0.298 spread=0.0031 rho=+0.039 |mu|=0.2500 muAUC=0.5124505617605231 bound=0.999 ok=True held=313/263
+h=  64 lr=0.01    seed=43 dObj=+22.523 sigma=0.352 spread=0.0000 rho=+0.163 |mu|=0.2500 muAUC=0.5167517081169145 bound=1.000 ok=True held=280/235
+h=   0 lr=0.001   seed=42 dObj=+12.780 sigma=0.398 spread=0.0068 rho=-0.185 |mu|=0.2496 muAUC=0.5154876060807667 bound=0.947 ok=True held=313/263
+h=   0 lr=0.001   seed=43 dObj=-3.132 sigma=0.391 spread=0.0063 rho=-0.043 |mu|=0.2492 muAUC=0.4903677788962211 bound=0.976 ok=True held=280/235
+h=   0 lr=0.01    seed=42 dObj=+3.495 sigma=0.253 spread=0.0060 rho=+0.115 |mu|=0.2500 muAUC=0.5090807155012703 bound=0.999 ok=True held=313/263
+h=   0 lr=0.01    seed=43 dObj=+0.906 sigma=0.261 spread=0.0071 rho=+0.001 |mu|=0.2500 muAUC=0.47889881732740575 bound=1.000 ok=True held=280/235
+
+[exited with code 0]

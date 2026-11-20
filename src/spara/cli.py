@@ -47,7 +47,8 @@ def main():
     perception.add_argument("--hide-globals", action="store_true", help="validate: a global + patch checkpoint")
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
-                    "expert-iteration", "expert-round2", "perception-jepa", "region-latents"):
+                    "expert-iteration", "expert-round2", "perception-jepa", "region-latents", "fair-rl",
+                    "latent-diagnostics", "latent-distillation"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -138,6 +139,52 @@ def main():
             cmd.add_argument("--round1-routes", help="train: routes.jsonl of round 1's search")
             cmd.add_argument("--search-run", help="train: the round 2 search job's output")
             cmd.add_argument("--gate-run", help="train: gate 3's output, the fixed targets (job 7118222)")
+        if command == "fair-rl":
+            cmd.add_argument("--stage", choices=["pilot", "train"], required=True,
+                             help="pilot: on LIVR, before any run; train: one arm and seed, then its evaluation")
+            cmd.add_argument("--settings", default="configs/fair_rl.json")
+            cmd.add_argument("--arm", choices=["b", "c", "n"],
+                             help="train: B′ (text only), C′ (structured latent) or C″ (fixed latent noise)")
+            cmd.add_argument("--noise-basis", help="train, C″: the confirmed basis (a latent-diagnostics sweep's "
+                                                   "bases.pt or its directory)")
+            cmd.add_argument("--seed", type=int, help="train: map order and sampling seed")
+            cmd.add_argument("--pilot-run", help="train: the pilot's output (maps per step, scale, basis)")
+            cmd.add_argument("--low-memory", action="store_true",
+                             help="train: AdamW state on the CPU and a bfloat16 KL reference, for GPUs under 80 GB")
+        if command == "latent-diagnostics":
+            cmd.add_argument("--part", choices=["sweep", "gradients", "checkpoints", "weights", "analyse", "confirm"],
+                             required=True,
+                             help="docs/LATENT_DIAGNOSTICS_SPEC.md: sweep, gradients (+ search) and checkpoints on a "
+                                  "GPU; weights, analyse and confirm on the CPU")
+            cmd.add_argument("--settings", default="configs/latent_diagnostics.json")
+            cmd.add_argument("--pilot-run", help="The B′/C′ pilot's output (basis, maps per step, scale)")
+            cmd.add_argument("--layers", help="sweep: comma-separated decoder layers, or none (text baseline only; default: the settings')")
+            cmd.add_argument("--text-baseline", action="store_true", help="sweep: also the T = 1 text rollouts")
+            cmd.add_argument("--answer-noise", action="store_true", help="sweep: also noise on the answer tokens")
+            cmd.add_argument("--runs", help="checkpoints, weights: JSON {name: final checkpoint dir}, LIVR as 'livr'")
+            cmd.add_argument("--sweeps", help="analyse: comma-separated sweep outputs")
+            cmd.add_argument("--gradients-run", help="analyse: the gradients part's output")
+            cmd.add_argument("--checkpoints-run", help="analyse: the checkpoints part's output")
+            cmd.add_argument("--weights-run", help="analyse: the weights part's output")
+            cmd.add_argument("--bases-from", help="sweep: reuse this earlier sweep's bases.pt (no capture)")
+            cmd.add_argument("--text-run", help="confirm: the sweep holding the text baseline")
+            cmd.add_argument("--reference-run", help="confirm: the earlier sweep, for the pooled (descriptive) reading")
+            cmd.add_argument("--smoke", action="store_true", help="A few maps and draws per part (in-job check)")
+        if command == "latent-distillation":
+            cmd.add_argument("--part", choices=["search", "train", "compare"], required=True,
+                             help="docs/LATENT_DISTILLATION_SPEC.md: search and train on a GPU; compare on the CPU")
+            cmd.add_argument("--settings", default="configs/latent_distillation.json")
+            cmd.add_argument("--noise-basis", help="search, train: the confirmed basis (bases.pt or its directory)")
+            cmd.add_argument("--arm", choices=["S", "D"], help="train: S (found routes) or D (plus the latent target)")
+            cmd.add_argument("--seed", type=int, help="train: data order and benchmark sampling seed")
+            cmd.add_argument("--search-run", help="train, compare: the search's output")
+            cmd.add_argument("--offload-optimizer", action="store_true", help="train: AdamW state on the CPU")
+            cmd.add_argument("--accept-search", action="store_true",
+                             help="train: accept a search that failed only its replay bar (spec amendment of 2026-11-19)")
+            cmd.add_argument("--smoke", action="store_true", help="A few maps; two training steps; no benchmark")
+            cmd.add_argument("--runs", help="compare: JSON {S42, S43, D42, D43: run directory}")
+            cmd.add_argument("--livr-greedy", help="compare: LIVR's greedy answers (fair pilot's greedy-livr.jsonl)")
+            cmd.add_argument("--livr-benchmark", help="compare: LIVR's benchmark responses.jsonl")
         if command == "jepa-judge":
             cmd.add_argument("--settings", default="configs/jepa_judge.json")
             cmd.add_argument("--probe-points", required=True, help="points.jsonl of a detour-probe run (validity check)")
@@ -148,6 +195,7 @@ def main():
         if command == "train":
             cmd.add_argument("--stage", type=int, choices=[1, 2], required=True)
             cmd.add_argument("--grounding", help="Step-grounding settings (docs/STEP_GROUNDING_SPEC.md); Stage 2 only")
+            cmd.add_argument("--train-records", help="Optional path to custom train records jsonl (e.g. rebalanced mix)")
         if command == "battery":
             cmd.add_argument("--limit", type=int, help="Pilot: first LIMIT train and test rows of each grid size")
             cmd.add_argument("--max-new-tokens", type=int, default=128,
@@ -260,10 +308,13 @@ def main():
     from .data import audit
     config = read_config(args.config)
     if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
+    if getattr(args, "train_records", None): config["train_records"] = str(Path(args.train_records).resolve())
     seed_all(config["seed"])
     audit(args.data_root)
     # Round 2's batching check runs the real model on CPU by design (full-precision reference).
-    cpu_check = args.command == "expert-round2" and args.stage == "batching-check"
+    cpu_check = ((args.command == "expert-round2" and args.stage == "batching-check")
+                 or (args.command == "latent-diagnostics" and args.part in ("weights", "analyse", "confirm"))
+                 or (args.command == "latent-distillation" and args.part == "compare"))
     if not torch.cuda.is_available() and not cpu_check:
         raise RuntimeError("Use an allocated GPU for the actual 3B model; CPU correctness tests use tiny random weights")
     if args.command == "pilot":
@@ -556,6 +607,151 @@ def main():
         else:
             round2.run_arm(model, processor, evaluator, config, args.data_root, args.output, settings, args.arm,
                            args.round1_routes, args.search_run, base)
+    elif args.command == "fair-rl":
+        from . import fair_rl
+        from .evaluation import ReferenceEvaluator
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        if not args.checkpoint:
+            parser.error("B′ and C′ start from the LIVR rerun's final Stage 2 checkpoint (also the KL reference)")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        if args.stage == "train" and (args.arm is None or args.seed is None or not args.pilot_run):
+            parser.error("The train stage needs --arm, --seed and --pilot-run")
+        if args.stage == "train" and args.arm == "n" and not args.noise_basis:
+            parser.error("C″ needs --noise-basis (the confirmed latent-diagnostics basis)")
+        output = Path(args.output)
+        if output.exists():
+            parser.error("Output already exists; choose a new directory")
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (settings["pool_split"], settings["round1_heldout_split"], settings["heldout_split"])}
+        evaluator = ReferenceEvaluator(args.data_root)
+        arm = "b" if args.stage == "pilot" else args.arm  # the pilot measures B′'s sampler
+        rl = json.loads(Path(settings["rl_configs"][arm]).read_text(encoding="utf-8"))
+        if args.stage == "pilot":
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            model.requires_grad_(False)
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                        "fresh_manifests": fresh}
+            fair_rl.run_pilot(model, processor, evaluator, args.data_root, output, settings, rl, base)
+        else:
+            reference, _ = load_model(config, args.checkpoint, device="cuda")
+            if args.low_memory:
+                # Same update and loss; about 35 GiB of GPU memory instead of about 70.
+                reference.to(torch.bfloat16)
+                rl |= {"offload_optimizer": True, "reference_dtype": "bfloat16"}
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                        "fresh_manifests": fresh}
+            base["assumptions"] |= {
+                "rl_objective": "Scaffolding Minds Eq. 6 text term" + (" plus its latent term" if arm == "c" else "")
+                                + ": one update per batch, k3 KL to LIVR, mean over the rollouts of groups whose rewards differ",
+                "rl_sampler": "the model's own distribution: temperature, top-p, top-k and repetition penalty all set "
+                              "so generate samples from the softmax the loss differentiates (checked in the pilot)",
+                "rl_maps": "a stream of seeded permutations of the pool, cut into full batches; the same per seed for both arms"}
+            if arm == "n":
+                base["assumptions"]["latent_noise"] = (
+                    f"a = z + offset at the output of decoder layer {rl['noise']['layer']}: offset = c * sum_j u_j w_j eps_j "
+                    f"per latent slot, eps ~ N(0, 1), c = {rl['noise']['scale']}, in the confirmed {rl['noise']['family']} "
+                    "basis; one draw per rollout; the update replays the offset on the recomputed z; no heads, no latent "
+                    "term; no noise at evaluation")
+            if arm == "c":
+                base["assumptions"]["latent_policy"] = ("a = z + sum_j u_j s_j c_j at the output of decoder layer "
+                                                        f"{rl['latent']['layer']}, c ~ N(mu, sigma^2) from heads over "
+                                                        "the pilot's principal basis; log-probability summed over the coefficients")
+            adjuster = fair_rl.train_arm(model, reference, processor, evaluator, config, args.data_root, output,
+                                         settings, rl, arm, args.seed, args.pilot_run, args.checkpoint, base,
+                                         args.noise_basis)
+            del reference
+            torch.cuda.empty_cache()
+            fair_rl.evaluate_arm(model, processor, evaluator, config, args.data_root, output, settings, arm, adjuster,
+                                 base)
+    elif args.command == "latent-distillation":
+        from . import latent_distillation as distillation
+        from .evaluation import ReferenceEvaluator
+        settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        output = Path(args.output)
+        evaluator = ReferenceEvaluator(args.data_root)
+        if args.part == "compare":
+            if not (args.runs and args.search_run and args.livr_greedy and args.livr_benchmark):
+                parser.error("compare needs --runs, --search-run, --livr-greedy and --livr-benchmark")
+            result = distillation.compare(json.loads(args.runs), args.search_run, args.livr_greedy,
+                                          args.livr_benchmark, args.data_root, evaluator, settings)
+            json_write(output, result)
+            print(json.dumps({k: result[k] for k in ("validity", "primary")}, indent=1, default=str))
+            return
+        if output.exists():
+            parser.error("Output already exists; choose a new directory")
+        if not (args.checkpoint and args.noise_basis):
+            parser.error("search and train start from the LIVR rerun's final Stage 2 checkpoint and need --noise-basis")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        if args.part == "train" and (args.arm is None or args.seed is None or not args.search_run):
+            parser.error("The train part needs --arm, --seed and --search-run")
+        fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
+                 for split in (settings["pool_split"], settings["heldout_split"], settings["transfer_split"])}
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        if model.config.livr_stage != 2:
+            parser.error("Latent distillation starts from Stage 2")
+        base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                    "fresh_manifests": fresh}
+        if args.part == "search":
+            model.requires_grad_(False)
+            distillation.run_search(model, processor, evaluator, args.data_root, output, settings, args.noise_basis,
+                                    base, smoke=args.smoke)
+        else:
+            distillation.run_train(model, processor, evaluator, config, args.data_root, output, settings, args.arm,
+                                   args.seed, args.search_run, args.noise_basis, base, offload=args.offload_optimizer,
+                                   smoke=args.smoke, accept_search=args.accept_search)
+    elif args.command == "latent-diagnostics":
+        from . import latent_diagnostics as diagnostics
+        from .evaluation import ReferenceEvaluator
+        settings = diagnostics.load_settings(args.settings, smoke=args.smoke)
+        output = Path(args.output)
+        if output.exists() and args.part not in ("analyse", "confirm"):
+            parser.error("Output already exists; choose a new directory")
+        runs = json.loads(args.runs) if args.runs else {}
+        if args.part == "weights":
+            diagnostics.run_weights(runs, output)
+            return
+        if args.part == "analyse":
+            sweeps = [p for p in (args.sweeps or "").split(",") if p]
+            diagnostics.analyse(sweeps, args.gradients_run, args.checkpoints_run, args.weights_run, output, settings,
+                                [name for name in runs])
+            return
+        if args.part == "confirm":
+            if not (args.sweeps and args.text_run):
+                parser.error("confirm needs --sweeps (the confirmation sweep) and --text-run")
+            diagnostics.confirm(args.sweeps, args.text_run, settings, output, args.reference_run)
+            return
+        if not args.pilot_run:
+            parser.error("The GPU parts need --pilot-run (the B′/C′ pilot)")
+        evaluator = ReferenceEvaluator(args.data_root)
+        if args.part == "checkpoints":
+            for name, path in runs.items():
+                if not (Path(path) / "complete.json").is_file():
+                    parser.error(f"{name}: {path} is not a completed checkpoint")
+            diagnostics.run_checkpoints(lambda path: load_model(config, path, device="cuda"), runs, evaluator,
+                                        args.data_root, output, settings, args.pilot_run)
+            return
+        if not args.checkpoint:
+            parser.error("The sweep and gradients parts run on the LIVR rerun's final Stage 2 checkpoint")
+        require_final_checkpoint(args.checkpoint, 2, config)
+        if args.part == "sweep":
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)}
+            layers = ([] if args.layers == "none" else [int(x) for x in args.layers.split(",")]) if args.layers \
+                else settings["layers"]
+            diagnostics.run_sweep(model, processor, evaluator, args.data_root, output, settings, layers,
+                                  args.text_baseline, args.answer_noise, base, args.bases_from)
+        else:
+            # As C′ trained in low-memory mode: a bfloat16 reference; no optimizer is built here.
+            reference, _ = load_model(config, args.checkpoint, device="cuda")
+            reference.to(torch.bfloat16)
+            model, processor = load_model(config, args.checkpoint, device="cuda")
+            base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)}
+            diagnostics.run_gradients(model, reference, processor, evaluator, config, args.data_root, output,
+                                      settings, args.pilot_run, base)
+            del reference
+            torch.cuda.empty_cache()
+            diagnostics.run_search(model, processor, evaluator, args.data_root, output, settings, args.pilot_run)
     elif args.command == "perception-jepa":
         from . import expert_round2 as round2
         from . import perception_jepa as jepa

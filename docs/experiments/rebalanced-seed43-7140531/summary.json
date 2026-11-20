@@ -1,0 +1,29 @@
+{
+  "overall": {
+    "count": 400,
+    "successes": 311,
+    "accuracy": 0.7775
+  },
+  "per_grid": {
+    "3": {
+      "count": 100,
+      "successes": 91,
+      "accuracy": 0.91
+    },
+    "4": {
+      "count": 100,
+      "successes": 85,
+      "accuracy": 0.85
+    },
+    "5": {
+      "count": 100,
+      "successes": 76,
+      "accuracy": 0.76
+    },
+    "6": {
+      "count": 100,
+      "successes": 59,
+      "accuracy": 0.59
+    }
+  }
+}

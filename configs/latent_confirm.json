@@ -1,0 +1,142 @@
+{
+  "method": "Confirmation of pca/24/0.25 on pilot maps 97-200 (docs/LATENT_DIAGNOSTICS_SPEC.md, amendment of 2026-11-19): LIVR, C′'s basis at layer 24 reused from sweep 7148362, two groups of 8 rollouts per scale",
+  "fair_settings": "configs/fair_rl.json",
+  "layers": [
+    24
+  ],
+  "basis_k": 16,
+  "scales": [
+    0.1,
+    0.25
+  ],
+  "families": [
+    "pca"
+  ],
+  "rollouts": 8,
+  "repeats": 2,
+  "map_range": [
+    96,
+    200
+  ],
+  "confirm": {
+    "config": "pca/24/0.25",
+    "secondary": [
+      "pca/24/0.1"
+    ]
+  },
+  "text_rollouts": 64,
+  "soft_draws": 4,
+  "generate_rows": 50,
+  "score_rows": 26,
+  "answer_noise": {
+    "layers": [
+      16,
+      24
+    ],
+    "scales": [
+      0.5,
+      1,
+      2
+    ]
+  },
+  "probe": {
+    "test_maps": 400,
+    "ridge": [
+      0.001,
+      0.01,
+      0.1,
+      1,
+      10,
+      100,
+      1000,
+      10000
+    ],
+    "inlp_iterations": 6,
+    "inlp_dims_per_iteration": 48,
+    "max_map_dims": 192
+  },
+  "decision_max_dims": 8,
+  "latent_search": {
+    "layers": [
+      16,
+      24,
+      32
+    ],
+    "scales": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "draws_per_scale": 16,
+    "batch": 16
+  },
+  "verdict_search": {
+    "budget": 64,
+    "max_depth": 64,
+    "batch": 16
+  },
+  "gradients": {
+    "batches": 3,
+    "layer": 16,
+    "small_gradient": 1e-07
+  },
+  "checkpoints": {
+    "swap_every": 2,
+    "noise_layer": 16,
+    "noise_scales": [
+      1,
+      4
+    ],
+    "noise_draws": 4,
+    "swap_seed": 0
+  },
+  "head_fits": {
+    "learning_rates": [
+      2e-05,
+      0.0001,
+      0.001,
+      0.01
+    ],
+    "steps": [
+      125,
+      500
+    ],
+    "maps_per_step": 24,
+    "heldout_maps": 40,
+    "layer": 16,
+    "scales": [
+      1,
+      4
+    ]
+  },
+  "rule": {
+    "mixed_gain": 0.02,
+    "max_success_drop": 0.02,
+    "bootstrap": 2000,
+    "break_drop": 0.5
+  },
+  "max_new_tokens": 128,
+  "seed": 43,
+  "smoke": {
+    "pilot_maps": 2,
+    "capture_maps": 48,
+    "rollouts": 2,
+    "text_rollouts": 4,
+    "soft_draws": 1,
+    "scales": [
+      0.25
+    ],
+    "answer_scales": [
+      1
+    ],
+    "latent_search_draws": 2,
+    "verdict_budget": 4,
+    "gradient_batches": 1,
+    "prompts_per_step": 2,
+    "checkpoint_maps": 4,
+    "head_fit_steps": [
+      3
+    ]
+  }
+}
