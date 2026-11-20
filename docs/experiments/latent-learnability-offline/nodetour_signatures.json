@@ -1,0 +1,82 @@
+{
+ "LIVR same stack": {
+  "maps": 360,
+  "solved": 319,
+  "failed": 41,
+  "hole": 38,
+  "short_or_past": 3,
+  "failed_with_away_move": 5
+ },
+ "B' 42": {
+  "maps": 360,
+  "solved": 287,
+  "failed": 73,
+  "hole": 62,
+  "short_or_past": 11,
+  "failed_with_away_move": 43
+ },
+ "B' 43": {
+  "maps": 360,
+  "solved": 281,
+  "failed": 79,
+  "hole": 66,
+  "short_or_past": 13,
+  "failed_with_away_move": 43
+ },
+ "C' 42": {
+  "maps": 360,
+  "solved": 300,
+  "failed": 60,
+  "hole": 54,
+  "short_or_past": 6,
+  "failed_with_away_move": 29
+ },
+ "C' 43": {
+  "maps": 360,
+  "solved": 296,
+  "failed": 64,
+  "hole": 57,
+  "short_or_past": 7,
+  "failed_with_away_move": 28
+ },
+ "C'' 42": {
+  "maps": 360,
+  "solved": 273,
+  "failed": 87,
+  "hole": 72,
+  "short_or_past": 15,
+  "failed_with_away_move": 52
+ },
+ "C'' 43": {
+  "maps": 360,
+  "solved": 294,
+  "failed": 66,
+  "hole": 62,
+  "short_or_past": 4,
+  "failed_with_away_move": 35
+ },
+ "E": {
+  "maps": 360,
+  "solved": 305,
+  "failed": 55,
+  "hole": 48,
+  "short_or_past": 7,
+  "failed_with_away_move": 10
+ },
+ "E2": {
+  "maps": 360,
+  "solved": 303,
+  "failed": 57,
+  "hole": 43,
+  "short_or_past": 14,
+  "failed_with_away_move": 13
+ },
+ "EB2": {
+  "maps": 360,
+  "solved": 308,
+  "failed": 52,
+  "hole": 46,
+  "short_or_past": 6,
+  "failed_with_away_move": 16
+ }
+}
