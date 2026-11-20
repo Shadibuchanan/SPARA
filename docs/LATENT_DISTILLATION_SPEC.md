@@ -1,6 +1,6 @@
 # Latent distillation: search the latents, then train the model to produce the ones that worked
 
-Status, 2026-11-19: **readings final; implemented; submitted.** Written after the offline checks in
+Status, 2026-11-19: **run; no detectable difference between D and S** (see [Result](#result-search-job-7169732-runs-s42-job-7170079-d42-s43-and-d43-job-7170868)). Written after the offline checks in
 [latent-learnability-offline](experiments/latent-learnability-offline/README.md), then critiqued
 against code and data and adjusted (section "Critique and changes", at the end). The readings below
 were fixed before any job was submitted.
@@ -335,3 +335,48 @@ One λ fixed at the start cannot hold the ratio it was meant to hold.
   calibration and the fixed-λ path were removed from the code; D's runs record their λ.)
 - Cost: a second forward and backward pass on the pushed rows (about 45% of rows).
 - The readings, rows, S and the evaluation are unchanged.
+
+## Result (search job 7169732; runs: S42 job 7170079, D42, S43 and D43 job 7170868)
+
+**Validity.**
+- Every check passed except the search's replay bar: 91.4% of pushed maps reproduced, against 95%.
+- The user accepted that amendment, so the reading that applies is the one with the replay check
+  set aside.
+- Both arms trained on identical rows per seed, and all four runs completed 375 steps.
+- All 4,552 greedy and benchmark answers match a CPU rescore.
+
+**Primary: no detectable difference.** Greedy successes on the 240 held-out detour maps:
+
+| | Seed 42 | Seed 43 |
+| --- | --- | --- |
+| D (latent target) | 80 | 78 |
+| S (routes only) | 79 | 80 |
+
+S ahead on 20 maps and D on 18 (exact sign test, p = 0.87). The pre-fixed reading is "withheld"
+(the replay check); with the accepted amendment it is "no detectable difference".
+
+**Secondary.**
+- **Transfer (400 maps of 7 × 7 and 8 × 8):** D 38 and 48 against S 42 and 42. Each ahead on 21
+  maps (p = 1.0).
+- **Benchmark:** D 313 and 313 against S 313 and 322. S ahead on 29 maps and D on 21 (p = 0.32).
+  Against LIVR's 328, every run gains on detour maps (11–14 against 9) and loses on no-detour maps
+  (299–308 against 319). For D42, D43 and S42 the loss is significant (p 0.03–0.05).
+- **Against LIVR on the 240 maps:** every run 78–80 against 42 (p < 10⁻⁷). Fine-tuning on the
+  found routes helps; the latent target adds nothing on top.
+
+**Diagnostic: did D learn the targets?** From one prefill per kept map after training, in scale-1
+push units (LIVR starts at 1.30 on the pushed maps):
+
+| | S42 | S43 | D42 | D43 |
+| --- | --- | --- | --- | --- |
+| Distance to the targets, pushed maps | 3.50 | 2.02 | 1.32 | 1.32 |
+| Fraction of the push reproduced (0 none, 1 full) | −0.06 | 0.05 | 0.03 | 0.03 |
+| Drift of the latents (share of their norm) | 14% | 12% | 14% | 13% |
+
+- D's latents drifted as much as S's overall. Within the push directions they stayed near LIVR's,
+  while S's moved away.
+- D reproduced about 3% of the pushes, no more than S.
+
+**Reading.** The latent target acted as an anchor, not as distillation. Under the spec's
+diagnostic, the null means the model could not learn to produce the targets in this recipe, not
+that the targets are useless.

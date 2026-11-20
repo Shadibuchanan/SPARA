@@ -3086,3 +3086,27 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-19 — Latent distillation result in the spec
+
+**Agent/tool:** Claude Code, Claude Opus 5.5
+**User request:** Pull the updated main, then add the latent distillation result to the repo and push.
+**AI contribution:** Found that PR #12 (this work) had already been merged into main, so created branch `docs/latent-distillation-result` from the current main. Added a Result section to the latent distillation spec from the recorded comparison (`sft-run/results/ld-compare.json`) and run summaries: validity, the per-seed primary table and both readings, secondary tests, and the target-fit diagnostic. Updated the spec's status line.
+**Contribution type:** editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked whether another agent's claim was true: the D/S numbers and the 2–3% figure are not in git | Confirmed: only the commit message mentioned p = 0.87 |
+| 2 | User message | Pull main first, then add and push | New branch from main; Result section added |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/LATENT_DISTILLATION_SPEC.md | modified | Result section; status line |
+
+### Folders created
+
+- None
