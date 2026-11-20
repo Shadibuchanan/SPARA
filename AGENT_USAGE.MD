@@ -2404,3 +2404,69 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-18 — Audit of the perception runs, no-latent V* and ablations
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Audit the trained-model results, run V* without the latent tokens, and queue ablations on PACE-ICE or the ISyE cluster.
+**AI contribution:** Checked each run's manifests and saved files, then added an option to leave latent tokens out of the prompt, a stage that scores held-out rows for saved weights or the base model, per-segment scoring, and two ablation settings files. Submitted evaluation jobs 7164178 to 7164187 on PACE-ICE: reloading the saved weights reproduced the `livr` and `patch` scores reply for reply, and removing the latent tokens left their V* accuracy unchanged, which contradicts the agent's earlier explanation. Fixed a loader check that failed the `sft` reload and resubmitted it (7164754, 7164755), and queued three training ablations (7164756 to 7164758): LIVR with no bottleneck stage, and LIVR and SFT at 1 + 1 epochs. The choice of ablations and of PACE-ICE over the ISyE cluster was the agent's; the ablations completed (LIVR without the bottleneck stage scored 134 of 191 at native size against 121 with it) and were added to the results document after the user restored the PACE connection.
+**Contribution type:** debugging
+
+### Human input and contributions
+
+| Order | Source             | Input or contribution                                                    | Effect on the work                                                              |
+| ----- | ------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| 1     | User; user message | Asked why the trained models do worse than the base model                | The agent gave an untested explanation (over-reliance on the latents)            |
+| 2     | User; user message | Asked whether the trained model was really the one scored, and who trained it | The agent listed its evidence and the two checks it had not made            |
+| 3     | User; user message | Told the agent to audit, run V* without latent tokens, and queue ablations on either cluster | The agent ran the audit and evaluations and queued three training ablations |
+| 4     | User; user message | Reported logging in to PACE again after the connection expired | The agent read the finished ablations and wrote them up |
+
+### Files
+
+| Path                                          | Action   | Contribution                                                                      |
+| --------------------------------------------- | -------- | --------------------------------------------------------------------------------- |
+| `src/spara/vstar.py`                          | modified | Option to leave a latent model's tokens out of the prompt                         |
+| `src/spara/perception.py`                     | modified | Per-segment scoring, stage override per arm, scoring of saved weights or the base |
+| `src/spara/cli.py`                            | modified | `--no-latents`, a `validate` stage, and loading of weights saved without latents  |
+| `scripts/pace/vstar.sbatch`                   | modified | Variables for hidden globals and no latents                                       |
+| `scripts/pace/perception.sbatch`              | modified | A validation stage and a tag for ablation run directories                         |
+| `configs/perception_viscot_no_bottleneck.json` | created  | LIVR with both segments unmasked, scored after each segment                       |
+| `configs/perception_viscot_short.json`        | created  | 1 + 1 epochs, scored after each segment                                           |
+| `docs/PERCEPTION_VSTAR_RESULTS.md`            | modified | Audit, no-latent, held-out and queued-ablation sections                           |
+
+### Folders created
+
+- None
+
+## 2026-11-19 — V* attention maps and report
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Draw the attention maps for all V* questions, check whether attention on the image is much less than on the latent tokens, and compile the findings into a report.
+**AI contribution:** Wrote an attention module that records, per layer, the answer position's attention to image tokens, to each latent token and to the released target box, and renders one picture per question. The first jobs ran out of GPU memory on the largest images, so the capture was rewritten to compute only the needed rows and tested against the library's own weights. Ran the four saved models (base, `sft`, `livr`, `patch`) over all 191 questions on PACE-ICE, rendered the pictures, and wrote a report: both latent models put more attention on their latents than on the whole image and reach the target less than `sft`. The choice of models, positions, layer bands and the target-box measure was the agent's and was not reviewed by the user.
+**Contribution type:** generation
+
+### Human input and contributions
+
+| Order | Source             | Input or contribution                                                             | Effect on the work                                                        |
+| ----- | ------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 1     | User; user message | Asked whether the method improves on LIVR, and about held-out against training performance | The agent answered from the existing results                     |
+| 2     | User; user message | Asked whether tokens were being masked                                            | The agent listed which masks each run used                                 |
+| 3     | User; user message | Asked for attention maps for all questions, compiled into a report                | The agent wrote the attention module and submitted the jobs                |
+| 4     | User; user message | Asked whether attention on the image is much less than on the latent tokens       | The agent added attention on each latent token to what the runs record     |
+| 5     | User; user message | Asked for the facts to be compiled into a report                                  | The agent wrote the attention report                                       |
+
+### Files
+
+| Path                                     | Action   | Contribution                                                                  |
+| ---------------------------------------- | -------- | ----------------------------------------------------------------------------- |
+| `src/spara/vstar_attention.py`           | created  | Target-box download, row-only attention capture, per-question maps and report |
+| `src/spara/cli.py`                       | modified | `vstar` stages `targets`, `attention` and `attention-report`                  |
+| `scripts/pace/vstar.sbatch`              | modified | A stage variable so the script can run the attention stage                    |
+| `tests/test_vstar_attention.py`          | created  | Tests for box cells, layer bands, rendering and the attention computation     |
+| `docs/PERCEPTION_VSTAR_ATTENTION.md`     | created  | The attention report                                                          |
+| `docs/PERCEPTION_VSTAR_RESULTS.md`       | modified | Link to the attention report                                                  |
+| `docs/figures/vstar-attention/question-000.jpg`, `question-074.jpg`, `question-077.jpg`, `question-098.jpg` | created | Example attention pictures |
+
+### Folders created
+
+- `docs/figures/vstar-attention/`: example pictures for the attention report

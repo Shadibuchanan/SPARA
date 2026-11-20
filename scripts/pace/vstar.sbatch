@@ -1,6 +1,9 @@
 #!/bin/bash
 # V* (spara.vstar): greedy answers to the 191 released questions, one folder per prompt format and
 # image-token limit. Without SPARA_CHECKPOINT it reads the base model as released, with no latent tokens.
+# SPARA_VSTAR_HIDE_GLOBALS=1 reads a global + patch checkpoint as trained; SPARA_VSTAR_NO_LATENTS=1 leaves
+# a latent checkpoint's latent tokens out of the prompt.
+# SPARA_VSTAR_STAGE=attention instead writes attention maps (spara.vstar_attention) at one image-token limit.
 # One GPU; resources are given at submission. Fetch the questions first, on the login node:
 #   .venv/bin/python -m spara.cli vstar --stage fetch --data-root data/vstar
 # Submit only within the agreed GPU budget; this script does not submit itself.
@@ -26,6 +29,7 @@ if [ -n "${SPARA_CHECKPOINT:-}" ]; then
 fi
 mkdir -p "$ROOT/results"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-"$PYTHON" -m spara.cli vstar --config configs/livr.json --data-root "$DATA" --base-model "$BASE" \
+"$PYTHON" -m spara.cli vstar --stage "${SPARA_VSTAR_STAGE:-evaluate}" --config configs/livr.json --data-root "$DATA" --base-model "$BASE" \
   --formats "$FORMATS" --max-image-tokens "$TOKENS" ${SPARA_VSTAR_LIMIT:+--limit "$SPARA_VSTAR_LIMIT"} \
-  "${SOURCE[@]}" --output "$ROOT/results/vstar-${SPARA_VSTAR_NAME:-base}-$SLURM_JOB_ID"
+  ${SPARA_VSTAR_HIDE_GLOBALS:+--hide-globals} ${SPARA_VSTAR_NO_LATENTS:+--no-latents} \
+  "${SOURCE[@]}" --output "$ROOT/results/vstar-${SPARA_VSTAR_STAGE:+$SPARA_VSTAR_STAGE-}${SPARA_VSTAR_NAME:-base}-$SLURM_JOB_ID"

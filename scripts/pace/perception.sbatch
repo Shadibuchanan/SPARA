@@ -4,6 +4,9 @@
 # SPARA_STAGE=images instead prepares the data on CPU: it samples the rows (the released list needs a few
 # GB of memory to read) and then reads the Visual-CoT archive once for those rows' images:
 #   sbatch -p ice-cpu -c 4 --mem=16G -t 06:00:00 --export=ALL,SPARA_STAGE=images scripts/pace/perception.sbatch
+# SPARA_STAGE=validate instead answers the held-out rows with SPARA_CHECKPOINT (or the base model),
+# SPARA_NO_LATENTS=1 without its latent tokens, SPARA_HIDE_GLOBALS=1 for a global + patch checkpoint.
+# SPARA_TAG names an ablation's run directory.
 # One 80 GB GPU for training; resources are given at submission.
 # Submit only within the agreed GPU budget; this script does not submit itself.
 set -euo pipefail
@@ -25,6 +28,15 @@ if [ "${SPARA_STAGE:-train}" = images ]; then
   "$PYTHON" -m spara.cli perception --stage images --settings "$SETTINGS" --data-root "$DATA"
   exit 0
 fi
+[ -f "$BASE/download-manifest.json" ] || { echo "Missing base model: $BASE" >&2; exit 1; }
+if [ "${SPARA_STAGE:-train}" = validate ]; then
+  nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+  "$PYTHON" -m spara.cli perception --stage validate --config configs/livr.json --settings "$SETTINGS" \
+    --data-root "$DATA" --base-model "$BASE" ${SPARA_CHECKPOINT:+--checkpoint "$SPARA_CHECKPOINT"} \
+    ${SPARA_NO_LATENTS:+--no-latents} ${SPARA_HIDE_GLOBALS:+--hide-globals} \
+    --output "$ROOT/results/viscot-validation-${SPARA_TAG:-base}-$SLURM_JOB_ID"
+  exit 0
+fi
 ARM="${SPARA_ARM:?set SPARA_ARM to sft, livr or patch}"
 [ -f "$DATA/train.jsonl" ] || { echo "Missing sampled rows: $DATA" >&2; exit 1; }
 grep -q '"count"' "$DATA/manifest.json" || { echo "Sampled images are not extracted: $DATA" >&2; exit 1; }
@@ -34,4 +46,4 @@ mkdir -p "$ROOT/results"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 "$PYTHON" -m spara.cli perception --config configs/livr.json --settings "$SETTINGS" --data-root "$DATA" \
   --vstar-root "$VSTAR" --base-model "$BASE" --arm "$ARM" ${SPARA_SMOKE:+--smoke} \
-  --output "$ROOT/results/perception-$ARM${SPARA_SMOKE:+-smoke}-$SLURM_JOB_ID"
+  --output "$ROOT/results/perception-$ARM${SPARA_TAG:+-$SPARA_TAG}${SPARA_SMOKE:+-smoke}-$SLURM_JOB_ID"

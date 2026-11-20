@@ -15,7 +15,10 @@ def main():
     fetch.add_argument("--output", required=True)
     fetch.add_argument("--processor-only", action="store_true")
     vstar = sub.add_parser("vstar", help="V* questions: fetch them, or evaluate a model on them (spara.vstar)")
-    vstar.add_argument("--stage", choices=["fetch", "evaluate"], default="evaluate")
+    vstar.add_argument("--stage", choices=["fetch", "evaluate", "targets", "attention", "attention-report"],
+                       default="evaluate", help="targets: download the target boxes. attention: attention maps for "
+                       "one model (spara.vstar_attention). attention-report: pictures and a summary from --runs")
+    vstar.add_argument("--runs", help="attention-report: name=attention folder=responses.jsonl, comma-separated")
     vstar.add_argument("--data-root", default="data/vstar")
     vstar.add_argument("--config", default="configs/livr.json")
     vstar.add_argument("--base-model", help="Verified local model downloaded by fetch-model")
@@ -27,8 +30,10 @@ def main():
     vstar.add_argument("--limit", type=int, help="Only the first N questions (a smoke test, not a score)")
     vstar.add_argument("--hide-globals", action="store_true",
                        help="A global + patch checkpoint trained with its global latents hidden from the answer")
+    vstar.add_argument("--no-latents", action="store_true",
+                       help="Leave a latent checkpoint's latent tokens out of the prompt (an ablation)")
     perception = sub.add_parser("perception", help="Perception arms on Visual-CoT, read on V* (spara.perception)")
-    perception.add_argument("--stage", choices=["select", "images", "train"], default="train")
+    perception.add_argument("--stage", choices=["select", "images", "train", "validate"], default="train")
     perception.add_argument("--settings", default="configs/perception_viscot.json")
     perception.add_argument("--config", default="configs/livr.json")
     perception.add_argument("--data-root", default="data/viscot")
@@ -36,7 +41,10 @@ def main():
     perception.add_argument("--base-model", help="Verified local model downloaded by fetch-model")
     perception.add_argument("--arm", choices=["sft", "livr", "patch"])
     perception.add_argument("--smoke", action="store_true", help="A few rows only: does it run, and how fast")
-    perception.add_argument("--output", help="New run directory (train)")
+    perception.add_argument("--output", help="New run directory (train, validate)")
+    perception.add_argument("--checkpoint", help="validate: trained weights; without it, the base model")
+    perception.add_argument("--no-latents", action="store_true", help="validate: leave the latent tokens out")
+    perception.add_argument("--hide-globals", action="store_true", help="validate: a global + patch checkpoint")
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
                     "expert-iteration", "expert-round2", "perception-jepa", "region-latents"):
@@ -172,7 +180,17 @@ def main():
         from .vstar import fetch
         print(fetch(args.data_root))
         return
-    if args.command == "perception" and args.stage != "train":
+    if args.command == "vstar" and args.stage == "targets":
+        from .vstar_attention import fetch_targets
+        print(fetch_targets(args.data_root))
+        return
+    if args.command == "vstar" and args.stage == "attention-report":
+        from .vstar_attention import report
+        parts = [item.split("=") for item in args.runs.split(",")]
+        summary = report(args.data_root, {n: f for n, f, _ in parts}, {n: a for n, _, a in parts}, args.output)
+        print(json.dumps(summary, indent=2))
+        return
+    if args.command == "perception" and args.stage in ("select", "images"):
         from . import viscot
         data = json.loads(Path(args.settings).read_text(encoding="utf-8"))["data"]
         if args.stage == "select":
@@ -185,13 +203,21 @@ def main():
     from .runtime import read_config, seed_all, load_model, manifest, json_write, require_final_checkpoint
     if args.command == "perception":
         from .perception import run_arm
-        if not args.arm or not args.output or Path(args.output).exists():
+        if args.stage == "train" and (not args.arm or not args.output or Path(args.output).exists()):
             parser.error("Give --arm and --output, a directory that does not exist yet")
         if not torch.cuda.is_available():
             raise RuntimeError("Use an allocated GPU for the actual 3B model")
         config = read_config(args.config)
         if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
         settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
+        if args.stage == "validate":
+            from .perception import score_weights
+            if not args.output or Path(args.output).exists():
+                parser.error("Give --output, a directory that does not exist yet")
+            print(json.dumps(score_weights(config, args.checkpoint, args.data_root, args.output,
+                                           settings["validation_max_new_tokens"], not args.no_latents,
+                                           args.hide_globals), indent=2))
+            return
         print(json.dumps(run_arm(args.arm, config, settings, args.data_root, args.vstar_root, args.output,
                                  args.smoke), indent=2))
         return
@@ -201,24 +227,33 @@ def main():
         limits = [int(value) for value in args.max_image_tokens.split(",")]
         if not args.output or Path(args.output).exists():
             parser.error("Give --output, a directory that does not exist yet")
+        if args.stage == "attention": formats = ["livr"]
         if set(formats) - set(vstar.FORMATS) or (args.checkpoint and "chat" in formats):
             parser.error("Formats are chat and livr; a trained checkpoint is read in the livr format only")
         if not torch.cuda.is_available():
             raise RuntimeError("Use an allocated GPU for the actual 3B model")
         config = read_config(args.config)
         if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
-        if not args.checkpoint: config["latent_tokens"] = 0  # the base model as released: no latent tokens
+        if not args.checkpoint or not json.loads((Path(args.checkpoint) / "config.json").read_text())["livr_latent_ids"]:
+            config["latent_tokens"] = 0  # the base model as released, or direct-SFT weights: no latent tokens
         seed_all(config["seed"])
         vstar.questions(args.data_root)
         model, processor = load_model(config, args.checkpoint, device="cuda")
         run_manifest = manifest(config, model, processor, args.data_root) | {"checkpoint": args.checkpoint}
+        if args.stage == "attention":
+            from .vstar_attention import measure
+            if len(limits) != 1:
+                parser.error("Attention maps take one image-token limit")
+            print(measure(model, processor, args.data_root, args.output, limits[0] * vstar.PATCH ** 2, run_manifest,
+                          args.limit, args.hide_globals))
+            return
         summaries = {}
         for prompt_format in formats:
             for tokens in limits:
                 name = f"{prompt_format}-{tokens}"
                 summaries[name] = vstar.evaluate(model, processor, args.data_root, Path(args.output) / name,
                                                  tokens * vstar.PATCH ** 2, prompt_format, run_manifest, args.limit,
-                                                 args.hide_globals)
+                                                 args.hide_globals, not args.no_latents)
         json_write(Path(args.output) / "summary.json", summaries)
         print(json.dumps(summaries, indent=2))
         return

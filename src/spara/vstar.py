@@ -161,18 +161,21 @@ def summarize(results):
         category: part([r for r in results if r["category"] == category]) for category in CATEGORIES}
 
 
-def evaluate(model, processor, root, output, max_pixels, prompt_format, run_manifest, limit=None, hide_globals=False):
+def evaluate(model, processor, root, output, max_pixels, prompt_format, run_manifest, limit=None, hide_globals=False,
+             use_latents=True):
     """Greedy answers to every question in file order; one line per question, and a running summary.
-    `hide_globals`: the answer may not see the global latents (a global + patch model trained that way)."""
+    `hide_globals`: the answer may not see the global latents (a global + patch model trained that way).
+    `use_latents` False leaves the model's latent tokens out of the prompt: an ablation of a latent model."""
     import torch
     from .runtime import json_write
     from .training import amp, to_device
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    latents = image_latents(model) if prompt_format == "livr" else []
+    latents = image_latents(model) if prompt_format == "livr" and use_latents else []
+    hide_globals = hide_globals and bool(latents)
     json_write(output / "manifest.json", run_manifest | {
         "max_pixels": max_pixels, "prompt_format": prompt_format, "latents": latents, "generation": GENERATION,
-        "hide_globals": hide_globals})
+        "hide_globals": hide_globals, "use_latents": use_latents})
     model.eval()
     results = []
     rows = questions(root)[:limit]

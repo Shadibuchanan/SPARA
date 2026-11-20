@@ -2,7 +2,8 @@
 
 **Result:** no trained arm beats the untuned Qwen2.5-VL-3B on V*. Direct SFT is level with it; the two
 latent arms (LIVR, and global + patch latents) are 12 to 16 questions lower, and do not differ from each
-other. This is one seed per arm on 191 questions.
+other. Later ablations (below) trace the drop to the Stage 1 bottleneck: LIVR's latents trained without
+it are level with the base model. This is one seed per run on 191 questions.
 
 Setup is in [PERCEPTION_JEPA_SPEC.md](PERCEPTION_JEPA_SPEC.md), section "V* and the arms from base".
 
@@ -75,6 +76,108 @@ for the twelve comparisons.
 - Final-epoch loss near 0.02 on rows seen five times suggests the arms largely memorised the 10,000
   rows. No held-out loss was logged per epoch, so this is an inference from the training loss.
 
+## Audit and no-latent runs (2026-11-18, later the same day)
+
+**Result:** the scores above are real and reproduce from the saved weights, and leaving the latent
+tokens out of the prompt does not bring the latent arms back. The loss is in the trained weights, not
+in the answer leaning on the latent tokens.
+
+### Audit
+
+- **Latents were in the prompt.** Each V* manifest lists the tokens used: none for `sft`, the four LIVR
+  tokens for `livr`, four globals plus sixteen patch tokens (globals hidden) for `patch`.
+- **Saved weights reproduce the scores.** `livr` and `patch` were reloaded from `segment2/final` and
+  re-scored (jobs 7164179, 7164180): the same counts, and all 191 replies identical at both image sizes.
+- **`sft` reload:** the first attempt (job 7164178) failed on a loader check that assumed four latent
+  tokens for any saved weights. After the fix, job 7164754 gave the same counts (131 and 121) and 191
+  identical replies at both sizes.
+- **Segment 1 weights were not saved**, so nothing here reads the model after the bottleneck stage alone.
+
+### V* with latent tokens left out
+
+Correct out of 191 (attribute / position in brackets).
+
+| Weights | Prompt | Native | 1,280 tokens | Answers that changed against "as trained" |
+| --- | --- | --- | --- | --- |
+| `livr` | as trained (4 latents) | 121 (76 / 45) | 110 (67 / 43) | |
+| `livr` | no latent tokens | 121 (77 / 44) | 112 (66 / 46) | 13 native, 11 at 1,280 |
+| `patch` | as trained (globals hidden) | 119 (75 / 44) | 110 (68 / 42) | |
+| `patch` | no latent tokens | 119 (76 / 43) | 108 (66 / 42) | 8 native, 17 at 1,280 |
+| `patch` | globals visible to the answer | 120 (76 / 44) | 112 (69 / 43) | 3 native |
+
+- Removing the latents changes about 5 to 9% of answers and leaves accuracy where it was, so the
+  earlier guess (the answer over-relies on a few latent vectors) is not supported.
+- The latent arms are below `sft` and the base model with or without their latents. Whatever lowered
+  V*, training with the latents put it in the language model's weights.
+
+### Held-out Visual-CoT rows, with the base model
+
+354 held-out rows (flickr30k left out). "Contains" counts a reply that contains the reference answer;
+it is lenient towards long replies, which is how the base model answers.
+
+| Model | Exact match | Contains the answer |
+| --- | --- | --- |
+| Base, untuned | 0 | 230 (65.0%) |
+| `sft` | 224 (63.3%) | 241 (68.1%) |
+| `livr` | 207 (58.5%) | 223 (63.0%) |
+| `livr`, no latent tokens | 205 (57.9%) | 225 (63.6%) |
+| `patch` | 212 (59.9%) | 231 (65.3%) |
+| `patch`, no latent tokens | 216 (61.0%) | 232 (65.5%) |
+
+- The base model scores zero on exact match because it answers in full sentences ("The total ... are
+  $796.65." for "796.65"), so exact match measures answer style, not perception.
+- On the lenient measure, five epochs of training moved held-out accuracy by at most 11 rows in either
+  direction. Together with the training loss near 0.02, the arms learned the answer style and the
+  10,000 training rows, and little that transfers.
+
+### Training ablations
+
+**Result:** the bottleneck stage is what lowers V*. LIVR's four latents trained with both segments
+unmasked score 134 at native size, level with the base model and SFT, against 121 with the bottleneck
+stage. One seed each.
+
+Correct out of 191 (attribute / position in brackets). "Held-out" is the 354 non-flickr30k rows, counted
+as "reply contains the answer". Jobs 7164756 to 7164758; none saved weights.
+
+| Run | Read after | Epochs so far | V* native | V* 1,280 | Held-out |
+| --- | --- | --- | --- | --- | --- |
+| Base, untuned | | 0 | 133 (91 / 42) | 126 (80 / 46) | 230 |
+| `sft` (original) | end | 5 | 131 (87 / 44) | 121 (75 / 46) | 241 |
+| `sft`, 1 + 1 epochs | segment 1 | 1 | 138 (93 / 45) | 126 (79 / 47) | 246 |
+| `sft`, 1 + 1 epochs | end | 2 | 133 (89 / 44) | 121 (74 / 47) | 250 |
+| `livr` (original: bottleneck, then unmasked) | end | 2 + 3 | 121 (76 / 45) | 110 (67 / 43) | 223 |
+| `livr`, 1 + 1 epochs | segment 1, bottleneck still on | 1 | 68 (30 / 38) | 65 (28 / 37) | 187 |
+| `livr`, 1 + 1 epochs | end | 1 + 1 | 132 (87 / 45) | 118 (71 / 47) | 237 |
+| `livr`, no bottleneck stage | segment 1 | 2 | 140 (92 / 48) | 129 (79 / 50) | 248 |
+| `livr`, no bottleneck stage | end | 5 | 134 (88 / 46) | 130 (83 / 47) | 246 |
+
+Paired comparisons (gained / lost, two-sided exact sign test, uncorrected):
+
+| Comparison | Native | p | 1,280 | p |
+| --- | --- | --- | --- | --- |
+| no bottleneck against original `livr` | 29 / 16 | 0.07 | 28 / 8 | 0.001 |
+| no bottleneck against `sft` | 7 / 4 | 0.55 | 14 / 5 | 0.06 |
+| no bottleneck against base | 12 / 11 | 1.00 | 18 / 14 | 0.60 |
+| no bottleneck after 2 epochs against base | 16 / 9 | 0.23 | 17 / 14 | 0.72 |
+| `livr` 1 + 1 against original `livr` | 23 / 12 | 0.09 | 19 / 11 | 0.20 |
+
+- **The bottleneck stage is the cause.** Same latents, same rows, same number of steps: without the
+  Stage 1 mask the model is 13 questions higher at native size and 20 higher at 1,280 tokens, and no
+  longer below the base model or SFT.
+- **Under the bottleneck the model cannot answer V\*.** After one masked epoch it scores 68 of 191,
+  which is chance (attribute questions have four options: 30 of 115; position questions have two: 38 of
+  76). Four latents carry no usable V* detail at that point. This run was not scored after two masked epochs.
+- **One unmasked epoch undoes most of it.** The 1 + 1 run ends at 132, level with the base model at
+  native size. The original run had twice the masked training and ended 11 lower, so the damage grows
+  with time under the mask or with the later epochs; these runs do not separate the two.
+- **Nothing beats the base model.** The best reading, 140 after two unmasked epochs with latents, is 7
+  above the base model and within noise (p = 0.23). SFT after one epoch (138) is the same.
+- **Longer training does not help.** In all three families the score after fewer epochs is at or above
+  the score after more (138 → 133 → 131 for SFT; 140 → 134 without the bottleneck). The differences are
+  within noise; none points the other way.
+
+Attention maps for the four saved models are in [PERCEPTION_VSTAR_ATTENTION.md](PERCEPTION_VSTAR_ATTENTION.md).
+
 ## What this does and does not show
 
 - **Shown:** at this scale (10,000 answer-only rows, 3B model, one seed), fine-tuning on Visual-CoT does
@@ -91,8 +194,7 @@ for the twelve comparisons.
 ## Not done
 
 - A second seed for any arm.
-- A base-model score on the held-out Visual-CoT rows.
-- Earlier checkpoints (after segment 1, or after fewer epochs), which would test the memorisation reading.
+- The patch arm without its bottleneck stage, and any run with a longer or shorter masked stage alone.
 - A larger sample or native-size training images.
 
 ## Where the results are
