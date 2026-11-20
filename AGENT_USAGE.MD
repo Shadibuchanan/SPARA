@@ -2454,6 +2454,8 @@ None
 | 3     | User; user message | Asked for attention maps for all questions, compiled into a report                | The agent wrote the attention module and submitted the jobs                |
 | 4     | User; user message | Asked whether attention on the image is much less than on the latent tokens       | The agent added attention on each latent token to what the runs record     |
 | 5     | User; user message | Asked for the facts to be compiled into a report                                  | The agent wrote the attention report                                       |
+| 6     | User; user message | Replied "Yep, go for it" to the agent's offers to commit and to publish a shareable page | The agent committed the work to `perception-results` and published the report as a private web page |
+| 7     | User; user message | Asked for the commit to be pushed, then for the full attention report to be zipped and pushed | The agent pushed the branch, then added the 191-question report as a zip and pushed it |
 
 ### Files
 
@@ -2465,6 +2467,7 @@ None
 | `tests/test_vstar_attention.py`          | created  | Tests for box cells, layer bands, rendering and the attention computation     |
 | `docs/PERCEPTION_VSTAR_ATTENTION.md`     | created  | The attention report                                                          |
 | `docs/PERCEPTION_VSTAR_RESULTS.md`       | modified | Link to the attention report                                                  |
+| `docs/figures/vstar-attention/vstar-attention-report.zip` | created | The full 191-question attention page and pictures (34 MB) |
 | `docs/figures/vstar-attention/question-000.jpg`, `question-074.jpg`, `question-077.jpg`, `question-098.jpg` | created | Example attention pictures |
 
 ### Folders created

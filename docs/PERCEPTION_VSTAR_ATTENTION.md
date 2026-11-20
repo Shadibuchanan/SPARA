@@ -96,8 +96,8 @@ Question 1, "What is the material of the glove?" (all four right):
 These four were picked, not sampled: the first three are among the four with the largest SFT-over-LIVR
 gap in late target attention, out of the 23 questions SFT got right and LIVR got wrong.
 
-All 191 rows are in `results/vstar-attention-report/index.html` (34 MB with pictures; `results/` is not
-tracked by git, and the same folder is on PACE-ICE scratch).
+All 191 rows are in [vstar-attention-report.zip](figures/vstar-attention/vstar-attention-report.zip)
+(34 MB): unzip it and open `index.html`. The same folder is on PACE-ICE scratch.
 
 ## What this does and does not show
 
