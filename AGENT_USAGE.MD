@@ -3311,3 +3311,70 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-19 — Double-check the merge into main and the README
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Confirm the merge was done correctly, because the README looked off.
+**AI contribution:** Compared the merge commit with both parents file by file, redid the three-way merge of `src/spara/cli.py` and compared it with the committed result, and checked that every usage-log entry from both sides is present. Found the merge correct and the README byte-identical on main before the merge, on the branch and after it; reported that the README is out of date rather than mis-merged. No substantive project changes.
+**Contribution type:** review
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| ----- | ------ | --------------------- | ------------------ |
+| 1 | User; user message | Asked for a double check of the merge, noting the README seemed off | File-by-file verification of the merge and a read of the README |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-19 — Switch the worktree back to the perception results branch
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Switch back to `perception-results` after the user had switched this folder to local `main`.
+**AI contribution:** Checked out `perception-results` again. Local `main` was left as it was. No substantive project changes.
+**Contribution type:** editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| ----- | ------ | --------------------- | ------------------ |
+| 1 | User; user message | Explained that they had switched the folder from `perception-results` to `main`, and asked to switch back | Branch checked out again |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-19 — Update the README with the work since the baseline
+
+**Agent/tool:** Claude Code (Claude Fable 5.2)
+**User request:** Update the README to include all the current relevant work.
+**AI contribution:** Read the status and result sections of the project's specifications and results documents, and added a "Where the project stands" section to the README: six summary findings, seven tables of studies with their headline results and links, and a table mapping the later commands to their studies. The existing baseline, PACE, text-only RL and Scaffolding Minds instructions were left unchanged. Every number was taken from the linked documents, and the links and anchors were checked.
+**Contribution type:** generation, editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| ----- | ------ | --------------------- | ------------------ |
+| 1 | User; user message | Asked whether the merge had overwritten the README | Confirmed it was unchanged and out of date |
+| 2 | User; user message | Asked for the README to be updated with all current relevant work | New status section added to the README |
+| 3 | User; user message | Asked whether the README states that the model is not using the latents, with evidence from the V* and other perception experiments | It did not; added a section on whether the answer uses the latents, scoped to what the runs show (not on real images; read but adding no accuracy on FrozenLake) |
+
+### Files
+
+| Path | Action | Contribution |
+| ---- | ------ | ------------ |
+| README.md | modified | Added the project status section with results tables, links and a command table |
+
+### Folders created
+
+- None
