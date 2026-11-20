@@ -2946,3 +2946,41 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-19 — Remove built-but-unused code (E2R, latent distillation's fixed weight)
+
+**Agent/tool:** Claude Code, Claude Opus 5.5
+**User request:** Compare the branch with main and list unused code to clean up; then remove E2R (item 1), latent distillation's fixed-weight path (item 3) and the E2R spec text (item 4). Removing the global + patch latents (item 2) was ruled out because it is already on the remote.
+**AI contribution:** Removed E2R's arm, rows, no-detour set check, readings, config, CLI choice, sbatch lines, no-detour set generator and tests. The no-detour failure-signature helpers and their analysis script were kept, since that analysis ran. Removed latent distillation's calibration and fixed weight; D now requires its per-step gradient ratio, and the comparison still reads the recorded runs (re-run: same primary result). Replaced the E2R design in the round-2 spec with a note, keeping its no-detour loss analysis, and removed E2R's glossary entry. Fixed a variable-name collision the cleanup introduced in `run_train`, caught by the tests.
+**Contribution type:** editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Check main against the branch; propose cleanup of unused code such as E2R, without cleaning yet | Proposal of four items |
+| 2 | User message | Do items 1, 3 and 4; never item 2 (already on the remote) | Items 1, 3 and 4 done |
+| 3 | User message | Asked what `docs/experiments/latent-learnability-offline/` is | Explained; options given |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/expert_round2.py | modified | E2R removed; signature helpers kept |
+| src/spara/fresh_maps.py | modified | No-detour set generator removed |
+| src/spara/cli.py | modified | `e2r` arm choice removed |
+| src/spara/latent_distillation.py | modified | Calibration and fixed weight removed; `latent_record` for recorded runs |
+| configs/expert_round2_rebalanced.json | deleted | E2R settings |
+| configs/latent_distillation.json | modified | `calibration_rows` removed |
+| scripts/pace/expert_round2.sbatch | modified | Restored to main's version |
+| scripts/analyze_nodetour_failures.py | modified | Docstring no longer points at E2R |
+| tests/test_expert_round2.py | modified | Main's version plus the signature test |
+| tests/test_fresh_maps.py | modified | Restored to main's version |
+| tests/test_latent_distillation.py | modified | Calibration test removed; ratio checks |
+| docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | E2R design replaced by a note; no-detour analysis kept |
+| docs/LATENT_DISTILLATION_SPEC.md | modified | Note on the removed calibration |
+| GLOSSARY.md | modified | E2R entry removed |
+
+### Folders created
+
+- None

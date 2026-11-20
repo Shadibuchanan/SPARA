@@ -5,11 +5,11 @@ import pytest
 import torch
 
 from spara import detour_scaling, expert_iteration, expert_round2, training
-from spara.expert_round2 import (away_moves, balanced, batching_check, bootstrap_difference, check_nodetour, compare,
-                                 compare_rebalanced, latent_states, letters, masked, outcome, phases,
-                                 probe_predictions, probe_score, require_round1_checkpoint, run_arm, run_search,
-                                 signatures, training_rows, wall_bumps)
-from spara.fresh_maps import answer_text, draw_detour_layouts, is_detour, is_direct, label_route
+from spara.expert_round2 import (away_moves, balanced, batching_check, bootstrap_difference, compare, latent_states,
+                                 letters, masked, outcome, phases, probe_predictions, probe_score,
+                                 require_round1_checkpoint, run_arm, run_search, signatures, training_rows,
+                                 wall_bumps)
+from spara.fresh_maps import answer_text, draw_detour_layouts, label_route
 from spara.runtime import read_config
 from test_detour_scaling import Evaluator, SavingProcessor
 from test_expert_iteration import tiny
@@ -30,17 +30,11 @@ def labelled(desc, i):
             "image_input": f"img/level_{len(desc)}/{i}.png"}  # IDs repeat across levels, as in the data
 
 
-REBALANCED = SETTINGS | {"extra_new": 3, "extra_old": 3, "extra_nodetour": 6, "nodetour_split": "fresh/n",
-                         "other_fresh": SETTINGS["other_fresh"] + ["fresh/n"]}
-
-
 @pytest.fixture
 def data(monkeypatch):
     small, _ = draw_detour_layouts(10, random.Random(0), set(), [4], [1])
     large, _ = draw_detour_layouts(8, random.Random(1), set(), [5, 6], [1, 1])
-    direct, _ = draw_detour_layouts(4, random.Random(2), set(), [3, 4], [1, 1], keep=is_direct)
-    sets = {"fresh/n": [labelled(d, i) for i, d in enumerate(direct)],
-            "fresh/h": [labelled(d, i) for i, d in enumerate(small[:2])],
+    sets = {"fresh/h": [labelled(d, i) for i, d in enumerate(small[:2])],
             "fresh/p": [labelled(d, i) for i, d in enumerate(small[2:6])],
             "fresh/probe": [labelled(small[6], 0)],
             "fresh/h78": [labelled(d, i) for i, d in enumerate(large[:4])],
@@ -120,35 +114,6 @@ def test_training_rows_draw_from_both_rounds(data, tmp_path):
     write_jsonl(search / "frontier.jsonl", route_rows(data["fresh/p"], {0}))
     with pytest.raises(ValueError, match="already solved"):
         training_rows("unused", SETTINGS, round1, search)
-
-
-def test_rebalanced_rows_add_direct_maps_and_record_the_mix(data, tmp_path):
-    round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
-    search = tmp_path / "search"
-    search.mkdir()
-    write_jsonl(search / "routes.jsonl", route_rows(data["fresh/p78"], {1, 3}))
-    write_jsonl(search / "frontier.jsonl", [])
-    rows, counts = training_rows("unused", REBALANCED, round1, search)
-    assert len(rows) == counts["rows"] == 2 + 3 + 3 + 6
-    assert [split for split, _ in rows[-6:]] == ["fresh/n"] * 6
-    assert [r["map_id"] for _, r in rows[-6:]] == [0, 1, 2, 3, 0, 1]  # in turn, in set order
-    assert all(is_direct(r["map_desc"]) for _, r in rows[-6:])
-    detours = sum(is_detour(r["map_desc"]) for _, r in rows)
-    assert counts == {"new_maps": 2, "old_maps": 2, "frontier_maps": 0, "rows": 14, "released": 2,
-                           "extra_new": 3, "extra_old": 3, "nodetour": 6, "nodetour_maps": 4, "detour_rows": detours}
-    # Round 2's own settings record no composition, as before.
-    assert "nodetour" not in training_rows("unused", SETTINGS, round1, search)[1]
-
-
-def test_nodetour_check_rejects_detours_shared_layouts_and_bad_labels(data):
-    assert check_nodetour(Evaluator(), "unused", REBALANCED)["valid"]
-    original = list(data["fresh/n"])
-    data["fresh/n"][0] = data["fresh/h"][0]  # a detour map, also shared with a held-out set
-    failed = check_nodetour(Evaluator(), "unused", REBALANCED)
-    assert not failed["valid"] and failed["direct"] == 3 and failed["shared_layouts"]["fresh/h"] == 1
-    data["fresh/n"][:] = original
-    data["fresh/n"][1] = data["fresh/n"][1] | {"text_output": "\\boxed{UP}"}
-    assert check_nodetour(Evaluator(), "unused", REBALANCED)["labels_accepted"] == [3, 4]
 
 
 def test_away_moves_and_signatures():
@@ -278,9 +243,8 @@ def test_run_search_stops_when_e_does_not_reproduce_round_1(data, tiny_model, pr
     assert not (tmp_path / "run/routes.jsonl").exists()
 
 
-@pytest.mark.parametrize("arm", ["e2", "eb2", "e2r"])
+@pytest.mark.parametrize("arm", ["e2", "eb2"])
 def test_run_arm_trains_two_phases_and_evaluates(arm, data, tiny_model, prompts, tmp_path, monkeypatch):
-    settings = REBALANCED if arm == "e2r" else SETTINGS
     round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
     search = tmp_path / "search"
     search.mkdir()
@@ -300,15 +264,10 @@ def test_run_arm_trains_two_phases_and_evaluates(arm, data, tiny_model, prompts,
         benchmarks.append(manifest["arm"])
     monkeypatch.setattr(expert_round2, "run_benchmark", benchmark)
     config = read_config("configs/livr.json") | {"gradient_checkpointing": False}
-    wrong = SETTINGS if arm == "e2r" else REBALANCED
-    with pytest.raises(ValueError, match="rebalanced settings"):
-        run_arm(tiny(tiny_model), SavingProcessor(), Evaluator(), config, "unused", tmp_path / "wrong",
-                wrong, arm, round1, search, {})
     summary = run_arm(tiny(tiny_model), SavingProcessor(), Evaluator(), config, "unused", tmp_path / arm,
-                      settings, arm, round1, search, {})
+                      SETTINGS, arm, round1, search, {})
     first_stage = 1 if arm == "eb2" else 2
     assert stages == [("phase1", first_stage, False, 8), ("phase2", 2, True, 6)]
-    assert summary["checks"]["valid"] and ("nodetour" in summary["checks"]) == (arm == "e2r")
     assert not (tmp_path / arm / "phase1/final").exists() and (tmp_path / arm / "phase2/final").exists()
     steps = [json.loads(line) for line in (tmp_path / arm / "phase1/steps.jsonl").read_text().splitlines()]
     assert {s["stage"] for s in steps} == {first_stage} and len(steps) == 1
@@ -375,49 +334,6 @@ def test_compare_applies_the_fixed_rules(data, tmp_path, monkeypatch):
     (search / "summary.json").write_text(json.dumps({"checks": {"valid": False}, "seconds": 3.0,
                                                      "frontier": {}, "pool": {}}))
     assert compare("unused", search, arms, livr, e, SETTINGS)["primary"]["reading"].startswith("withheld")
-
-
-def test_compare_rebalanced_applies_the_fixed_rules(data, tmp_path, monkeypatch):
-    monkeypatch.setattr(expert_round2, "ALPHA", 1.01)  # two benchmark maps cannot reach 0.05: direction only
-    search = tmp_path / "search"
-    search.mkdir()
-    (search / "summary.json").write_text(json.dumps({"checks": {"valid": True}}))
-    good = label_route(data["test"][0]["map_desc"])  # test row 0 needs no detour; row 1 does
-
-    def bench(run, answers):
-        (run / "evaluation").mkdir()
-        write_jsonl(run / "evaluation/responses.jsonl",
-                    [{"row_index": i, "success": a == label_route(data["test"][i]["map_desc"]),
-                      "extracted_answer": a} for i, a in enumerate(answers)])
-    write_run(tmp_path / "e2", data, [1, 0, 0, 0], [0, 0, 0, 0])
-    bench(tmp_path / "e2", ["RR", label_route(data["test"][1]["map_desc"])])
-    write_run(tmp_path / "e2r", data, [1, 1, 0, 0], [1, 0, 0, 0])
-    bench(tmp_path / "e2r", [good, "UU"])
-    composition = {"released": 2, "extra_new": 3, "extra_old": 3, "nodetour": 6, "rows": 14, "detour_rows": 5}
-    summary = json.loads((tmp_path / "e2r/summary.json").read_text()) | {"counts": composition}
-    (tmp_path / "e2r/summary.json").write_text(json.dumps(summary))
-    livr = write_jsonl(tmp_path / "livr.jsonl", [{"row_index": i, "success": True,
-                                                  "extracted_answer": label_route(r["map_desc"])}
-                                                 for i, r in enumerate(data["test"])])
-    run = lambda: compare_rebalanced("unused", search, tmp_path / "e2", tmp_path / "e2r", livr, REBALANCED)
-    result = run()
-    assert result["validity"]["valid"] and result["guard"]["kept"]
-    assert result["primary"]["maps"] == 1 and result["primary"]["only_first"] == 1
-    assert result["primary"]["reading"].startswith("the mix caused the no-detour losses")
-    marks = result["descriptive"]["signatures_no_detour"]
-    assert marks["e2"]["short_or_past"] == 1 and marks["e2r"]["solved"] == 1
-    assert all(result["descriptive"]["signatures_agree"].values())
-    assert result["secondary"]["benchmark_vs_livr"]["e2r"]["detour"]["only_second"] == 1
-    assert result["descriptive"]["held_out_success"] == {"e2": 1, "e2r": 2}
-
-    # The guard: E2R loses larger maps.
-    write_jsonl(tmp_path / "e2r/greedy.jsonl", [r | {"success": False} if r["population"] == "heldout78" else r
-                                                for r in detour_scaling.jsonl(tmp_path / "e2r/greedy.jsonl")])
-    lost = run()
-    assert not lost["guard"]["kept"] and lost["primary"]["reading"].startswith("the mix trades")
-    # A composition that differs from the settings withholds the readings.
-    (tmp_path / "e2r/summary.json").write_text(json.dumps(summary | {"counts": composition | {"nodetour": 5}}))
-    assert run()["primary"]["reading"].startswith("withheld")
 
 
 def test_run_search_falls_back_to_round_1_reads(data, tiny_model, prompts, tmp_path, monkeypatch):

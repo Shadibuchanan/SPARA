@@ -1,10 +1,10 @@
-"""No-detour failure signatures on the reference benchmark: the table in the E2R amendment
-of docs/EXPERT_ITERATION_ROUND2_SPEC.md. CPU only; it replays each run's recorded answers
+"""No-detour failure signatures on the reference benchmark (first written for E2R, an
+expert-iteration arm that was built but never run). CPU only; it replays each run's recorded answers
 under the reference rules and checks that the replay reproduces the recorded successes.
 
     PYTHONPATH=src python scripts/analyze_nodetour_failures.py --data-root data/vsp
     PYTHONPATH=src python scripts/analyze_nodetour_failures.py --data-root data/vsp \
-        --run "E2R=/path/to/e2r-run" --output nodetour.json
+        --run "NAME=/path/to/run" --output nodetour.json
 
 A run is an outcomes JSONL with row_index, success and extracted_answer, or a run directory
 holding evaluation/responses.jsonl or benchmark-outcomes.jsonl.

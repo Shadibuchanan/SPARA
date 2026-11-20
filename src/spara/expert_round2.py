@@ -7,10 +7,10 @@ weights on 7 x 7 and 8 x 8 detour maps, with and without LIVR's bottleneck in tr
   the policy over round 1's unsolved pool maps (the frontier) and the new pool.
 - `livr_greedy`: L's greedy answers on the new held-out maps (same job, after E).
 - `run_arm`: E2 or EB2. Two training phases on the same shuffled rows; EB2 trains its
-  first phase under the Stage 1 mask. Then the same evaluation as E's. E2R (the spec's
-  2026-11-17 amendment) is E2 with a rebalanced mix: fewer found detour rows and new
-  no-detour maps.
-- `compare` (CPU): the readings fixed in the specification; `compare_rebalanced`, E2R's.
+  first phase under the Stage 1 mask. Then the same evaluation as E's.
+- `compare` (CPU): the readings fixed in the specification.
+- `signatures` and `benchmark_outcomes`: no-detour failure signatures on the benchmark
+  (scripts/analyze_nodetour_failures.py).
 """
 import contextlib
 import json
@@ -23,10 +23,10 @@ from pathlib import Path
 import torch
 
 from .benchmark import run_benchmark
-from .data import layout_key, records
+from .data import records
 from .detour_scaling import ALPHA, check_sets, greedy_eval, jsonl, paired
 from .expert_iteration import SAMPLE, BatchedLivr, batched_decide, searched, summarise
-from .fresh_maps import find, is_detour, is_direct, shortest_path
+from .fresh_maps import find, is_detour, shortest_path
 from .jepa import decide
 from .latent_battery import MODES, latent_positions
 from .route_search import FrozenLakeEnvironment
@@ -34,8 +34,7 @@ from .runtime import json_write, seed_all
 from .serialization import encode, latent_kwargs
 from .training import amp, to_device, train_stage
 
-ARMS = {"e2": 2, "eb2": MODES["bottleneck"], "e2r": 2}  # the stage each arm's first phase trains in
-REBALANCED = ("e2r",)  # arms that need the rebalanced settings (`extra_nodetour`)
+ARMS = {"e2": 2, "eb2": MODES["bottleneck"]}  # the stage each arm's first phase trains in
 ROUND1 = ("heldout", "test_detour")  # round 1's held-out populations
 MOVES = {"U": (-1, 0), "D": (1, 0), "L": (0, -1), "R": (0, 1)}
 ALPHAS = (1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0)  # ridge strengths, as scripts/analyze_latent_battery.py
@@ -311,29 +310,10 @@ def found(pool, route):
     return row | {"text_output": route["answer"]}
 
 
-def check_nodetour(evaluator, data_root, settings):
-    """E2R's validity check 2: every map of the no-detour set is solvable and needs no detour,
-    every label passes the reference evaluator, and the set shares no layout with the released
-    splits or any other fresh set."""
-    split = settings["nodetour_split"]
-    rows = records(data_root, split)
-    mine = {layout_key(r) for r in rows}
-    others = dict.fromkeys(s for s in ["train", "test", settings["pool_split"], settings["heldout_split"],
-                                       settings["round1_pool_split"], settings["round1_heldout_split"],
-                                       *settings["other_fresh"]] if s != split)
-    shared = {s: len(mine & {layout_key(r) for r in records(data_root, s)}) for s in others}
-    direct = sum(is_direct(r["map_desc"]) for r in rows)
-    accepted = sum(bool(evaluator.score(r, r["text_output"])["success"]) for r in rows)
-    return {"split": split, "maps": len(rows), "distinct": len(mine), "direct": direct,
-            "labels_accepted": [accepted, len(rows)], "shared_layouts": shared,
-            "valid": bool(rows) and direct == accepted == len(mine) == len(rows) and not any(shared.values())}
-
-
 def training_rows(data_root, settings, round1_routes, search_run):
     """The released training maps; `extra_new` examples drawn in turn from the solved new pool
     maps; and `extra_old` from every solved round 1 pool map (round 1's routes and the
-    frontier maps E's search solved), each in pool order. With `extra_nodetour` (E2R), that
-    many rows drawn in turn from the no-detour set, in set order."""
+    frontier maps E's search solved), each in pool order."""
     new = [r for r in jsonl(Path(search_run) / "routes.jsonl") if r["solved"]]
     if len(new) < settings["variety_floor"]:
         raise ValueError(f"The search solved {len(new)} new maps, below the variety floor of "
@@ -347,18 +327,9 @@ def training_rows(data_root, settings, round1_routes, search_run):
     old_rows = [found(old_pool, (old | frontier)[i]) for i in sorted(old | frontier)]
     extra = ([(settings["pool_split"], new_rows[i % len(new_rows)]) for i in range(settings["extra_new"])]
              + [(settings["round1_pool_split"], old_rows[i % len(old_rows)]) for i in range(settings["extra_old"])])
-    released = [("train", row) for row in records(data_root, "train")]
-    direct = []
-    if settings.get("extra_nodetour"):
-        pool = records(data_root, settings["nodetour_split"])
-        direct = [(settings["nodetour_split"], pool[i % len(pool)]) for i in range(settings["extra_nodetour"])]
-    data = released + extra + direct
-    counts = {"new_maps": len(new_rows), "old_maps": len(old_rows), "frontier_maps": len(frontier), "rows": len(data)}
-    if direct:  # E2R records its composition (validity check 3)
-        counts |= {"released": len(released), "extra_new": settings["extra_new"], "extra_old": settings["extra_old"],
-                   "nodetour": len(direct), "nodetour_maps": len({layout_key(r) for _, r in direct}),
-                   "detour_rows": sum(is_detour(r["map_desc"]) for _, r in data)}
-    return data, counts
+    data = [("train", row) for row in records(data_root, "train")] + extra
+    return data, {"new_maps": len(new_rows), "old_maps": len(old_rows), "frontier_maps": len(frontier),
+                  "rows": len(data)}
 
 
 def phases(data, settings, accumulation):
@@ -382,18 +353,10 @@ def run_arm(model, processor, evaluator, config, data_root, output, settings, ar
             run_manifest):
     if arm not in ARMS:
         raise ValueError(f"arm must be one of {sorted(ARMS)}")
-    if (arm in REBALANCED) != bool(settings.get("extra_nodetour")):
-        raise ValueError("E2R needs the rebalanced settings (extra_nodetour); E2 and EB2 need round 2's own")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     began = time.time()
     checks = check_sets(evaluator, data_root, settings)
-    if arm in REBALANCED:
-        nodetour = check_nodetour(evaluator, data_root, settings)
-        checks = checks | {"nodetour": nodetour, "valid": checks["valid"] and nodetour["valid"]}
-        if not nodetour["valid"]:  # before any GPU time is spent on training
-            json_write(output / "summary.json", {"arm": arm, "checks": checks})
-            raise ValueError("The no-detour set failed its validity check; see summary.json")
     data, counts = training_rows(data_root, settings, round1_routes, search_run)
     one, two = phases(data, settings, config["gradient_accumulation"])
     json_write(output / "manifest.json", run_manifest | {"arm": arm, "settings": settings, "checks": checks,
@@ -655,7 +618,7 @@ def compare(data_root, search_run, arms, livr_outcomes, e_outcomes, settings):
         "seconds_in_jobs": {"search": search["seconds"], **{n: s["seconds"] for n, s in summaries.items()}}}
 
 
-# E2R readings (the 2026-11-17 amendment) -----------------------------------------------------
+# No-detour failure signatures (scripts/analyze_nodetour_failures.py) ------------------------
 
 def letters(answer):
     """The reference parser's view of an answer: every U, D, R or L character."""
@@ -699,85 +662,3 @@ def benchmark_outcomes(path):
         responses = path / "evaluation/responses.jsonl"
         path = responses if responses.exists() else path / "benchmark-outcomes.jsonl"
     return {r["row_index"]: (bool(r["success"]), letters(r.get("extracted_answer"))) for r in jsonl(path)}
-
-
-def rebalanced_reading(primary, kept, valid):
-    if not valid:
-        return "withheld: the measurement failed a validity check"
-    if primary["p"] < ALPHA and primary["only_first"] < primary["only_second"]:
-        return "rebalancing adds harm: unexpected; look at the training losses and the signatures first"
-    reduces = primary["p"] < ALPHA and primary["only_first"] > primary["only_second"]
-    return {(True, True): "the mix caused the no-detour losses; rebalancing removes them and keeps the larger-map gains",
-            (True, False): "the mix trades no-detour accuracy for detour skill; report the trade-off",
-            (False, True): "no detectable recovery; the signatures show whether the failures changed kind",
-            (False, False): "fewer detour rows cost the larger maps without helping no-detour maps: "
-                            "the mix is not the cause"}[reduces, kept]
-
-
-def compare_rebalanced(data_root, search_run, e2_run, e2r_run, livr_outcomes, settings):
-    """E2R's readings. `search_run`: round 2's search job; `e2_run`, `e2r_run`: the arms' run
-    directories; `livr_outcomes`: the LIVR rerun's per-map benchmark outcomes."""
-    runs = {"e2": Path(e2_run), "e2r": Path(e2r_run)}
-    summaries = {name: json.loads((run / "summary.json").read_text()) for name, run in runs.items()}
-    search = json.loads((Path(search_run) / "summary.json").read_text())
-    counts, released = summaries["e2r"]["counts"], len(records(data_root, "train"))
-    expected = {"released": released, "extra_new": settings["extra_new"], "extra_old": settings["extra_old"],
-                "nodetour": settings["extra_nodetour"],
-                "rows": released + settings["extra_new"] + settings["extra_old"] + settings["extra_nodetour"]}
-    composition = {key: [counts.get(key), value] for key, value in expected.items()}
-    valid = (search["checks"]["valid"] and summaries["e2"]["checks"]["valid"] and summaries["e2r"]["checks"]["valid"]
-             and all(a == b for a, b in composition.values()))
-
-    greedy_rows = {name: {(r["population"], r["row_index"]): r for r in jsonl(run / "greedy.jsonl")}
-                   for name, run in runs.items()}
-    keys = sorted(greedy_rows["e2"])
-    if sorted(greedy_rows["e2r"]) != keys:
-        raise ValueError("The arms evaluated different maps")
-    greedy = {name: {k: bool(rows[k]["success"]) for k in keys} for name, rows in greedy_rows.items()}
-    held = [k for k in keys if k[0] == "heldout78"]
-    old = [k for k in keys if k[0] in ROUND1]
-
-    bench = {name: benchmark_outcomes(run) for name, run in runs.items()} | {"livr": benchmark_outcomes(livr_outcomes)}
-    rows = sorted(bench["livr"])
-    if any(sorted(b) != rows for b in bench.values()):
-        raise ValueError("The benchmark runs scored different maps")
-    test = records(data_root, "test")
-    detour = [i for i in rows if is_detour(test[i]["map_desc"])]
-    direct = [i for i in rows if i not in set(detour)]
-    success = {name: {i: s for i, (s, _) in b.items()} for name, b in bench.items()}
-
-    primary = paired(success["e2r"], success["e2"], direct)
-    guard = paired(greedy["e2r"], greedy["e2"], held)
-    kept = not (guard["p"] < ALPHA and guard["only_second"] > guard["only_first"])
-    descs = {i: test[i]["map_desc"] for i in direct}
-    marks = {name: signatures(descs, {i: b[i][1] for i in direct}) for name, b in bench.items()}
-    tables = {split: records(data_root, split) for split in {greedy_rows["e2"][k]["split"] for k in held}}
-    held_desc = {k: tables[greedy_rows["e2"][k]["split"]][k[1]]["map_desc"] for k in held}
-
-    def against_livr(name):
-        return {"all": paired(success[name], success["livr"], rows),
-                "detour": paired(success[name], success["livr"], detour),
-                "no_detour": paired(success[name], success["livr"], direct)}
-
-    masked_runs = {name: [bool(r["success"]) for r in jsonl(run / "masked.jsonl")] for name, run in runs.items()}
-    return {
-        "validity": {"search": search["checks"]["valid"],
-                     "set_checks": {name: s["checks"]["valid"] for name, s in summaries.items()},
-                     "nodetour_set": summaries["e2r"]["checks"].get("nodetour"),
-                     "composition": composition, "valid": valid},
-        "primary": primary | {"maps_kind": "benchmark no-detour maps, one sampled answer each",
-                              "reading": rebalanced_reading(primary, kept, valid)},
-        "guard": guard | {"kept": kept},
-        "secondary": {"benchmark_vs_livr": {"e2r": against_livr("e2r"), "e2": against_livr("e2")},
-                      "round1_heldout": paired(greedy["e2r"], greedy["e2"], old)},
-        "descriptive": {
-            "signatures_no_detour": marks,
-            # The replayed routes must reproduce each run's recorded successes.
-            "signatures_agree": {name: marks[name]["solved"] == sum(success[name][i] for i in direct) for name in bench},
-            "held_out_success": {name: sum(greedy[name][k] for k in held) for name in runs},
-            "failures_heldout78": {name: dict(Counter(outcome(held_desc[k], greedy_rows[name][k]["route"])
-                                                      for k in held)) for name in runs},
-            "masked": {name: [sum(m), len(m)] for name, m in masked_runs.items()},
-            "detour_share": {"e2r": counts.get("detour_rows"), "rows": counts.get("rows")},
-            "training": {name: s["training"] for name, s in summaries.items()}},
-        "seconds_in_jobs": {name: s.get("seconds") for name, s in summaries.items()}}

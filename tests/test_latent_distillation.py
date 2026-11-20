@@ -1,5 +1,4 @@
 """CPU tests of latent distillation (docs/LATENT_DISTILLATION_SPEC.md) on a tiny model."""
-import copy
 import json
 import random
 
@@ -81,7 +80,6 @@ def world(monkeypatch, tmp_path):
                  "extra_examples": 12, "seen_maps": 2}
     settings["noise"] = {"layer": LAYER, "family": "pca", "sha256": tensor_digest(family)}
     settings["search"] |= {"draws": [8, 4, 4], "smoke_draws": [4, 0, 4], "batch": 4}
-    settings["latent"]["calibration_rows"] = 2
     return settings, tmp_path / "bases.pt", family, sets
 
 
@@ -118,7 +116,7 @@ def test_latent_loss_is_zero_at_the_target_matches_the_formula_and_skips_other_r
     delta = 2.0 * torch.einsum("sdk,sk,sk->sd", family["directions"], family["weights"], torch.randn(4, 3))
     targets = {row["map_id"]: {"z": z, "delta": delta, "row_index": 0}}
     data = [("train", sets["train"][0]), ("fresh/pool", row), ("fresh/pool", sets["fresh/pool"][1])]
-    objective = ld.LatentTarget(data, "fresh/pool", targets, family, LAYER, model.config.livr_latent_ids)
+    objective = ld.LatentTarget(data, "fresh/pool", targets, family, LAYER, model.config.livr_latent_ids, 0.5)
     batch = encoded(row)
     positions = latent_queries(batch["input_ids"], model.config.livr_latent_ids)[0].nonzero().squeeze(-1)
     states = [torch.randn(1, batch["input_ids"].shape[1], 32) for _ in range(4)]
@@ -140,31 +138,6 @@ def test_latent_loss_is_zero_at_the_target_matches_the_formula_and_skips_other_r
         loss, metrics = objective.loss(states, index, encoded(data[index][1]))
         assert float(loss) == 0 and metrics == {"latent_loss": None, "push_fraction": None}
     assert objective.prepare(None, None) == {"rows_with_target": 1, "rows": 3}
-
-
-def test_calibration_sets_the_weight_from_the_two_gradient_norms(world):
-    settings, _, family, sets = world
-    model = tiny()
-    rows = [("fresh/pool", sets["fresh/pool"][i]) for i in (0, 1)]
-    targets = {r["map_id"]: {"z": torch.randn(4, 32), "delta": torch.randn(4, 32), "row_index": i}
-               for i, (_, r) in enumerate(rows)}
-    objective = ld.LatentTarget(rows, "fresh/pool", targets, family, LAYER, model.config.livr_latent_ids)
-    before = copy.deepcopy(model.state_dict())
-    result = ld.calibrate(model, Processor(), "unused", rows, objective, config(), 0.5)
-    assert all(torch.equal(before[k], v) for k, v in model.state_dict().items())
-    assert all(p.grad is None for p in model.parameters())
-    norms = []
-    for term in ("route", "latent"):
-        model.zero_grad()
-        for split, row in rows:
-            batch = encoded(row)
-            out = model(**batch, use_cache=False, output_hidden_states=True)
-            value = out.loss if term == "route" else objective.row_loss(out.hidden_states, split, row, batch)[0]
-            (value / 2).backward()
-        norms.append(torch.sqrt(sum(p.grad.square().sum() for p in model.parameters() if p.grad is not None)))
-    assert abs(result["route_grad_norm"] - float(norms[0])) < 1e-4 * float(norms[0])
-    assert abs(result["latent_grad_norm"] - float(norms[1])) < 1e-4 * float(norms[1])
-    assert abs(result["weight"] - 0.5 * float(norms[0] / norms[1])) < 1e-3 * result["weight"]
 
 
 def test_train_stage_with_the_offloaded_optimizer_matches_the_regular_one(world, tmp_path):
@@ -222,8 +195,10 @@ def test_both_arms_train_on_the_same_rows_and_compare_reads_them(world, tmp_path
     summaries = {n: json.loads((p / "summary.json").read_text()) for n, p in runs.items()}
     assert len({s["rows_sha256"] for s in summaries.values()}) == 1
     assert all(s["training"]["optimizer_steps"] == s["expected_steps"] == 2 for s in summaries.values())  # 4 + 12 rows
-    assert summaries["D42"]["calibration"]["weight"] > 0 and summaries["S42"]["calibration"] is None
-    reference = summaries["D42"]["calibration"]["training_reference"]
+    assert summaries["D42"]["latent"]["gradient_ratio"] == 0.5 and summaries["S42"]["latent"] is None
+    steps = [json.loads(l) for l in (runs["D42"] / "stage2/steps.jsonl").read_text().splitlines()]
+    assert any(s["aux_scale"] for s in steps)  # the per-step ratio was applied
+    reference = summaries["D42"]["latent"]["training_reference"]
     assert reference["maps"] == summaries["D42"]["target_fit"]["before"]["pushed"]["maps"]  # pushed maps only
     assert reference["mean_mismatch_over_push_norm"] < 1e-3
     steps = [json.loads(l) for l in (runs["D42"] / "stage2/steps.jsonl").read_text().splitlines()]
@@ -288,7 +263,7 @@ def test_normalised_step_sets_the_latent_gradient_to_the_ratio_of_the_route_grad
     targets = {pool[0]["map_id"]: {"z": torch.randn(4, 32), "delta": torch.randn(4, 32), "row_index": 0}}
     data = [("train", sets["train"][0]), ("fresh/pool", pool[0]), ("fresh/pool", pool[1])]
     model = tiny()
-    objective = ld.LatentTarget(data, "fresh/pool", targets, family, LAYER, model.config.livr_latent_ids)
+    objective = ld.LatentTarget(data, "fresh/pool", targets, family, LAYER, model.config.livr_latent_ids, 0.5)
     trainable = [p for p in model.parameters() if p.requires_grad]
     extra = {k: [] for k in objective.metric_keys}
 

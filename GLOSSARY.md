@@ -89,12 +89,6 @@ method; the benchmark never uses it.
 Training a policy on the successful answers its own guided search found, then
 searching again with the updated policy.
 
-**E2R**:
-Expert iteration's round 2 arm E2 with a rebalanced training mix: half the found
-detour rows, plus 1,000 new no-detour maps, for a detour share of 37% instead of 70%.
-It tests whether the mix caused E2's losses on no-detour benchmark maps. See
-docs/EXPERT_ITERATION_ROUND2_SPEC.md, amendment of 2026-11-17.
-
 **Latent distillation**:
 Searching LIVR's latent states per map (random pushes at one layer, kept when the
 verifier accepts the answer), then fine-tuning the model on the found routes while

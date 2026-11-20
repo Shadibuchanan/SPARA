@@ -331,6 +331,7 @@ One λ fixed at the start cannot hold the ratio it was meant to hold.
 - This is what the fixed λ was meant to do, and it holds at every step (`training.normalised_step`;
   unit test against a direct computation).
 - Logged per step: the route and latent gradient norms and the scale applied.
-- λ is still calibrated and recorded, but not used.
+- λ is still calibrated and recorded, but not used. (After the runs, on 2026-11-19, the
+  calibration and the fixed-λ path were removed from the code; D's runs record their λ.)
 - Cost: a second forward and backward pass on the pushed rows (about 45% of rows).
 - The readings, rows, S and the evaluation are unchanged.

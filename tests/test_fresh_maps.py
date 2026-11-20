@@ -124,28 +124,6 @@ def test_detour_sets_are_labelled_detour_maps_drawn_by_weight(tmp_path, fake_rel
     assert not {layout_key(r) for r in rows} & {layout_key(r) for r in records(tmp_path, "fresh/e")}
 
 
-def test_nodetour_sets_are_labelled_direct_maps(tmp_path, fake_release):
-    from mathruler.grader import extract_boxed_content
-    from spara.fresh_maps import is_detour, is_direct, label_route
-    from spara.planning_probe import walk
-    fresh_maps.generate(tmp_path, "d", [3, 4], None, seed=3, detour_count=10)
-    manifest = fresh_maps.generate(tmp_path, "n", [3, 4, 5, 6, 7, 8], None, seed=6, exclude_sets=["d"],
-                                   nodetour_count=60, weights=[1] * 6)
-    rows = records(tmp_path, "fresh/n")
-    assert manifest["count"] == len(rows) == 60 and manifest["nodetour_count"] == 60 and "detour_count" not in manifest
-    assert all(is_direct(r["map_desc"]) and not is_detour(r["map_desc"]) for r in rows)
-    assert {len(r["map_desc"]) for r in rows} == {3, 4, 5, 6, 7, 8}
-    for r in rows:
-        (sr, sc), (gr, gc) = fresh_maps.find(r["map_desc"], 1), fresh_maps.find(r["map_desc"], 2)
-        route = "".join(ch for ch in extract_boxed_content(r["text_output"]) if ch in "UDLR")
-        assert walk(r["map_desc"], route)[1] == "goal" and route == label_route(r["map_desc"])
-        assert len(route) == abs(sr - gr) + abs(sc - gc)  # every move heads toward the goal
-    assert not {layout_key(r) for r in rows} & {layout_key(r) for r in records(tmp_path, "fresh/d")}
-    assert not is_direct([[1, -1], [-1, 2]]) and not is_direct([[2, -1, 1], [0, 0, 0]])
-    with pytest.raises(ValueError, match="not both"):
-        fresh_maps.generate(tmp_path, "x", [3], None, seed=1, detour_count=2, nodetour_count=2)
-
-
 def test_labels_break_ties_up_left_right_down():
     from spara.fresh_maps import answer_text, label_route
     open_map = [[1, 0, 0], [0, 0, 0], [0, 0, 2]]

@@ -6,9 +6,7 @@
 #   SPARA_STAGE=search: E's evaluation on the new sets, then E's search of round 1's unsolved
 #     pool maps and the new pool; then L's greedy answers. Needs SPARA_LIVR_CHECKPOINT.
 #   SPARA_STAGE=train: SPARA_ARM=e2 or eb2, from E, on the search's routes; SPARA_SEARCH_RUN
-#     is the search job's output directory. SPARA_ARM=e2r with
-#     SPARA_SETTINGS=configs/expert_round2_rebalanced.json runs the rebalanced arm (needs the
-#     fresh/nodetour-pool set; the spec's 2026-11-17 amendment).
+#     is the search job's output directory.
 #   SPARA_BATCH and SPARA_READ_PRECISION (bf16 or tf32) override the search's policy reads;
 #     SPARA_BATCH=1 SPARA_READ_PRECISION=bf16 gives round 1's reads.
 # Submit only within the agreed GPU budget; this script does not submit itself.
@@ -51,14 +49,9 @@ case "$STAGE" in
         --data-root "$DATA" --checkpoint "$E" --livr-checkpoint "$LIVR" --round1-routes "$ROUND1_ROUTES" \
         --round1-greedy "$ROUND1_GREEDY" ${BATCH[@]+"${BATCH[@]}"} --output "$ROOT/results/round2-search-$SLURM_JOB_ID"
     else
-      ARM="${SPARA_ARM:?set SPARA_ARM to e2, eb2 or e2r}"
+      ARM="${SPARA_ARM:?set SPARA_ARM to e2 or eb2}"
       SEARCH_RUN="${SPARA_SEARCH_RUN:?set SPARA_SEARCH_RUN to the output directory of the search job}"
       [ -f "$SEARCH_RUN/routes.jsonl" ] || { echo "Missing routes: $SEARCH_RUN/routes.jsonl" >&2; exit 1; }
-      if [ "$ARM" = e2r ]; then
-        [ -f "$DATA/fresh/nodetour-pool/maps.jsonl" ] || { echo "Missing fresh set: nodetour-pool" >&2; exit 1; }
-        [ "$SETTINGS" = configs/expert_round2_rebalanced.json ] \
-          || { echo "E2R needs SPARA_SETTINGS=configs/expert_round2_rebalanced.json" >&2; exit 1; }
-      fi
       "$PYTHON" -m spara.cli expert-round2 --stage train --arm "$ARM" --settings "$SETTINGS" \
         --config configs/livr.json --data-root "$DATA" --checkpoint "$E" --round1-routes "$ROUND1_ROUTES" \
         --search-run "$SEARCH_RUN" --output "$ROOT/results/round2-$ARM-$SLURM_JOB_ID"

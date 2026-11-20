@@ -82,9 +82,7 @@ def main():
             cmd.add_argument("--round1-routes", help="search, train: routes.jsonl of round 1's search")
             cmd.add_argument("--round1-greedy", help="search: greedy.jsonl of round 1's E (loading check)")
             cmd.add_argument("--livr-checkpoint", help="search: LIVR's final Stage 2 checkpoint, for L's answers")
-            cmd.add_argument("--arm", choices=["e2", "eb2", "e2r"],
-                             help="train: E2, EB2 under the bottleneck, or E2R with the rebalanced settings "
-                                  "(configs/expert_round2_rebalanced.json)")
+            cmd.add_argument("--arm", choices=["e2", "eb2"], help="train: E2, or EB2 under the bottleneck")
             cmd.add_argument("--search-run", help="train: the round 2 search job's output")
         if command == "perception-jepa":
             cmd.add_argument("--stage", choices=["gate", "train", "features"], required=True,

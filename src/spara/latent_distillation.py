@@ -7,8 +7,9 @@ with the verifier, keep the pushes that work, and train the model to produce tho
   Writes search.jsonl, targets.pt (LIVR's latent state z and the push delta per found map) and
   summary.json.
 - `run_train` (GPU): one arm and seed: expert iteration's rows from the found routes, stage-2
-  fine-tuning (CPU AdamW optionally), D's latent loss with its weight calibrated once, then greedy
-  answers on the held-out sets and the reference benchmark.
+  fine-tuning (CPU AdamW optionally), D's latent loss with its gradient set to a fixed share of
+  the route gradient every step, then greedy answers on the held-out sets and the reference
+  benchmark.
 - `compare` (CPU): the readings fixed in the specification.
 """
 import contextlib
@@ -200,19 +201,20 @@ class LatentTarget:
 
     released_only = False
     head = None
-    gradient_ratio = None  # set: train_stage rescales this term's gradient every step (amendment 3)
     loss_key = "latent_loss_all"
     metric_keys = ("latent_loss_all", "latent_loss", "push_fraction")
 
-    def __init__(self, data, pool_split, targets, family, layer, latent_ids, weight=0.0):
+    def __init__(self, data, pool_split, targets, family, layer, latent_ids, gradient_ratio):
         self.data, self.pool_split, self.targets, self.layer = data, pool_split, targets, layer
-        self.latent_ids, self.weight = latent_ids, weight
+        # train_stage rescales this term's gradient to `gradient_ratio` times the route gradient's
+        # norm every step (amendment 3).
+        self.latent_ids, self.gradient_ratio = latent_ids, gradient_ratio
         self.directions = family["directions"].float()  # (K, d, k), orthonormal per slot
         self.energy = family["weights"].double().square().sum(-1).float()  # (K,)
 
     @property
     def settings(self):
-        return {"layer": self.layer, "weight": self.weight, "targets": len(self.targets)}
+        return {"layer": self.layer, "gradient_ratio": self.gradient_ratio, "targets": len(self.targets)}
 
     def prepare(self, tokenizer, rows):
         return {"rows_with_target": sum(self.target_of(split, row) is not None for split, row in self.data),
@@ -291,32 +293,6 @@ def training_mode(model, config):
     model.config.use_cache = False
     if config["gradient_checkpointing"]:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-
-
-def calibrate(model, processor, data_root, rows, objective, config, ratio):
-    """lambda = ratio * ||grad CE|| / ||grad L_lat||, each the gradient of a training step (the mean
-    over `rows`, one backward per row as train_stage accumulates) before clipping, over the trainable
-    parameters. The model's weights do not change."""
-    training_mode(model, config)
-    trainable = [p for p in model.parameters() if p.requires_grad]
-    norms = {}
-    for term in ("route", "latent"):
-        model.zero_grad(set_to_none=True)
-        for split, row in rows:
-            batch = to_device(encode(processor, data_root, split, row), model.device)
-            with amp(model.device):
-                out = model(**batch, use_cache=False, output_hidden_states=True)
-                value = out.loss if term == "route" else objective.row_loss(out.hidden_states, split, row, batch)[0]
-            del out
-            (value / len(rows)).backward()
-        norms[term] = float(torch.linalg.vector_norm(
-            torch.stack([torch.linalg.vector_norm(p.grad.float()) for p in trainable if p.grad is not None])))
-    model.zero_grad(set_to_none=True)
-    weight = ratio * norms["route"] / norms["latent"]
-    if not torch.isfinite(torch.tensor(weight)) or weight <= 0:
-        raise FloatingPointError(f"Latent weight {weight} from gradient norms {norms}")
-    return {"route_grad_norm": norms["route"], "latent_grad_norm": norms["latent"], "ratio": ratio,
-            "weight": weight, "rows": [row.get("map_id") for _, row in rows]}
 
 
 @torch.no_grad()
@@ -422,19 +398,14 @@ def run_train(model, processor, evaluator, config, data_root, output, settings, 
     seed_all(seed)
     before = target_fit(model, processor, data_root, pool_split, pool, targets, family, noise["layer"])
     print(json.dumps({"target_fit_before": before}), flush=True)
-    objective, calibration = None, None
+    objective, latent = None, None
     if arm == "D":
         reference, mismatch = training_reference(model, processor, data_root, pool_split, pool, targets, routes,
                                                  noise["layer"], config)
-        print(json.dumps({"training_reference": mismatch}), flush=True)
-        objective = LatentTarget(data, pool_split, reference, family, noise["layer"], model.config.livr_latent_ids)
-        pushed = [r for r in routes if r["pushed"]][:settings["latent"]["calibration_rows"]]
-        rows = [(pool_split, pool[r["row_index"]] | {"text_output": r["answer"]}) for r in pushed]
-        calibration = calibrate(model, processor, data_root, rows, objective, config, settings["latent"]["ratio"])
-        calibration["training_reference"] = mismatch
-        objective.weight = calibration["weight"]  # recorded; the step uses the per-step ratio instead
-        objective.gradient_ratio = settings["latent"]["ratio"]
-        print(json.dumps({"calibration": calibration}), flush=True)
+        latent = {"gradient_ratio": settings["latent"]["ratio"], "training_reference": mismatch}
+        print(json.dumps({"latent": latent}), flush=True)
+        objective = LatentTarget(data, pool_split, reference, family, noise["layer"], model.config.livr_latent_ids,
+                                 latent["gradient_ratio"])
     started = time.time()
     train_stage(model, processor, data_root, output / "stage2", config, 2, final_weights_only=True, data=data,
                 grounding=objective, save_final=not smoke, offload_optimizer=offload)
@@ -445,9 +416,9 @@ def run_train(model, processor, evaluator, config, data_root, output, settings, 
                 "last_quarter_loss": statistics.mean(s["loss"] for s in steps[-max(1, len(steps) // 4):]),
                 "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
     if arm == "D":
-        latent = [s["latent_loss"] for s in steps if s.get("latent_loss") is not None]
-        training["latent_loss_first_last_quarter"] = [statistics.mean(latent[:max(1, len(latent) // 4)]),
-                                                      statistics.mean(latent[-max(1, len(latent) // 4):])] if latent else None
+        losses = [s["latent_loss"] for s in steps if s.get("latent_loss") is not None]
+        training["latent_loss_first_last_quarter"] = [statistics.mean(losses[:max(1, len(losses) // 4)]),
+                                                      statistics.mean(losses[-max(1, len(losses) // 4):])] if losses else None
     after = target_fit(model, processor, data_root, pool_split, pool, targets, family, noise["layer"])
     seed_all(seed)
     items = populations(data_root, settings)
@@ -463,7 +434,7 @@ def run_train(model, processor, evaluator, config, data_root, output, settings, 
     summary = {"arm": arm, "seed": seed, "rows_sha256": digest, "rows": len(data),
                "search_accepted_below_replay_bar": not search["checks"]["valid"],
                "expected_steps": -(-len(data) // config["gradient_accumulation"]) * settings["epochs"],
-               "checks": checks, "calibration": calibration,
+               "checks": checks, "latent": latent,
                "target_fit": {"before": before, "after": after}, "training": training,
                "greedy": {p: [sum(r["success"] for r in greedy if r["population"] == p),
                               sum(r["population"] == p for r in greedy)] for p in (*PRIMARY, *TRANSFER, "seen")},
@@ -506,6 +477,15 @@ def verdict(test, valid, helps, hurts, neither):
     return neither
 
 
+def latent_record(summary):
+    """D's latent settings from a run summary: `latent`, or, in the runs of 2026-11-19 (jobs 7170868),
+    the `calibration` record whose `ratio` is the per-step gradient ratio."""
+    if summary.get("latent"):
+        return summary["latent"]
+    return {"gradient_ratio": summary["calibration"]["ratio"],
+            "training_reference": summary["calibration"]["training_reference"]}
+
+
 def compare(runs, search_run, livr_greedy, livr_benchmark, data_root, evaluator, settings):
     """`runs`: {"S42", "S43", "D42", "D43"} -> run directory. `livr_greedy`: LIVR's greedy answers on
     the same populations (the fair pilot's greedy-livr.jsonl); `livr_benchmark`: LIVR's benchmark
@@ -527,12 +507,13 @@ def compare(runs, search_run, livr_greedy, livr_benchmark, data_root, evaluator,
         "rows_match_per_seed": all(summaries[f"S{s}"]["rows_sha256"] == summaries[f"D{s}"]["rows_sha256"] for s in seeds),
         "steps": {n: s["training"]["optimizer_steps"] for n, s in summaries.items()},
         "rescore": rescored,
-        "latent_weight": {f"D{s}": summaries[f"D{s}"]["calibration"]["weight"] for s in seeds},
+        "latent": {f"D{s}": latent_record(summaries[f"D{s}"]) for s in seeds},
         "set_checks": all(s["checks"]["valid"] for s in summaries.values())}
     others = (validity["rows_match_per_seed"] and validity["set_checks"]
              and all(s["training"]["optimizer_steps"] == s["expected_steps"] for s in summaries.values())
              and all(r["valid"] for r in rescored.values())
-             and all(isinstance(w, float) and w > 0 for w in validity["latent_weight"].values())
+             and all(r["gradient_ratio"] > 0 and r["training_reference"]["maps"] > 0
+                     for r in validity["latent"].values())
              and not any(s.get("smoke") for s in summaries.values()))
     valid = search["checks"]["valid"] and others
     # The 2026-11-19 amendment (made after the search, before training): accept a search whose only
@@ -569,7 +550,6 @@ def compare(runs, search_run, livr_greedy, livr_benchmark, data_root, evaluator,
         "diagnostics": {
             "target_fit": {n: summaries[n]["target_fit"] for n in names},
             "search": {k: v for k, v in search.items() if k != "checks"},
-            "calibration": {f"D{s}": summaries[f"D{s}"]["calibration"] for s in seeds},
             "training": {n: summaries[n]["training"] for n in names},
             "greedy": {n: summaries[n]["greedy"] for n in names}},
         "seconds_in_jobs": {"search": search["seconds"], **{n: s["seconds"] for n, s in summaries.items()}}}
