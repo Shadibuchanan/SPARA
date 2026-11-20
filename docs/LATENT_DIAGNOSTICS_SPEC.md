@@ -320,8 +320,8 @@ All checks passed: 104 maps in order; 0 greedy mismatches; noise size 0.98–1.0
 
 **Where the gain comes from:** +0.048 of the +0.121 comes from the 60 maps text never solves (noise
 success 0.018), and +0.070 from the 15 maps text solves at least half the time, where noise lowers
-success from 0.925 to 0.729. The guards held narrowly. Details:
-[docs/experiments/latent-diagnostics-7148362](experiments/latent-diagnostics-7148362/README.md).
+success from 0.925 to 0.729. The guards held narrowly. Details: run outputs on PACE scratch, not in git (`sft-run/results/latent-diag-*-7148362`,
+`latent-diag-*-7148373` to `-7148376`, `latent-diag-analysis/`, `latent-confirm/`).
 By this amendment, C″ is specified next and runs only with the user's agreement.
 
 ## Amendment: C″ (2026-11-19, fixed before the runs)
@@ -408,7 +408,8 @@ All validity checks passed: both runs complete, pairing, 96,000 rollouts rescore
 - Removing C′'s mechanical problems removed its harm.
 - The confirmed latent noise still did not turn into a detectable held-out gain.
 
-Details: [docs/experiments/fair-rl-n-7154355](experiments/fair-rl-n-7154355/README.md).
+Details: run outputs on PACE scratch, not in git (`sft-run/results/fair-n-seed{42,43}-7154355`,
+`fair-compare-n-7154355.json`).
 
 ## Amendment: C″ against B′ on more seeds (2026-11-19, fixed before any result)
 

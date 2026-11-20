@@ -521,8 +521,9 @@ independent and can run at the same time. `fair_rl.compare` applies the readings
 
 ### Result (jobs 7142592, 7143007 and 7143008)
 
-Evidence: [docs/experiments/fair-rl-7142592/](experiments/fair-rl-7142592/), with
-`comparison.json` holding every reading.
+Evidence: run outputs on PACE scratch, not in git (`sft-run/results/fair-pilot-7142592`,
+`fair-b-seed42-7142592`, `fair-b-seed43-7143008`, `fair-c-seed42-7143007`, `fair-c-seed43-7142592`),
+with `fair-compare-7142592.json` holding every reading.
 
 **What changed from the plan.** The runs used 48 GB Blackwell MIG slices, so they trained with
 `fair-rl --low-memory` (AdamW state on the CPU, the same update; a bfloat16 KL reference) on

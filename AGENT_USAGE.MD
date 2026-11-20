@@ -2984,3 +2984,31 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-19 — Untrack run records from the PR
+
+**Agent/tool:** Claude Code, Claude Opus 5.5
+**User request:** Keep run records out of the merge (anyone who needs them can ask; nothing is deleted from scratch), removing them from git tracking only.
+**AI contribution:** Compared this branch with the three other open PR branches (`perception-benchmarks`, `feat/rebalanced-policy-and-rl-gate`, `expert-rounds-hole-check`), which commit little or no run output. Untracked the three run-record folders with `git rm --cached`, leaving every file on disk. Replaced the three spec links to them with the run folders' PACE scratch paths.
+**Contribution type:** editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked why the PR is 64k lines and how the other open PRs handle results | Size breakdown; the other branches compared |
+| 2 | User message | No run records in the merge; untrack only, do not delete from disk or scratch | Folders untracked; links replaced |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/experiments/fair-rl-7142592/ | untracked (kept on disk) | B′/C′ run records |
+| docs/experiments/fair-rl-n-7154355/ | untracked (kept on disk) | C″ run records |
+| docs/experiments/latent-diagnostics-7148362/ | untracked (kept on disk) | Latent diagnostics records |
+| docs/LATENT_DIAGNOSTICS_SPEC.md | modified | Links point to scratch paths |
+| docs/STRUCTURED_EXPLORATION_SPEC.md | modified | Link points to scratch paths |
+
+### Folders created
+
+- None
