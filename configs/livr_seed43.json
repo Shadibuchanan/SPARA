@@ -1,0 +1,18 @@
+{
+  "model_id": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "model_revision": "66285546d2b821cf421d4f5eb2576359d3770cd3",
+  "seed": 43,
+  "epochs_per_stage": 10,
+  "microbatch": 1,
+  "gradient_accumulation": 8,
+  "learning_rate": 0.00001,
+  "weight_decay": 0.01,
+  "betas": [0.9, 0.999],
+  "epsilon": 1e-8,
+  "warmup_ratio": 0.05,
+  "max_grad_norm": 1.0,
+  "precision": "bf16-mixed-fp32-parameters",
+  "attention_backend": "sdpa",
+  "gradient_checkpointing": true,
+  "generation": {"do_sample": true, "temperature": 0.7, "top_p": 0.9, "max_new_tokens": 1024}
+}

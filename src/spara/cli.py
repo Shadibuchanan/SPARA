@@ -164,6 +164,7 @@ def main():
         if command == "train":
             cmd.add_argument("--stage", type=int, choices=[1, 2], required=True)
             cmd.add_argument("--grounding", help="Step-grounding settings (docs/STEP_GROUNDING_SPEC.md); Stage 2 only")
+            cmd.add_argument("--train-records", help="Optional path to custom train records jsonl (e.g. rebalanced mix)")
         if command == "battery":
             cmd.add_argument("--limit", type=int, help="Pilot: first LIMIT train and test rows of each grid size")
             cmd.add_argument("--max-new-tokens", type=int, default=128,
@@ -197,6 +198,7 @@ def main():
     from .data import audit
     config = read_config(args.config)
     if args.base_model: config["local_model_path"] = str(Path(args.base_model).resolve())
+    if getattr(args, "train_records", None): config["train_records"] = str(Path(args.train_records).resolve())
     seed_all(config["seed"])
     audit(args.data_root)
     # Round 2's batching check runs the real model on CPU by design (full-precision reference).

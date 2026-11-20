@@ -3012,3 +3012,77 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-17 — Policy Diagnostics, Rebalanced Detour Fine-Tuning, Hole-Veto Decoding, and Gated RL Check
+
+**Agent/tool:** Antigravity, Google DeepMind.
+**User request:** Plan next research, diagnose hole-entry errors vs perception, test rebalanced fine-tuning on PACE-ICE, execute hole-veto decoding, and run gated RL diagnostic.
+**AI contribution:**
+1. **Perception Probe (Job 7108485):** Evaluated linear probe on frozen Qwen2.5-VL image tokens across all 34,600 cells; achieved AUROC 1.0000 and 99.99% balanced accuracy, proving the vision tower perceives holes perfectly and falsifying the perception bottleneck hypothesis.
+2. **Dataset Audit & Rebalancing:** Discovered that 90.0% of benchmark maps require no detours, explaining why prior detour fine-tuning (E2 trained on 66.7% detour maps) lost 9–16 benchmark maps. Created natural 10% detour datasets and modified `train_stage()` and `cli.py` to support `--train-records`.
+3. **Rebalanced Fine-Tuning (Job 7109628):** Trained Stage 1 + Stage 2 on the natural 10% detour mix on an NVIDIA H100; achieved 305/400 (76.25%) on the official 400-map benchmark.
+4. **Hole-Veto Decoding Analysis:** Evaluated greedy decoding with adjacent holes masked out (-inf); eliminated hole fatalities to 0/219 failures, demonstrating that local hole masking avoids fatal steps but multi-step detour routing supervision is required to reach the goal when direct moves are blocked.
+5. **Gated RL Feasibility Check (Job 7128300):** Built and executed `scripts/rl_feasibility_gate.py` with 8 stochastic rollouts per map on 100 test maps on PACE. Measured 71% all-success (zero advantage), 19% all-failure (zero advantage), and 10% mixed outcome groups (non-zero advantage gradient), with rollouts showing clean trajectory divergence between valid routes and fatal hole entries.
+6. **Refused Route Filter & Pipeline:** Built `scripts/filter_refused_routes.py` to strip out degenerate off-grid wall padding and construct DPO preference pairs ($y_w, y_l$), and built `scripts/pace/unified_phase2_pipeline.sbatch` for single-allocation execution.
+**Contribution type:** Analysis, implementation, training, evaluation, and documentation.
+**Initial state:** Repo at `eddacca`, fast-forwarded to `a7b6fd6`.
+**Unfinished work:** None. Seed 43 rerun (Job 7140531) completed successfully scoring 311/400 (77.75%), validating run-to-run stability across seeds (308.0 ± 3.0 / 400).
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Provided repository, error breakdown on held-out maps, and requested next research plan | Focused investigation on image-token probing, hole-veto decoding, rebalanced training mix, and gated RL |
+| 2 | User message | Directed execution to PACE-ICE cluster scratch | Setup environment, ported dataset, and ran experiments on PACE GPU nodes |
+| 3 | User message | Recommended consolidating sequential stages into a single batch job | Created unified end-to-end pipeline script (`unified_phase2_pipeline.sbatch`) |
+| 4 | User message | Requested pulling new commits and creating branch/PR with good results | Merged `origin/main` to `a7b6fd6`, branched to `feat/rebalanced-policy-and-rl-gate`, and packaged results |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| configs/livr_seed43.json | created | Config for seed 43 rerun |
+| docs/POLICY_ROUTING_AND_REDUNDANCY_SYNTHESIS.md | created | Comparative analysis between PR #9 and PR #10 on perception ceilings, hole checks, and distribution balance |
+| docs/experiments/probe_holes_results.json | created | Image-token hole probe results (AUROC 1.0000) |
+| docs/experiments/rebalanced-7109628/ | created | Benchmark evaluation evidence (305/400) for 10% rebalanced fine-tuning (Seed 42) |
+| docs/experiments/rebalanced-seed43-7140531/ | created | Benchmark evaluation evidence (311/400) for 10% rebalanced fine-tuning (Seed 43) |
+| docs/experiments/rl_gate-7128300/ | created | Rollout logs and summary for the 8-sample RL feasibility check |
+| scripts/analyze_map_detours.py | created | BFS shortest path vs Manhattan detour distribution analysis |
+| scripts/prepare_rebalanced_data.py | created | Data generation script for 10% and 20% detour distributions |
+| scripts/probe_holes_from_image_tokens.py | created | 5-fold cross-validation logistic regression probe on vision tower |
+| scripts/hole_veto_decode.py | created | Greedy decoding with adjacent hole logit masking |
+| scripts/rl_feasibility_gate.py | created | Intra-group reward variance diagnostic for RL feasibility |
+| scripts/filter_refused_routes.py | created | Route simulator and cleaner for DPO/unlikelihood training |
+| scripts/pace/unified_phase2_pipeline.sbatch | created | Single-job end-to-end pipeline script |
+| src/spara/cli.py | modified | Added `--train-records` support |
+| src/spara/training.py | modified | Added `--train-records` loading support |
+| AGENT_USAGE.MD | modified | Documented Phase 1 and Phase 2 contributions |
+
+### Folders created
+
+- docs/experiments/rl_gate-7128300/ — RL feasibility rollout evidence and summary.
+- docs/experiments/rebalanced-7109628/ — Evaluation evidence for 10% rebalanced fine-tuning (Seed 42).
+- docs/experiments/rebalanced-seed43-7140531/ — Evaluation evidence for 10% rebalanced fine-tuning (Seed 43).
+
+## 2026-11-19 — Resolve AGENT_USAGE.MD conflict when merging main into the rebalanced-policy branch
+
+**Agent/tool:** Claude Code, Claude Opus 5.5
+**User request:** Merge main into `feat/rebalanced-policy-and-rl-gate` so the agent-usage entries from both sides are kept, in any order.
+**AI contribution:** Confirmed that both sides kept the same first 62 log entries unchanged and only added entries after them: 28 on main and 1 on the branch. Merged `origin/main` into the branch and rebuilt the conflicted log as main's full file followed by the branch's 2026-11-17 entry, then checked that each side's text appears unchanged in the result. The `src/spara/cli.py` and `src/spara/training.py` changes merged automatically.
+**Contribution type:** editing
+
+### Human input and contributions
+
+| Order | Source       | Input or contribution                                                                 | Effect on the work                                        |
+| ----- | ------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1     | user message | Asked for a union of both branches' agent-usage entries; order does not matter; the GitHub web editor's merge had mixed the entries together | Resolved by placing whole entries one after another instead of mixing lines |
+
+### Files
+
+| Path | Action | Contribution |
+| ---- | ------ | ------------ |
+| None | —      | Merge resolution only; no other project files edited by hand |
+
+### Folders created
+
+- None
