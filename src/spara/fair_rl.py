@@ -333,12 +333,16 @@ def sign_test(first, second, keys):
             "maps_second_ahead": worse, "p": mcnemar(better, worse)}
 
 
-def verdict(test, valid, moved, name="C′"):
+def verdict(test, valid, moved, name="C′", per_seed=True):
+    """`per_seed` False (the C″ seeds amendment): p < 0.05 and the arm's total over seeds ahead,
+    without requiring every seed to lean the same way."""
     if not valid:
         return "withheld: the measurement failed a validity check"
     if not moved:
         return "RL did not move the policy at this budget; no reading on latent exploration"
     each = [a - b for a, b in zip(test["first"], test["second"])]
+    if not per_seed:
+        each = [sum(each)]
     if test["p"] < ALPHA and test["maps_first_ahead"] > test["maps_second_ahead"] and all(e >= 0 for e in each):
         return f"{name} better: latent exploration adds value beyond text exploration on unseen detour maps"
     if test["p"] < ALPHA and test["maps_first_ahead"] < test["maps_second_ahead"] and all(e <= 0 for e in each):
@@ -384,7 +388,7 @@ def rescues_and_breaks(b_run, c_run):
 
 
 def compare(runs, pilot_run, settings, livr_outcomes, data_root, evaluator=None, e_round1=None, e_round2=None,
-            other="c"):
+            other="c", per_seed=True):
     """`runs`: {"b": {seed: run}, other: {seed: run}}, `other` "c" (C′) or "n" (C″), read
     against B′ by the same rules. `livr_outcomes`: the LIVR rerun's benchmark outcomes.
     `evaluator` rescores the rollouts (validity); `e_round1`, `e_round2`: E's greedy.jsonl
@@ -447,9 +451,9 @@ def compare(runs, pilot_run, settings, livr_outcomes, data_root, evaluator=None,
         "policy_moved": {"differs_from_l": moved, "threshold": settings["moved_maps"], "moved": policy_moved,
                          "extend_to": None if policy_moved else settings["extended_steps"]},
         "arms": ["b", other],
-        "primary": primary | {"reading": verdict(primary, valid, policy_moved, label)},
+        "primary": primary | {"reading": verdict(primary, valid, policy_moved, label, per_seed)},
         "secondary": {
-            "transfer": transfer | {"reading": verdict(transfer, valid, policy_moved, label)},
+            "transfer": transfer | {"reading": verdict(transfer, valid, policy_moved, label, per_seed)},
             "mean_vs_zero": {seed: paired(m, z, primary_keys) for seed, m, z in zip(seeds, plain[other], zero)},
             "sampled_delta": {seed: sum(s[k] for k in primary_keys) for seed, s in zip(seeds, sampled)},
             "benchmark_vs_l": {f"{arm}{seed}": benchmark(run, mode_of(arm))

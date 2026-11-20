@@ -409,3 +409,62 @@ All validity checks passed: both runs complete, pairing, 96,000 rollouts rescore
 - The confirmed latent noise still did not turn into a detectable held-out gain.
 
 Details: [docs/experiments/fair-rl-n-7154355](experiments/fair-rl-n-7154355/README.md).
+
+## Amendment: C″ against B′ on more seeds (2026-11-19, fixed before any result)
+
+**Why.** On the 240 held-out maps C″ led B′ by about 2 points per seed (98, 98 against 92, 96;
+p = 0.32). The two-seed design detects about 7 points. The user asked for more seeds to see whether
+the small edge is real.
+
+**Runs.** B′ and C″ at seeds 44, 45, 46 and 47 (jobs 7175728–7175735; the four C″ runs crashed on a full scratch quota near the end of training and were rerun unchanged as jobs 7178552–7178555), one run per job on a 48 GB
+Blackwell slice. Everything else is as in the C″ amendment:
+- the same pilot (`fair-pilot-7142592`);
+- low-memory mode;
+- C″'s confirmed basis and c = 0.25;
+- the same evaluation.
+
+**Readings (the user's choices, 2026-11-19):**
+- **Primary:** greedy successes on the 240 held-out detour maps, **summed over all six seeds**
+  (42–47, the earlier runs included). Exact sign test against B′:
+  `fair_rl.compare(..., other="n", per_seed=False)`.
+  - **"C″ better":** p < 0.05, and C″ ahead in total over the six seeds.
+  - **"C″ worse":** p < 0.05, and B′ ahead in total.
+  - **"No detectable difference":** otherwise. **The per-seed rule is dropped:** it no longer
+    requires every seed to lean the same way. Per-seed counts are still reported.
+- **Caveat on the primary:** it includes seeds 42 and 43, the runs that prompted the follow-up,
+  which biases it slightly toward C″. Reported beside it, descriptively, is the same test on the
+  new seeds 44–47 alone.
+- **Validity:** as in the C″ amendment, for all six seeds per arm (complete runs, pairing,
+  rescore, pilot, policy moved).
+- **Secondary and diagnostics:** as in the C″ amendment, over the six seeds.
+- **Wording:** `verdict`'s "no detectable difference" text mentions about 7 points, which was the
+  two-seed figure. With six seeds the design detects a smaller gap; the result's write-up states
+  the actual number of maps where the arms differ.
+
+### Result of C″ against B′ on six seeds (B′ 44–47: jobs 7175728/30/32/34; C″ 44–47: jobs 7178552–7178555)
+
+**Validity: all checks passed.**
+- All 12 runs completed 125 steps, with pairing for every seed.
+- All 288,000 rollout rewards match a CPU rescore.
+- The policy moved from LIVR (65–78 of 200 pilot maps).
+
+**Primary (fixed): no detectable difference.** Greedy successes on the 240 held-out detour maps, per seed:
+
+| | 42 | 43 | 44 | 45 | 46 | 47 | Total of 1,440 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| C″ | 98 | 98 | 91 | 95 | 104 | 98 | 584 |
+| B′ | 92 | 96 | 97 | 96 | 92 | 93 | 566 |
+
+C″ ahead on 37 maps, B′ on 33 (exact sign test, p = 0.72).
+
+**New seeds only (descriptive):** C″ 388 against B′ 378; C″ ahead on 32 maps, B′ on 25 (p = 0.43).
+
+**Secondary (descriptive):**
+- **Transfer (400 maps, six seeds):** C″ 388 against B′ 367; C″ ahead on 47 maps, B′ on 32 (p = 0.11).
+- **Benchmark:** B′ 298–308 and C″ 289–312 against LIVR's 328. Both gain on detour maps (15–18 against 9) and lose on no-detour maps (273–294 against 319).
+- **Training signal:** C″'s share of mixed groups was 0.35–0.37 in every seed, against B′'s 0.26–0.29.
+
+**Reading.** Over six seeds C″ is about 1.3 points ahead of B′ on the held-out maps (40.6% against
+39.3%), well within noise. The two-seed edge (about 4 maps per seed) shrank to about 3 per seed. On
+the new seeds alone, C″ was behind in two of four. Fixed latent noise reliably adds training signal,
+but no detectable held-out gain.

@@ -2915,3 +2915,34 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-19 — Commit latent distillation; more B′/C″ seeds
+
+**Agent/tool:** Claude Code, Claude Opus 5.5
+**User request:** Commit the latent distillation work, then run more seeds of B′ against C″, because C″ seemed to have a small edge.
+**AI contribution:** Committed the latent distillation code, spec, config, script, tests and log as `93b1761`, leaving out `misc/`, the 2026-11-17 handoff, `spara_results/` and the undecided offline-evidence folder. Asked the user to fix the follow-up's design before the runs, then added a `per_seed` option to `fair_rl.verdict` and `compare`, with a test. Submitted B′ and C″ at seeds 44–47 (jobs 7175728–7175735); the four C″ runs failed on a full scratch quota and, after deletions the user approved, were rerun as jobs 7178552–7178555 and recorded the readings as an amendment in `docs/LATENT_DIAGNOSTICS_SPEC.md` before any result.
+**Contribution type:** generation, editing
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Commit; run more B′/C″ seeds | Commit made; design questions asked |
+| 2 | User message (answers) | 4 new seeds; primary pooled over all six seeds; drop the every-seed rule | Readings and `per_seed=False` |
+| 3 | User message | Submit the jobs as soon as possible, then the other items | Jobs submitted, then the amendment was written (still before any result) |
+| 4 | User message | Show the submission command | Command given, with a note on claim folders |
+| 5 | User message (answer) | Approved deleting the weight shards of the four latent-distillation runs and the failed C″ seed-46 partial checkpoint, after scratch filled and all four C″ runs crashed | Those shards deleted (logs, answers and summaries kept) |
+| 6 | User message | Also delete the new B′ 44–47 weight shards; no `du -sh` calls | Shards deleted; claim folders `n-seed44`–`n-seed47` removed; C″ rerun as jobs 7178552–7178555 |
+| 7 | User message | Run the comparison when the jobs finish; no polling wait | Comparison run on completion; result recorded in the spec |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| src/spara/fair_rl.py | modified | `per_seed` option in `verdict` and `compare` |
+| tests/test_fair_rl.py | modified | Test of the reading without the per-seed rule |
+| docs/LATENT_DIAGNOSTICS_SPEC.md | modified | Amendment: C″ against B′ on more seeds |
+
+### Folders created
+
+- None

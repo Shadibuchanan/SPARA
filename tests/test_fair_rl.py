@@ -462,3 +462,12 @@ def test_c_double_prime_arm_trains_evaluates_and_reads_against_b(world, tiny_mod
     assert result["primary"]["maps"] == 3 and set(result["diagnostics"]["rescues_and_breaks"]) == {1, 2}
     assert "C′" not in result["primary"]["reading"]
     assert set(result["secondary"]["benchmark_vs_l"]) == {"b1", "b2", "n1", "n2"}
+
+
+def test_verdict_without_the_per_seed_rule_reads_the_total():
+    from spara.fair_rl import verdict
+    test = {"p": 0.01, "maps_first_ahead": 40, "maps_second_ahead": 20, "first": [100, 95, 99, 101],
+            "second": [92, 97, 94, 96]}
+    assert verdict(test, True, True, "C″").startswith("no detectable")  # seed 2 leans the other way
+    assert verdict(test, True, True, "C″", per_seed=False).startswith("C″ better")
+    assert verdict(test | {"p": 0.2}, True, True, "C″", per_seed=False).startswith("no detectable")
