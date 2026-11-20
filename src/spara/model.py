@@ -44,7 +44,10 @@ class LivrQwen(Qwen2_5_VLForConditionalGeneration):
         # Latent RL (condition C) checkpoints carry Gaussian heads; rebuild them so
         # their saved weights load instead of being dropped.
         heads = getattr(config, "livr_latent_heads", None)
-        if heads:
+        if heads and heads.get("basis_k"):  # C′'s structured heads; the basis loads with the weights
+            from .latent_rl import BasisHeads
+            self.latent_heads = BasisHeads(config.hidden_size, **heads)
+        elif heads:
             from .scaffolding.model import GaussianHeads
             self.latent_heads = GaussianHeads(config.hidden_size, **heads)
 

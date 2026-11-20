@@ -48,9 +48,13 @@ def require_final_checkpoint(path, stage, config):
 def require_final_rl_checkpoint(path, config, rl, phase="text-rl"):
     """Completed RL from the LIVR checkpoint: text-only ("text-rl") or latent ("latent-rl")."""
     progress = json.loads((Path(path) / "complete.json").read_text())["progress"]
-    expected_steps = rl["epochs"] * ((1000 + rl["prompts_per_step"] - 1) // rl["prompts_per_step"])
-    if (progress.get("pilot") or progress.get("phase") != phase or progress.get("epoch") != rl["epochs"]
-            or progress.get("next_row") != 0 or progress.get("optimizer_steps") != expected_steps):
+    if rl.get("steps"):  # B′ and C′: a fixed number of steps from a stream of map permutations
+        incomplete = progress.get("optimizer_steps") != rl["steps"]
+    else:
+        expected_steps = rl["epochs"] * ((1000 + rl["prompts_per_step"] - 1) // rl["prompts_per_step"])
+        incomplete = (progress.get("epoch") != rl["epochs"] or progress.get("next_row") != 0
+                      or progress.get("optimizer_steps") != expected_steps)
+    if progress.get("pilot") or progress.get("phase") != phase or incomplete:
         label = "text-only" if phase == "text-rl" else "latent"
         raise ValueError(f"Expected completed {label} RL, not an intermediate checkpoint")
     for key, value in config.items():
@@ -146,6 +150,43 @@ def make_optimizer(model, config, rates=None):
         for (prefix, decay), params in groups.items()], lr=config["learning_rate"],
         betas=tuple(config["betas"]), eps=config["epsilon"],
         fused=next(model.parameters()).device.type == "cuda")
+
+
+class _Shadow:
+    """Named CPU copies of a model's trainable parameters, for make_optimizer."""
+
+    def __init__(self, pairs):
+        self.pairs = pairs
+
+    def named_parameters(self):
+        return ((name, cpu) for name, _, cpu in self.pairs)
+
+    def parameters(self):
+        return (cpu for _, _, cpu in self.pairs)
+
+
+def offloaded_optimizer(model, config, rates=None):
+    """make_optimizer's AdamW with its fp32 master weights and moments on the CPU. Before each
+    step the GPU gradients move to the CPU copies (and are freed); after it the updated weights
+    move back. The update is AdamW on the same fp32 values, so it saves about 3x the weights in
+    GPU memory (28 GiB of moments for the 3B model) at the cost of a CPU step and two transfers."""
+    pairs = [(name, p, torch.nn.Parameter(p.detach().to("cpu", copy=True)))
+             for name, p in model.named_parameters() if p.requires_grad]
+    optimizer = make_optimizer(_Shadow(pairs), config, rates)
+
+    def to_cpu(*_):
+        for _, gpu, cpu in pairs:
+            cpu.grad = None if gpu.grad is None else gpu.grad.detach().to("cpu")
+            gpu.grad = None
+
+    @torch.no_grad()
+    def to_gpu(*_):
+        for _, gpu, cpu in pairs:
+            gpu.copy_(cpu)
+
+    optimizer.register_step_pre_hook(to_cpu)
+    optimizer.register_step_post_hook(to_gpu)
+    return optimizer
 
 
 def save_checkpoint(path, model, processor, optimizer, scheduler, progress, training_state=True):
