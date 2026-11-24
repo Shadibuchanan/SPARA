@@ -1,0 +1,15 @@
+{
+  "method": "B′: text-only GRPO from LIVR on unseen detour maps, sampling from the model's own distribution (docs/STRUCTURED_EXPLORATION_SPEC.md, 2026-11-17 amendment)",
+  "train_split": "fresh/detour-pool",
+  "steps": 125,
+  "prompts_per_step": null,
+  "group_size": 8,
+  "learning_rate": 0.000001,
+  "clip_epsilon": 0.2,
+  "kl_coefficient": 0.001,
+  "skip_uniform_groups": true,
+  "reference_policy": "final Stage 2 LIVR checkpoint",
+  "checkpoint_every_steps": 0,
+  "generation": {"do_sample": true, "temperature": 1.0, "top_p": 1.0, "top_k": 0, "repetition_penalty": 1.0,
+                 "max_new_tokens": 128}
+}

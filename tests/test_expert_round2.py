@@ -5,10 +5,10 @@ import pytest
 import torch
 
 from spara import detour_scaling, expert_iteration, expert_round2, training
-from spara.expert_round2 import (balanced, batching_check, bootstrap_difference, ceiling, compare, latent_states, masked,
-                                 hole_check, hole_walks, outcome, phases, probe_predictions, probe_score,
-                                 require_base_checkpoint, round3, run_arm, run_search, text_check, training_rows,
-                                 wall_bumps, with_map_text)
+from spara.expert_round2 import (away_moves, balanced, batching_check, bootstrap_difference, ceiling, compare,
+                                 hole_check, hole_walks, latent_states, letters, masked, outcome, phases,
+                                 probe_predictions, probe_score, require_base_checkpoint, round3, run_arm, run_search,
+                                 signatures, text_check, training_rows, wall_bumps, with_map_text)
 from spara.fresh_maps import answer_text, draw_detour_layouts, label_route
 from spara.runtime import read_config
 from test_detour_scaling import Evaluator, SavingProcessor
@@ -141,6 +141,17 @@ def test_training_rows_chain_round_3_onto_rounds_1_and_2(data, tmp_path):
     write_jsonl(third / "frontier.jsonl", route_rows(data["fresh/p78"], {1}))
     with pytest.raises(ValueError, match="already solved"):
         training_rows("unused", third_settings, round1, [second, third])
+
+
+def test_away_moves_and_signatures():
+    grid = [[1, 0, 0], [0, -1, 0], [0, 0, 2]]
+    assert away_moves(grid, "RRDD") == 0 and away_moves(grid, "URRDD") == 0  # a wall bump is not away
+    assert away_moves(grid, "RL") == 1 and away_moves(grid, "RDLL") == 0  # counting stops at the hole
+    assert letters("DOWN, RIGHT") == "DR" and letters(None) == ""
+    descs = {0: grid, 1: grid, 2: grid, 3: grid}
+    marks = signatures(descs, {0: "RRDD", 1: "RD", 2: "RR", 3: "URRDD"})
+    assert marks == {"maps": 4, "solved": 2, "failed": 2, "hole": 1, "short_or_past": 1, "failed_with_away_move": 0}
+    assert signatures({0: grid}, {0: "DDRUR"})["failed_with_away_move"] == 1
 
 
 def test_outcomes_and_wall_bumps():

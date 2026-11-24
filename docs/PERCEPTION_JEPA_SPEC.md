@@ -963,11 +963,49 @@ Minds both report.
 - a two-image prompt through the real processor, with a save and load round trip.
 
 **Not built:**
-- Training and evaluation data for MMVP, V* and BLINK: loaders, prompts and answer scoring.
-- An arm that trains from base Qwen2.5-VL-3B: plain LIVR against global + patch latents with the
-  globals hidden, on the same data and steps.
-- **The processor's pixel limits** must be set for these images. At its defaults, a V* image is
-  thousands of tokens.
+- Training and evaluation data for MMVP and BLINK: loaders, prompts and answer scoring.
+
+### V* and the arms from base (built 2026-11-18)
+
+Requested by the user on 2026-11-18: V* first, as the most relevant of the three, on `main`'s code.
+
+**V\* evaluation** (`spara.vstar`, `spara vstar`, `scripts/pace/vstar.sbatch`):
+- **Data:** the 191 released questions (115 attribute, 76 relative position) from
+  `craigwu/vstar_bench` at a pinned revision, each file checked against the hub's hash.
+- **Answers:** greedy, 16 new tokens. The option letter is read from the reply. A reply that is
+  exactly one option's words also counts, and the summary reports how many were read that way.
+  Anything else is wrong.
+- **Pixel limit:** the image is resized once, before the processor, to a stated number of image
+  tokens. Native size is a median of about 4,300 tokens and at most 10,577, under the processor's
+  16,384. The evaluation is run at native size and at 1,280 tokens.
+- **Prompt formats:** "chat", the processor's own template, for the base model; "livr", this
+  project's serialization, for trained arms and as a second reading of the base model.
+
+**Training data** (`spara.viscot`): Visual-CoT with answers only, as LIVR's Table 4 uses it.
+- Each released row keeps its question and final answer. The bounding-box turn and the cropped
+  second image are dropped.
+- A seeded sample of the released list (404,120 rows): 500 validation rows, then 10,000 training
+  rows on other images. LIVR trained on the whole set; this is a first, smaller comparison.
+- Only the sample's images are taken from the 139 GB archive, which is read as one stream and not
+  stored. Each image is resized to at most 1,280 image tokens and saved as JPEG.
+
+**Arms** (`spara.perception`, `spara perception`, `scripts/pace/perception.sbatch`), each from base
+Qwen2.5-VL-3B with `configs/livr.json`'s optimizer:
+
+| Arm | Latents | Segment 1 (2 epochs) | Segment 2 (3 epochs) |
+| --- | --- | --- | --- |
+| `sft` | none | plain | plain |
+| `livr` | LIVR's four | Stage 1 mask | unmasked |
+| `patch` | four globals + 16 patch latents, globals hidden from the answer | Stage 1 mask + tile mask | tile mask |
+
+- Every arm sees the same rows in the same order for the same steps, with the schedule restarted
+  between segments. The 2:3 split follows LIVR's multi-task recipe.
+- After training: exact-match accuracy on the 500 validation rows (a check that training took),
+  then V* at both pixel limits in the "livr" format.
+- **Training images are at most 1,280 tokens; V* at native size is larger.** The 1,280-token V*
+  reading matches training; the native reading tests transfer to larger images.
+
+**Not built:** a gate or decision rule for the comparison, and other benchmarks' loaders.
 
 ## Budget
 

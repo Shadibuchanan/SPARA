@@ -34,6 +34,13 @@ Reinforcement learning from the LIVR baseline that optimizes generated route
 text against route success, without sampling or adjusting latent tokens.
 Condition B in the planned comparisons.
 
+**B′ and C′**:
+Conditions B and C rerun under fair conditions. Both start from the LIVR rerun and
+train on unseen detour maps (`fresh/detour-pool`), sampling from the model's own
+distribution, with the maps per step set by a pilot. C′'s latent adjustment lies in the
+principal basis of LIVR's latents. B′ against C′ is the main comparison. See
+docs/STRUCTURED_EXPLORATION_SPEC.md, amendment of 2026-11-17.
+
 **Step grounding**:
 An auxiliary training objective for route writing. At each move of a teacher-forced
 route, a head reads one layer's hidden state and predicts the agent's current cell
@@ -81,6 +88,12 @@ method; the benchmark never uses it.
 **Expert iteration**:
 Training a policy on the successful answers its own guided search found, then
 searching again with the updated policy.
+
+**Latent distillation**:
+Searching LIVR's latent states per map (random pushes at one layer, kept when the
+verifier accepts the answer), then fine-tuning the model on the found routes while
+pulling its own latent states toward the pushed states that produced them (arm D),
+against the same routes without that pull (arm S). See docs/LATENT_DISTILLATION_SPEC.md.
 
 **Judge**:
 Whatever tells guided search, move by move, whether an attempt is alive, has failed or

@@ -8,7 +8,7 @@ import torch
 from transformers import get_cosine_schedule_with_warmup
 
 from .data import records
-from .runtime import make_optimizer, save_checkpoint, restore_training, json_write
+from .runtime import make_optimizer, offloaded_optimizer, save_checkpoint, restore_training, json_write
 from .serialization import encode
 from .model import LATENT_TOKENS
 
@@ -29,17 +29,81 @@ def epoch_order(config, epoch, size):
     return torch.randperm(size, generator=generator).tolist()
 
 
+def grad_norm(parameters):
+    norms = [torch.linalg.vector_norm(p.grad.float()) for p in parameters if p.grad is not None]
+    return float(torch.linalg.vector_norm(torch.stack(norms))) if norms else 0.0
+
+
+def normalised_step(model, processor, data_root, data, selected, objective, trainable, ratio, serialization, extra):
+    """One accumulation step whose auxiliary gradient is rescaled to `ratio` times the route
+    gradient's norm (spara.latent_distillation, amendment 3): the route gradient over all rows, kept
+    on the CPU; then the auxiliary gradient over the rows that have a target; then
+    g = g_route + ratio * |g_route| / |g_aux| * g_aux in the parameters' .grad, before clipping.
+    Rows without a target contribute only to the route gradient, so a step with none is the plain step."""
+    loss_sum, targeted = 0.0, []
+    for index in selected:
+        split, row = data[index]
+        if objective.target_of(split, row) is not None:
+            targeted.append(index)
+        batch = to_device(encode(processor, data_root, split, row, **serialization), model.device)
+        with amp(model.device):
+            loss = model(**batch, use_cache=False).loss
+        if not torch.isfinite(loss):
+            raise FloatingPointError(f"Nonfinite loss at row {index}")
+        (loss / len(selected)).backward()
+        loss_sum += loss.item()
+    route_norm = grad_norm(trainable)
+    record = {"route_grad_norm": route_norm, "aux_grad_norm": None, "aux_scale": None, "aux_rows": len(targeted)}
+    if not targeted:
+        return loss_sum, record
+    route = [None if p.grad is None else p.grad.to("cpu") for p in trainable]
+    for p in trainable:
+        p.grad = None
+    for index in targeted:
+        split, row = data[index]
+        batch = to_device(encode(processor, data_root, split, row, **serialization), model.device)
+        with amp(model.device):
+            out = model(**batch, use_cache=False, output_hidden_states=True)
+            aux, metrics = objective.loss(out.hidden_states, index, batch)
+            del out
+        if not torch.isfinite(aux):
+            raise FloatingPointError(f"Nonfinite auxiliary loss at row {index}")
+        (aux / len(selected)).backward()
+        extra[getattr(objective, "loss_key", "grounding_loss")].append(aux.item())
+        for key, value in metrics.items():
+            if value is not None:
+                extra[key].append(value)
+    aux_norm = grad_norm(trainable)
+    scale = ratio * route_norm / aux_norm if aux_norm > 0 else 0.0
+    with torch.no_grad():
+        for p, g in zip(trainable, route):
+            if p.grad is not None:
+                p.grad.mul_(scale)
+                if g is not None:
+                    p.grad.add_(g.to(p.device))
+            elif g is not None:
+                p.grad = g.to(p.device)
+    return loss_sum, record | {"aux_grad_norm": aux_norm, "aux_scale": scale}
+
+
 def train_stage(model, processor, data_root, output, config, stage, resume=None, final_weights_only=False,
-                grounding=None, data=None, save_final=True):
+                grounding=None, data=None, save_final=True, offload_optimizer=False):
     """`grounding` adds an auxiliary loss: spara.grounding.StepGrounding, or another object with
     the same methods (spara.perception_jepa.LatentJepa); without it this is LIVR's stage training
     unchanged. `data`, a list of (split, row) with `text_output`, replaces the released training
     split (docs/DETOUR_SCALING_SPEC.md). `save_final` False keeps the trained weights in memory
-    only (the first phase of docs/EXPERT_ITERATION_ROUND2_SPEC.md)."""
+    only (the first phase of docs/EXPERT_ITERATION_ROUND2_SPEC.md). `offload_optimizer` keeps AdamW's
+    fp32 state on the CPU (runtime.offloaded_optimizer, the same update) for GPUs under 80 GB. An
+    auxiliary objective whose `head` is None adds a loss only (spara.latent_distillation)."""
     if data is not None and grounding is not None and getattr(grounding, "released_only", True):
         raise ValueError("Step grounding trains on the released training split only")
-    data = data if data is not None else [("train", row) for row in records(data_root, "train")]
-    rows = [row for _, row in data]
+    if config.get("train_records"):
+        import json as _json
+        rows = [_json.loads(line) for line in Path(config["train_records"]).read_text(encoding="utf-8").splitlines()]
+        data = [("train", row) for row in rows]
+    else:
+        data = data if data is not None else [("train", row) for row in records(data_root, "train")]
+        rows = [row for _, row in data]
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     model.config.livr_stage = stage
@@ -48,19 +112,24 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None,
     model.config.use_cache = False
     if config["gradient_checkpointing"]:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-    optimizer = make_optimizer(model, config)
+    optimizer = offloaded_optimizer(model, config) if offload_optimizer else make_optimizer(model, config)
     trainable = [p for p in model.parameters() if p.requires_grad]
     head_params = []  # clipped on their own when the auxiliary objective asks, so they cannot shrink LM updates
+    head = getattr(grounding, "head", None)
     if grounding is not None:
         if resume:
             raise ValueError("Resuming a step-grounding run is not supported; its head has no saved optimizer state")
-        grounding.head.to(model.device)
+        if head is not None:
+            if offload_optimizer:
+                raise ValueError("The offloaded optimizer does not take an auxiliary head's parameters")
+            head.to(model.device)
         grounding_counts = grounding.prepare(processor.tokenizer, rows)
-        optimizer.add_param_group(grounding.parameter_group())  # before the scheduler records initial rates
-        if getattr(grounding, "clip_separately", False):
-            head_params = list(grounding.head.parameters())
-        else:
-            trainable += list(grounding.head.parameters())
+        if head is not None:
+            optimizer.add_param_group(grounding.parameter_group())  # before the scheduler records initial rates
+            if getattr(grounding, "clip_separately", False):
+                head_params = list(head.parameters())
+            else:
+                trainable += list(head.parameters())
     accumulation = config["gradient_accumulation"]
     steps_per_epoch = math.ceil(len(rows) / accumulation)
     total = steps_per_epoch * config["epochs_per_stage"]
@@ -88,7 +157,11 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None,
                 extra = {key: [] for key in getattr(grounding, "metric_keys",
                                                     ("grounding_loss", "cell_accuracy", "outcome_accuracy"))}
                 started = time.perf_counter()
-                for index in selected:
+                ratio = getattr(grounding, "gradient_ratio", None)
+                if ratio is not None:
+                    loss_sum, normalised = normalised_step(model, processor, data_root, data, selected, grounding,
+                                                           trainable, ratio, serialization, extra)
+                for index in (selected if ratio is None else []):
                     split, row = data[index]
                     batch = to_device(encode(processor, data_root, split, row, **serialization), model.device)
                     with amp(model.device):
@@ -121,6 +194,8 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None,
                     row |= {key: sum(v) / len(v) if v else None for key, v in extra.items()}
                 if head_params:
                     row["head_grad_norm"] = float(head_norm)
+                if ratio is not None:
+                    row |= normalised
                 log.write(json.dumps(row) + "\n"); log.flush()
                 print(json.dumps(row), flush=True)
                 every = config.get("checkpoint_every_steps", 0)
@@ -131,7 +206,7 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None,
         json_write(output / "summary.json", progress)
         return None
     save_checkpoint(output / "final", model, processor, optimizer, scheduler, progress, not final_weights_only)
-    if grounding is not None:
+    if head is not None:
         from .grounding import HEAD_FILE
         grounding.save(output / getattr(grounding, "head_file", HEAD_FILE))
     json_write(output / "summary.json", progress)

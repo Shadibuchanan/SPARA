@@ -109,17 +109,24 @@ def draw_layouts(size, count, rng, exclude, hole_probability=0.2):
     return layouts
 
 
-def draw_detour_layouts(count, rng, exclude, sizes, weights, hole_probability=0.2, max_attempts=2_000_000):
-    """`count` detour layouts not in `exclude`, each attempt's size drawn by `weights`;
-    adds them to `exclude`. Returns the layouts and the number of attempts."""
+def is_direct(desc):
+    """Solvable, and the shortest safe route equals the grid distance: no detour needed."""
+    return shortest_path(desc) is not None and not is_detour(desc)
+
+
+def draw_detour_layouts(count, rng, exclude, sizes, weights, hole_probability=0.2, max_attempts=2_000_000,
+                        keep=is_detour):
+    """`count` layouts that satisfy `keep` (detour maps by default) and are not in
+    `exclude`, each attempt's size drawn by `weights`; adds them to `exclude`. Returns the
+    layouts and the number of attempts."""
     layouts, attempts = [], 0
     while len(layouts) < count:
         attempts += 1
         if attempts > max_attempts:
-            raise RuntimeError(f"Found {len(layouts)} of {count} detour layouts in {max_attempts} attempts")
+            raise RuntimeError(f"Found {len(layouts)} of {count} layouts in {max_attempts} attempts")
         desc = draw_layout(rng.choices(sizes, weights)[0], rng, hole_probability)
         key = layout_key({"map_desc": desc})
-        if key not in exclude and is_detour(desc):
+        if key not in exclude and keep(desc):
             exclude.add(key)
             layouts.append(desc)
     return layouts, attempts

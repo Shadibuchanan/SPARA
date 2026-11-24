@@ -17,6 +17,170 @@ for the comparison, assumptions and evidence.
 Training curves, reproducible chart commands and the per-example evidence are
 in the [results report](docs/LIVR_BASELINE_RESULTS.md).
 
+## Where the project stands (2026-11-19)
+
+The work since the baseline is summarised here; each row links to the document with the
+design, the readings fixed before the run, and the evidence. Most results are from one
+seed, and "no detectable difference" is not "equal". The sections after this one are the
+original instructions for the baseline, text-only RL and Scaffolding Minds.
+
+- **LIVR's latents add no measurable accuracy on the benchmark.** Direct fine-tuning
+  without latents scores the same as LIVR.
+- **RL from the LIVR checkpoint does not move the benchmark,** on text alone or with
+  latent adjustments.
+- **The limit is the route decision, not perception.** LIVR's failures are mostly walks
+  into holes, but its image tokens show every hole, and giving the latents more map
+  content did not change routes.
+- **Training on unseen detour maps is what improved routes.** Expert iteration and
+  text-only RL on those maps (B′) each more than double success on held-out detour maps,
+  but lose no-detour maps, so the benchmark does not improve.
+- **Latent exploration has not beaten text-only RL** on held-out detour maps in three
+  attempts (worse, then no detectable difference twice).
+- **On real images (V\*), training with latents lowers perception accuracy** against the
+  untuned model, and LIVR's Stage 1 bottleneck is what causes the drop.
+- **On real images the answer does not use the latents:** leaving them out of the prompt
+  changes no score. See [Does the answer use the latents?](#does-the-answer-use-the-latents)
+
+### Baselines and controls
+
+| Study | Result | Document |
+| --- | --- | --- |
+| LIVR baseline, 10+10 epochs | 323/400 (80.75%); a rerun scored 328/400. LIVR's paper reports 66% | [results](docs/LIVR_BASELINE_RESULTS.md) |
+| Audit of the gap to the paper | No scoring or answer-leakage error found; the cause of the gap is unknown | [audit](docs/LIVR_REPRODUCTION_AUDIT.md) |
+| Direct SFT control (no latents) | 320/400 continuous, 323/400 staged: no difference from LIVR detected | [results](docs/SFT_CONTROL_RESULTS.md), [ADR-0004](docs/adr/0004-reinstate-vanilla-sft-control.md) |
+| Scaffolding Minds (helper-supervised reference) | First run 0/400 (the paper-literal latent loss collapsed the model). The two fixed variants score 191 and 223/400 at Stage 1; RL raises the better one to 270/400, with the gain in the language-model weights, not the latent adjustment | [specification](docs/SCAFFOLDING_BASELINE_SPEC.md#results-2026-10-27) |
+
+### RL from the LIVR checkpoint
+
+| Study | Result | Document |
+| --- | --- | --- |
+| Text-only RL (condition B) | 326/400 against 328/400 for its starting checkpoint: no measurable change | [results](docs/TEXT_RL_RESULTS.md) |
+| Latent RL (condition C), learned adjustment at layer 16 | 323/400; not different from B (p = 0.63). The learned adjustment has no effect at test time | [results](docs/LATENT_RL_RESULTS.md) |
+
+### What the latents hold, and where routes fail
+
+| Study | Result | Document |
+| --- | --- | --- |
+| Latent battery (no training) | Swapping in another map's latents swaps the answer (351 of 400). Goal and start decode almost perfectly; holes only partly | [results](docs/LATENT_BATTERY_RESULTS.md) |
+| Planning probe | Natural-sized changes to the latents fix 7 of 73 failed maps. The agent's cell decodes weakly where moves are written | [specification](docs/PLANNING_PROBE_SPEC.md#result) |
+| Step grounding | Position became decodable (89% against 39%) but routes did not change: 326 against 328 | [specification](docs/STEP_GROUNDING_SPEC.md#result) |
+| Policy diagnostics | A linear probe on frozen vision tokens reads holes at AUROC 1.00. Masking moves into holes at decode time ends hole deaths but scores 181/400. 90% of benchmark maps need no detour; training on that natural mix scores 305 and 311 of 400 | [synthesis](docs/POLICY_ROUTING_AND_REDUNDANCY_SYNTHESIS.md) |
+
+### Detour learning and expert iteration
+
+Held-out detour maps are generated maps plus the benchmark's own detour maps (240 in total).
+
+| Study | Result | Document |
+| --- | --- | --- |
+| Detour learning plan and reach check | The plan for the rows below; the reach check's reading was withheld | [specification](docs/DETOUR_LEARNING_SPEC.md) |
+| Detour scaling | Variety helps: fine-tuning on 2,000 distinct detour layouts solves 107 of 240; the same number of rows from 98 layouts solves 64; LIVR 42. No arm improves the benchmark | [specification](docs/DETOUR_SCALING_SPEC.md#result-jobs-69414686941471) |
+| Guided search | With LIVR as the policy and only the final accept or reject, search solves 55 of 97 unseen detour maps in 64 calls | [specification](docs/GUIDED_SEARCH_SPEC.md) |
+| JEPA judge (learned transition model) | It hurts search and misses three in four holes | [specification](docs/JEPA_JUDGE_SPEC.md#result-job-6951675) |
+| Expert iteration, round 1 (E) | 88 against LIVR's 42 of 240; no detectable difference between found routes and labels | [specification](docs/EXPERT_ITERATION_SPEC.md#result-jobs-69618746961876) |
+| Expert iteration, round 2 on 7 x 7 and 8 x 8 (E2, EB2) | E2 84 against E's 54 of 400. LIVR's bottleneck did not change what the latents hold. On the benchmark E2 scores 322 against 328, from losses on no-detour maps | [specification](docs/EXPERT_ITERATION_ROUND2_SPEC.md#result-jobs-69927986992800) |
+
+### Perception objectives on the latents
+
+All in the [latent JEPA specification](docs/PERCEPTION_JEPA_SPEC.md); scores are of 400 maps of 7 x 7 and 8 x 8.
+
+| Arm | Result |
+| --- | --- |
+| Gate 1 | LIVR's image tokens show every hole (balanced accuracy 1.00 at every layer from 4 to 36) |
+| Latent JEPA (EJ2), and with fixed targets (EJF) | Neither took: the hole probe did not move. EJ2 68 and EJF 76, against EB2's 78 |
+| Region latents (EJR) | Did not take; the sixteen tokens stayed near-copies. 80 against 78 |
+| Global + region latents with a block mask (EGR) | Took (block probe 0.934 against 0.689), and routes did not change: 75 against 78. The answer ignored the block latents |
+| Global dropout (EGD) | The answer now reads the block latents (98 of 100 routes follow a donor's), and routes still do not improve: 78 |
+| Global + patch latents, for images without a grid | Built here, first run on V\* (below) |
+
+### Latent exploration against text-only RL
+
+Greedy successes on the 240 held-out detour maps; LIVR solves 42.
+
+| Arm | Result | Document |
+| --- | --- | --- |
+| B′ (text-only RL) against C′ (learned Gaussian heads, layer 16) | B′ 92 and 96, C′ 77 and 86: C′ worse (p = 0.0016) | [specification](docs/STRUCTURED_EXPLORATION_SPEC.md) |
+| Latent diagnostics | C′ was not a clean test: its latent loss swamped the gradient and its heads could not move | [specification](docs/LATENT_DIAGNOSTICS_SPEC.md) |
+| C″ (fixed noise at layer 24, no heads) | 584 against B′'s 566 of 1,440 over six seeds: no detectable difference (p = 0.72) | [specification](docs/LATENT_DIAGNOSTICS_SPEC.md) |
+| Latent distillation (D: latent target; S: routes only) | D 80 and 78, S 79 and 80: no detectable difference (p = 0.87) | [specification](docs/LATENT_DISTILLATION_SPEC.md) |
+
+### Perception on real images (V\*)
+
+Three arms trained from the base model on 10,000 Visual-CoT rows, scored on V\*'s 191
+questions at native image size, in the project's prompt format.
+
+| Model | V\* correct, of 191 |
+| --- | --- |
+| Untuned Qwen2.5-VL-3B | 133 |
+| Direct SFT | 131 |
+| LIVR | 121 |
+| Global + patch latents | 119 |
+| LIVR without the Stage 1 bottleneck (ablation) | 134 |
+
+- Removing the latents from the prompt leaves LIVR at 121, so the loss is in the weights.
+- After training with latents, the answer position attends about half as much to the image
+  as after direct SFT, and reaches the target less.
+- See the [results](docs/PERCEPTION_VSTAR_RESULTS.md) and the
+  [attention report](docs/PERCEPTION_VSTAR_ATTENTION.md).
+
+### Does the answer use the latents?
+
+**On real images, no: the answer does not depend on them.** Evidence from the V\* and
+Visual-CoT runs ([results](docs/PERCEPTION_VSTAR_RESULTS.md),
+[attention report](docs/PERCEPTION_VSTAR_ATTENTION.md)):
+
+| Test | LIVR | Global + patch latents |
+| --- | --- | --- |
+| V\* as trained, of 191 | 121 | 119 |
+| V\* with the latent tokens left out of the prompt | 121 | 119 |
+| V\* answers that change when they are left out | 13 | 8 |
+| Held-out Visual-CoT rows containing the answer, with / without latents, of 354 | 223 / 225 | 231 / 232 |
+| Patch model with its global latents shown to the answer | | 120 (3 answers change) |
+
+- Accuracy is the same with and without the latents on both data sets, and both latent
+  models stay below direct SFT (131) either way. Training with latents changed the
+  language model's weights; the tokens themselves carry nothing the answer needs.
+- **Attention is not the same as use.** The answer position puts more attention on the
+  latents than on the whole image (LIVR: 10.3% on 4 latents, 4.6% on 4,472 image tokens),
+  yet removing them changes nothing in the score.
+- The latents do look at the target (3.0% of their image attention for LIVR, 6 to 9 times
+  chance), so they pick up relevant content that the answer then does not need.
+
+**On the FrozenLake benchmark the answer does read the latents, but they add no accuracy.**
+
+- **Read:** given another map's latents, LIVR writes that map's route in 351 of 400 cases;
+  with the latents dropped it solves 44 of 400 ([latent battery](docs/LATENT_BATTERY_RESULTS.md)).
+- **No gain:** direct SFT without latents matches LIVR (323 against 323 of 400,
+  [SFT control](docs/SFT_CONTROL_RESULTS.md)).
+- **More content in the latents does not change routes.** With block latents that read
+  their blocks at 0.934, the answer ignored them (93 of 100 routes unchanged when they
+  were averaged). Once the answer was made to read them, routes still did not improve
+  ([latent JEPA specification](docs/PERCEPTION_JEPA_SPEC.md)).
+- **Learned latent adjustments have no effect at test time** (323 with, 324 without;
+  [latent RL](docs/LATENT_RL_RESULTS.md)).
+
+One observation bears on why the two cases differ, without settling it: after one masked
+epoch on Visual-CoT, when the latents were the answer's only path to the image, LIVR
+scored 68 of 191 on V\*, which is chance. Four latents did not carry what those questions
+need, and the unmasked stage then learned to read the image directly. Whether a different
+recipe would make the answer use the latents on real images is untested.
+
+### Commands for the later studies
+
+Each study has a `python -m spara.cli` command; its specification's "Running" section gives
+the arguments, and `scripts/pace/` holds the matching job scripts.
+
+| Command | Study |
+| --- | --- |
+| `battery`, `explore-probe`, `planning-probe` | Latent battery, exploration probe, planning probe |
+| `detour-probe`, `detour-scaling`, `guided-search`, `jepa-judge` | Detour learning steps |
+| `expert-iteration`, `expert-round2` | Expert iteration rounds 1 and 2 |
+| `perception-jepa`, `region-latents` | Perception objectives on the latents |
+| `fair-rl`, `latent-diagnostics`, `latent-distillation` | B′, C′ and C″; diagnostics; latent distillation |
+| `perception`, `vstar` | Visual-CoT training arms; V\* evaluation and attention |
+
+Terms are defined in [GLOSSARY.md](GLOSSARY.md). Run outputs are kept on PACE scratch, not
+in git; each document names its run folders.
+
 ## Baseline commands
 
 Python 3.11 is the tested environment. Install an appropriate PyTorch 2.6.0 /
@@ -170,8 +334,10 @@ assumptions and checks are in [the specification](docs/SCAFFOLDING_BASELINE_SPEC
 The first PACE run (job 6257067, logs in `spara_results/`) scored 0/400 because
 the paper-literal latent loss collapsed the language model. The default recipe is
 now variant B (a zero-initialized linear latent projection plus MSE), and
-`configs/scaffolding-mse.json` is variant A (MSE only); neither has run on PACE
-yet. See [the specification](docs/SCAFFOLDING_BASELINE_SPEC.md#first-run-job-6257067).
+`configs/scaffolding-mse.json` is variant A (MSE only). At Stage 1, B scored
+223/400 and A 191/400; RL then raised B to 270/400. See
+[the first run](docs/SCAFFOLDING_BASELINE_SPEC.md#first-run-job-6257067) and
+[the results](docs/SCAFFOLDING_BASELINE_SPEC.md#results-2026-10-27).
 
 On a GPU machine, one script runs the whole baseline. It trains all three
 phases and evaluates both the Stage 1 and the Stage 2 checkpoints, writing logs

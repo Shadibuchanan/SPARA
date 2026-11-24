@@ -1,0 +1,18 @@
+{
+  "total_maps": 100,
+  "samples_per_map": 8,
+  "all_success_groups": 71,
+  "all_success_pct": 0.71,
+  "all_failure_groups": 19,
+  "all_failure_pct": 0.19,
+  "mixed_groups": 10,
+  "mixed_pct": 0.1,
+  "detour_maps_total": 0,
+  "detour_maps_mixed": 0,
+  "detour_maps_mixed_pct": 0.0,
+  "rl_decision_gate": {
+    "threshold_pct": 10.0,
+    "passed": true,
+    "recommendation": "PROCEED WITH RL"
+  }
+}

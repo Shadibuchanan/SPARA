@@ -1,0 +1,42 @@
+{
+  "3x3": {
+    "n_cells": 1800,
+    "n_holes": 280,
+    "pct_holes": 15.555555555555555,
+    "auroc": 1.0,
+    "ap": 1.0,
+    "balanced_acc": 1.0
+  },
+  "4x4": {
+    "n_cells": 4800,
+    "n_holes": 830,
+    "pct_holes": 17.291666666666668,
+    "auroc": 1.0,
+    "ap": 1.0,
+    "balanced_acc": 0.9987951807228915
+  },
+  "5x5": {
+    "n_cells": 10000,
+    "n_holes": 1787,
+    "pct_holes": 17.87,
+    "auroc": 1.0,
+    "ap": 1.0,
+    "balanced_acc": 1.0
+  },
+  "6x6": {
+    "n_cells": 18000,
+    "n_holes": 3332,
+    "pct_holes": 18.511111111111113,
+    "auroc": 1.0,
+    "ap": 1.0,
+    "balanced_acc": 1.0
+  },
+  "overall": {
+    "n_cells": 34600,
+    "n_holes": 6229,
+    "pct_holes": 18.002890173410403,
+    "auroc": 1.0,
+    "ap": 1.0,
+    "balanced_acc": 0.9999197431781701
+  }
+}

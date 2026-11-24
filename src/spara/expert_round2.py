@@ -20,6 +20,8 @@ per move naming the cell and the holes around it. `hole_check` (CPU) applies its
 
 The hole check on the exact map (docs/HOLE_CHECK_TEXT_SPEC.md): S3T is S3 and O3 is EB3,
 each with the map also given as text in every prompt. `text_check` (CPU) applies its readings.
+- `signatures` and `benchmark_outcomes`: no-detour failure signatures on the benchmark
+  (scripts/analyze_nodetour_failures.py).
 """
 import contextlib
 import json
@@ -36,7 +38,7 @@ from .benchmark import run_benchmark
 from .data import records
 from .detour_scaling import ALPHA, check_sets, greedy_eval, jsonl, paired
 from .expert_iteration import SAMPLE, BatchedLivr, batched_decide, searched, summarise
-from .fresh_maps import is_detour, shortest_path
+from .fresh_maps import find, is_detour, shortest_path
 from .hole_check import line_reading, read, with_hole_check
 from .jepa import decide
 from .latent_battery import MODES, latent_positions
@@ -1034,3 +1036,47 @@ def text_check(data_root, s3t_run, o3_run, s3_run, eb3_run, settings):
             "new_tokens": {"median": tokens[len(tokens) // 2], "max": tokens[-1]},
             "training": {name: summaries[name]["training"] for name in runs}},
         "seconds_in_jobs": {name: summaries[name]["seconds"] for name in ("s3t", "o3")}}
+# No-detour failure signatures (scripts/analyze_nodetour_failures.py) ------------------------
+
+def letters(answer):
+    """The reference parser's view of an answer: every U, D, R or L character."""
+    return "".join(ch for ch in (answer or "").upper() if ch in "UDRL")
+
+
+def away_moves(desc, route):
+    """Moves that increase the grid distance to the goal, up to the end of the route or the
+    move into a hole. A move off the grid leaves the player in place and is not counted."""
+    n = len(desc)
+    (r, c), (gr, gc) = find(desc, 1), find(desc, 2)
+    away = 0
+    for letter in route or "":
+        dr, dc = MOVES[letter]
+        if not (0 <= r + dr < n and 0 <= c + dc < n):
+            continue
+        away += abs(r + dr - gr) + abs(c + dc - gc) > abs(r - gr) + abs(c - gc)
+        r, c = r + dr, c + dc
+        if desc[r][c] == -1:
+            break
+    return away
+
+
+def signatures(descs, routes):
+    """No-detour failure signatures over the maps in `descs` (key -> map_desc), from `routes`
+    (key -> move letters): solved, into a hole, stops short or passes the goal, and failed
+    routes with a move away from the goal."""
+    kinds = {k: outcome(desc, routes[k]) for k, desc in descs.items()}
+    failed = [k for k, kind in kinds.items() if kind not in ("shortest", "longer")]
+    return {"maps": len(descs), "solved": len(descs) - len(failed), "failed": len(failed),
+            "hole": sum(kinds[k] == "hole" for k in failed),
+            "short_or_past": sum(kinds[k] in ("stops short", "passes the goal") for k in failed),
+            "failed_with_away_move": sum(away_moves(descs[k], routes[k]) > 0 for k in failed)}
+
+
+def benchmark_outcomes(path):
+    """Per test row: (success, move letters). `path` is a run directory (its
+    evaluation/responses.jsonl, or an exported benchmark-outcomes.jsonl) or a JSONL file."""
+    path = Path(path)
+    if path.is_dir():
+        responses = path / "evaluation/responses.jsonl"
+        path = responses if responses.exists() else path / "benchmark-outcomes.jsonl"
+    return {r["row_index"]: (bool(r["success"]), letters(r.get("extracted_answer"))) for r in jsonl(path)}
