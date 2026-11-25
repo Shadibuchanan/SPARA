@@ -124,6 +124,15 @@ def test_detour_sets_are_labelled_detour_maps_drawn_by_weight(tmp_path, fake_rel
     assert not {layout_key(r) for r in rows} & {layout_key(r) for r in records(tmp_path, "fresh/e")}
 
 
+def test_a_detour_set_can_keep_only_maps_needing_several_moves_away(tmp_path, fake_release):
+    manifest = fresh_maps.generate(tmp_path, "deep", [5, 6], None, seed=4, detour_count=12, weights=[1, 1], away=2)
+    assert manifest["min_away"] == 2
+    for r in records(tmp_path, "fresh/deep"):
+        desc = r["map_desc"]
+        (sr, sc), (gr, gc) = fresh_maps.find(desc, fresh_maps.START), fresh_maps.find(desc, fresh_maps.GOAL)
+        assert shortest_path(desc) - abs(sr - gr) - abs(sc - gc) >= 4
+
+
 def test_labels_break_ties_up_left_right_down():
     from spara.fresh_maps import answer_text, label_route
     open_map = [[1, 0, 0], [0, 0, 0], [0, 0, 2]]

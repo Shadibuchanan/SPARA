@@ -1,0 +1,215 @@
+{
+  "validity": {
+    "same_maps": true,
+    "free_routes_as_s3": [
+      377,
+      400
+    ],
+    "capped": {
+      "free": 0,
+      "holes": 4,
+      "cell": 19
+    },
+    "forced_lines_right": [
+      396,
+      400
+    ],
+    "valid": false
+  },
+  "primary": {
+    "maps": 400,
+    "first": 166,
+    "second": 83,
+    "only_first": 98,
+    "only_second": 15,
+    "p": 4.0987281487555347e-16,
+    "by_size": {
+      "7": {
+        "maps": 198,
+        "first": 87,
+        "second": 51,
+        "only_first": 45,
+        "only_second": 9,
+        "p": 7.288430776686283e-07
+      },
+      "8": {
+        "maps": 202,
+        "first": 79,
+        "second": 32,
+        "only_first": 53,
+        "only_second": 6,
+        "p": 1.7539187463500028e-10
+      }
+    },
+    "reading": "withheld: the measurement failed a validity check"
+  },
+  "descriptive": {
+    "solved": {
+      "free": 65,
+      "holes": 132,
+      "cell": 166,
+      "s3": 65,
+      "eb3": 83
+    },
+    "holes_vs_eb3": {
+      "maps": 400,
+      "first": 132,
+      "second": 83,
+      "only_first": 75,
+      "only_second": 26,
+      "p": 1.1154954264353206e-06,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 71,
+          "second": 51,
+          "only_first": 37,
+          "only_second": 17,
+          "p": 0.009073340339587177
+        },
+        "8": {
+          "maps": 202,
+          "first": 61,
+          "second": 32,
+          "only_first": 38,
+          "only_second": 9,
+          "p": 2.4904030624384177e-05
+        }
+      }
+    },
+    "holes_vs_free": {
+      "maps": 400,
+      "first": 132,
+      "second": 65,
+      "only_first": 77,
+      "only_second": 10,
+      "p": 5.91755837353286e-14,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 71,
+          "second": 39,
+          "only_first": 39,
+          "only_second": 7,
+          "p": 1.831543272601266e-06
+        },
+        "8": {
+          "maps": 202,
+          "first": 61,
+          "second": 26,
+          "only_first": 38,
+          "only_second": 3,
+          "p": 1.0479197953827679e-08
+        }
+      }
+    },
+    "cell_vs_free": {
+      "maps": 400,
+      "first": 166,
+      "second": 65,
+      "only_first": 106,
+      "only_second": 5,
+      "p": 1.035239298994319e-25,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 87,
+          "second": 39,
+          "only_first": 52,
+          "only_second": 4,
+          "p": 1.1008055578187737e-11
+        },
+        "8": {
+          "maps": 202,
+          "first": 79,
+          "second": 26,
+          "only_first": 54,
+          "only_second": 1,
+          "p": 3.1086244689504383e-15
+        }
+      }
+    },
+    "cell_vs_holes": {
+      "maps": 400,
+      "first": 166,
+      "second": 132,
+      "only_first": 35,
+      "only_second": 1,
+      "p": 1.076841726899147e-09,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 87,
+          "second": 71,
+          "only_first": 17,
+          "only_second": 1,
+          "p": 0.00014495849609375
+        },
+        "8": {
+          "maps": 202,
+          "first": 79,
+          "second": 61,
+          "only_first": 18,
+          "only_second": 0,
+          "p": 7.62939453125e-06
+        }
+      }
+    },
+    "failures": {
+      "free": {
+        "hole": 322,
+        "shortest": 65,
+        "stops short": 13
+      },
+      "holes": {
+        "hole": 180,
+        "shortest": 124,
+        "stops short": 87,
+        "longer": 8,
+        "passes the goal": 1
+      },
+      "cell": {
+        "stops short": 152,
+        "hole": 79,
+        "shortest": 158,
+        "longer": 8,
+        "passes the goal": 3
+      },
+      "s3": {
+        "hole": 322,
+        "shortest": 65,
+        "stops short": 13
+      },
+      "eb3": {
+        "stops short": 24,
+        "hole": 292,
+        "shortest": 81,
+        "longer": 2,
+        "passes the goal": 1
+      }
+    },
+    "fatal_moves": {
+      "free": {
+        "lost": 112,
+        "missed": 210
+      },
+      "holes": {
+        "lost": 141,
+        "listed and taken": 33,
+        "no line": 6
+      },
+      "cell": {
+        "listed and taken": 69,
+        "no line": 9,
+        "lost": 1
+      }
+    },
+    "moves": {
+      "free": 6,
+      "holes": 8,
+      "cell": 8,
+      "s3": 6,
+      "eb3": 7
+    }
+  }
+}

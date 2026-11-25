@@ -55,6 +55,38 @@ def test_training_data_mixes_released_maps_with_repeated_pool_maps(data):
         training_data("unused", RECIPE, 5)
 
 
+def test_a_plan_recipe_writes_every_answer_as_the_maps_plan(data):
+    from spara.plan_trace import read_plan, sections
+    rows = training_data("unused", RECIPE | {"answer": "plan"}, 4)
+    assert len(rows) == len(training_data("unused", RECIPE, 4))
+    for _, row in rows:
+        desc, plan = row["map_desc"], row["text_output"]
+        assert extract_boxed_content(plan) == extract_boxed_content(answer_text(label_route(desc)))
+        assert read_plan(desc, plan) == read_plan(desc, plan) | {"first_wrong": None, "holes_invented": 0}
+        assert read_plan(desc, plan)["holes_listed"] == sum(v == -1 for line in desc for v in line)
+        levels = [line.split(": ")[1].split() for line in sections(desc)["levels"].split("\n")]
+        distance = {cell: k + 1 for k, level in enumerate(levels) for cell in level}
+        assert len(distance) == sum(map(len, levels))  # no cell at two distances
+        goal = next(f"{r},{c}" for r, line in enumerate(desc) for c, v in enumerate(line) if v == 2)
+        for cell, k in distance.items():  # each cell touches one a step nearer the goal, and is safe
+            r, c = map(int, cell.split(","))
+            near = {f"{r + dr},{c + dc}" for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1))}
+            assert desc[r][c] != -1 and any(distance.get(n, 0 if n == goal else None) == k - 1 for n in near)
+
+
+def test_read_plan_names_the_first_section_that_is_not_the_maps(data):
+    from spara.plan_trace import read_plan, sections
+    desc = next(row["map_desc"] for _, row in training_data("unused", RECIPE, 4)
+                if any(v == -1 for line in row["map_desc"] for v in line))
+    truth = sections(desc)
+    written = lambda **changed: "\n".join((truth | changed).values())
+    assert read_plan(desc, written(holes="holes: 9,9"))  == {
+        "first_wrong": "holes", "holes": truth["holes"].count(","), "holes_listed": 0, "holes_invented": 1}
+    assert read_plan(desc, written(path="path: 0,0"))["first_wrong"] == "path"
+    assert read_plan(desc, written(levels="1: 0,0"))["first_wrong"] == "levels"
+    assert read_plan(desc, truth["size"])["first_wrong"] == "holes"  # an answer cut short
+
+
 def test_set_checks_catch_bad_labels_and_shared_layouts(data):
     checks = check_sets(Evaluator(), "unused", RECIPE)
     assert checks["valid"] and checks["labels_accepted"] == [6, 6]

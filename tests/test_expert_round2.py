@@ -6,9 +6,10 @@ import torch
 
 from spara import detour_scaling, expert_iteration, expert_round2, training
 from spara.expert_round2 import (away_moves, balanced, batching_check, bootstrap_difference, ceiling, compare,
-                                 hole_check, hole_walks, latent_states, letters, masked, outcome, phases,
-                                 probe_predictions, probe_score, require_base_checkpoint, round3, run_arm, run_search,
-                                 signatures, text_check, training_rows, wall_bumps, with_map_text)
+                                 glimpse_check, glimpse_reading, hole_check, hole_walks, latent_states, letters, masked,
+                                 oracle_read, outcome, phases, probe_predictions, probe_score, reading_check,
+                                 require_base_checkpoint, round3, run_arm, run_search, signatures, text_check,
+                                 training_rows, wall_bumps, with_map_text)
 from spara.fresh_maps import answer_text, draw_detour_layouts, label_route
 from spara.runtime import read_config
 from test_detour_scaling import Evaluator, SavingProcessor
@@ -320,6 +321,118 @@ def test_run_arm_trains_two_phases_and_evaluates(arm, data, tiny_model, prompts,
     assert not (unsaved / "phase2/final").exists() and (unsaved / "greedy.jsonl").exists()
 
 
+def test_s3r_trains_reading_rows_first_and_probes_them(data, tiny_model, prompts, tmp_path, monkeypatch):
+    for rows in data.values():
+        for row in rows:
+            row["text_input"] = "Map: <image> Go."
+    round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
+    search = search_run(tmp_path / "search", SETTINGS, route_rows(data["fresh/p78"], {1, 3}))
+    stages = []
+    train = training.train_stage
+
+    def tracked(model, processor, root, output, config, stage, **kwargs):
+        stages.append((output.name, stage, [row["text_output"] for _, row in kwargs["data"]]))
+        return train(model, processor, root, output, config, stage, **kwargs)
+    monkeypatch.setattr(expert_round2, "train_stage", tracked)
+    monkeypatch.setattr(expert_round2, "run_benchmark", lambda *args: None)
+    config = read_config("configs/livr.json") | {"gradient_checkpointing": False}
+    summary = run_arm(tiny(tiny_model), SavingProcessor(), Evaluator(), config, "unused", tmp_path / "s3r",
+                      SETTINGS | {"save_arm_weights": False}, "s3r", round1, [search], {})
+    assert [(name, stage) for name, stage, _ in stages] == [("phase0", 2), ("phase1", 1), ("phase2", 2)]
+    reading, s3 = stages[0][2], stages[1][2] + stages[2][2]
+    assert all(" > " not in answer and "boxed" not in answer for answer in reading)
+    assert len(s3) == 14 and all(" > " in answer and "boxed" in answer for answer in s3)
+    safe = sum(value == 0 for row in data["fresh/p78"] for line in row["map_desc"] for value in line)
+    assert sum(len(answer.splitlines()) - 1 for answer in reading) == safe  # every safe pool cell, once
+    assert summary["training"]["phase0"]["rows"] == len(reading) and summary["counts"]["rows"] == 14
+    probes = summary["evaluation"]["reading"]
+    assert probes["after_phase0"]["answers"] == probes["after_phase2"]["answers"] == 4  # one row per held-out map
+    assert (tmp_path / "s3r/reading-phase0.jsonl").exists() and (tmp_path / "s3r/reading-phase2.jsonl").exists()
+
+
+def test_g3_trains_s3_rows_with_glimpse_latents(data, tiny_model, prompts, tmp_path, monkeypatch):
+    from spara import glimpse
+    from spara.model import LATENT_TOKENS
+    round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
+    search = search_run(tmp_path / "search", SETTINGS, route_rows(data["fresh/p78"], {1, 3}))
+    answers = []
+    train = training.train_stage
+
+    def tracked(model, processor, root, output, config, stage, **kwargs):
+        answers.extend(row["text_output"] for _, row in kwargs["data"])
+        return train(model, processor, root, output, config, stage, **kwargs)
+    monkeypatch.setattr(expert_round2, "train_stage", tracked)
+    monkeypatch.setattr(expert_round2, "run_benchmark", lambda *args: None)
+    monkeypatch.setattr(glimpse, "install",  # the stand-in tokenizer spells no cells
+                        lambda model, processor: setattr(model.config, "livr_glimpse", {"digits": [], "comma": -1}))
+    config = read_config("configs/livr.json") | {"gradient_checkpointing": False}
+    model = tiny(tiny_model)
+    summary = run_arm(model, SavingProcessor(), Evaluator(), config, "unused", tmp_path / "g3",
+                      SETTINGS | {"save_arm_weights": False}, "g3", round1, [search], {})
+    four = "".join(LATENT_TOKENS)
+    assert len(answers) == 14 and model.config.livr_glimpse
+    assert all(answer.count(four) == answer.count(" hole ") > 0 for answer in answers)  # after every line's cell
+    assert summary["checks"]["hole_check_rows"] == {"rows": 14, "replay": 14}  # checked before the latents go in
+
+
+def test_g3r_trains_reading_rows_with_glimpses_and_stops_after_the_probes(data, tiny_model, prompts, tmp_path,
+                                                                          monkeypatch):
+    from spara import glimpse
+    from spara.model import LATENT_TOKENS
+    for rows in data.values():
+        for row in rows:
+            row["text_input"] = "Map: <image> Go."
+    round1 = write_jsonl(tmp_path / "round1.jsonl", route_rows(data["fresh/p"], {0, 1}))
+    search = search_run(tmp_path / "search", SETTINGS, route_rows(data["fresh/p78"], {1, 3}))
+    stages = []
+    train = training.train_stage
+
+    def tracked(model, processor, root, output, config, stage, **kwargs):
+        stages.append((output.name, stage, [row["text_output"] for _, row in kwargs["data"]]))
+        return train(model, processor, root, output, config, stage, **kwargs)
+    monkeypatch.setattr(expert_round2, "train_stage", tracked)
+    monkeypatch.setattr(glimpse, "install",  # the stand-in tokenizer spells no cells
+                        lambda model, processor: setattr(model.config, "livr_glimpse", {"digits": [], "comma": -1}))
+    config = read_config("configs/livr.json") | {"gradient_checkpointing": False}
+    model = tiny(tiny_model)
+    summary = run_arm(model, SavingProcessor(), Evaluator(), config, "unused", tmp_path / "g3r",
+                      SETTINGS | {"save_arm_weights": False, "reading_only": True}, "g3r", round1, [search], {})
+    assert [(name, stage) for name, stage, _ in stages] == [("phase0", 2)]  # no route phases
+    four = "".join(LATENT_TOKENS)
+    assert all(answer.count(four) == answer.count(" hole ") > 1 and " > " not in answer for answer in stages[0][2])
+    probes = summary["evaluation"]["reading"]
+    assert probes["after_phase0"]["answers"] == probes["after_phase0_blind"]["answers"] == 4
+    assert set(summary["training"]) == {"phase0"} and "blind" not in model.config.livr_glimpse
+    assert (tmp_path / "g3r/reading-phase0-blind.jsonl").exists() and not (tmp_path / "g3r/greedy.jsonl").exists()
+
+
+def test_glimpse_reading_applies_the_fixed_rules(data, tmp_path):
+    from spara.hole_check import holes_around
+    maps = data["fresh/h78"]
+
+    def answer(desc, listed):  # the start's line, then one named cell that has a hole beside it
+        start = next((r, c) for r, line in enumerate(desc) for c, v in enumerate(line) if v == 1)
+        cell = next((r, c) for r, line in enumerate(desc) for c, v in enumerate(line)
+                    if v == 0 and holes_around(desc, (r, c)))
+        return (f"{start[0]},{start[1]} hole {holes_around(desc, start) or '-'}\n"
+                f"{cell[0]},{cell[1]} hole {holes_around(desc, cell) if listed else '-'}")
+
+    def run(name, listed, latents=8):
+        (tmp_path / name).mkdir()
+        for file, said in (("reading-phase0.jsonl", listed), ("reading-phase0-blind.jsonl", False)):
+            write_jsonl(tmp_path / name / file, [{"row_index": i, "answer": answer(row["map_desc"], said),
+                                                  "new_tokens": 20, "latents": latents} for i, row in enumerate(maps)])
+        (tmp_path / name / "summary.json").write_text("{}")
+        return glimpse_reading("unused", tmp_path / name, tmp_path / name, SETTINGS | {"max_new_tokens": 384})
+    reads = run("reads", True)
+    assert reads["validity"]["valid"] and reads["primary"]["named_cells_listed"] == 1
+    assert reads["primary"]["next"].startswith("glimpse latents read under labels")
+    assert reads["descriptive"]["shares"]["blind"]["named"] == 0
+    assert max(reads["descriptive"]["shares"]["g3r"]["by_direction"].values()) == 1
+    assert run("none", False)["primary"]["next"].startswith("glimpse latents do not read")
+    assert run("unwritten", True, latents=0)["primary"]["reading"].startswith("withheld")
+
+
 def write_run(path, data, held, masked_success, old=(1, 1, 1), seen=(1, 0), states=None, benchmark=None):
     path.mkdir()
     rows = [{"population": "heldout", "split": "fresh/h", "row_index": i, "grid_size": 4, "route": "",
@@ -533,8 +646,55 @@ def test_hole_check_applies_the_fixed_rules(data, tmp_path, monkeypatch):
     assert result["descriptive"]["format"] == {"follows": 4, "answers": 4}
     lines = result["descriptive"]["lines"]
     assert lines["cell_right"] == lines["lines"] == lines["holes_exact_given_cell"]
+    # G3's table on the same runs: S3's answers stand in for G3's, with four latents a line, seeing and blind.
+    for name in ("greedy", "blind"):
+        write_jsonl(tmp_path / f"s3/{name}.jsonl", [r | {"latents": 4 * r["answer"].count(" hole ")} for r in rows])
+    glimpsed = glimpse_check("unused", tmp_path / "s3", tmp_path / "s3", tmp_path / "eb3", tmp_path / "search", livr,
+                             SETTINGS)
+    assert glimpsed["validity"]["valid"] and glimpsed["validity"]["four_latents_a_line"] == [4, 4]
+    assert glimpsed["glimpse"]["lines_read"] and glimpsed["glimpse"]["g3_vs_blind"]["p"] == 1
+    assert glimpsed["primary"]["next"].startswith("the reading is right and the routes are not")
+    write_jsonl(tmp_path / "s3/greedy.jsonl", [r | {"latents": 0} for r in rows])
+    assert not glimpse_check("unused", tmp_path / "s3", tmp_path / "s3", tmp_path / "eb3", tmp_path / "search", livr,
+                             SETTINGS)["validity"]["valid"]  # the model did not write the latents
+    write_jsonl(tmp_path / "s3/greedy.jsonl", rows)
+    # The oracle check on the same runs: S3's answers, whose lines are all right, stand in for every pass.
+    for name in ("free", "holes", "cell"):
+        write_jsonl(tmp_path / f"s3/oracle-{name}.jsonl", rows)
+    oracle = oracle_read("unused", tmp_path / "s3", tmp_path / "s3", tmp_path / "eb3", SETTINGS)
+    assert oracle["validity"]["valid"] and oracle["validity"]["free_routes_as_s3"] == [4, 4]
+    assert oracle["primary"]["first"] == 3 and oracle["primary"]["next"].startswith("the policy does not turn")
+    assert oracle["descriptive"]["fatal_moves"]["cell"] == {"listed and taken": 1}
+    # S3R's table on the same runs: S3's answers stand in for S3R's, and their lines are all right.
+    probe = lambda listed: {"answers": 4, "start_right": 4, "hole_directions": 10, "hole_directions_listed": listed,
+                            "capped": 0}
+    summary = json.loads((tmp_path / "s3/summary.json").read_text())
+
+    r, c = next((r, c) for r, line in enumerate(data["fresh/h78"][0]["map_desc"]) for c, v in enumerate(line) if v == 1)
+    for when, answer in (("phase0", f"{r},{c} hole -\n9,9 hole U\nnot a line"), ("phase2", "a route")):
+        write_jsonl(tmp_path / f"s3/reading-{when}.jsonl", [{"row_index": 0, "answer": answer}])
+
+    def s3r(listed):
+        (tmp_path / "s3/summary.json").write_text(json.dumps(summary | {"evaluation": {"reading": {
+            "after_phase0": probe(listed), "after_phase2": probe(0)}}}))
+        return reading_check("unused", tmp_path / "s3", tmp_path / "s3", tmp_path / "eb3", tmp_path / "search", livr,
+                             SETTINGS)
+    read_right = s3r(9)
+    assert read_right["validity"]["valid"] and read_right["reading"]["probe_reads"]
+    assert read_right["reading"]["answers_read"]
+    assert read_right["primary"]["next"].startswith("the check does not help even when read right")
+    assert read_right["reading"]["probe"]["after_phase2"]["hole_directions_listed"] == 0
+    split = read_right["reading"]["probe_by_line"]  # the start line apart from the cells named by coordinates
+    assert split["phase0"]["start_lines"] == split["phase0"]["named_lines"] == split["phase0"]["named_invented"] == 1
+    assert split["phase2"] == {}
+    with monkeypatch.context() as patch:
+        patch.setattr(expert_round2, "line_reading",
+                      lambda answers: {"answers": 4, "first_line_offset": {}, "lines": {}})
+        assert s3r(9)["primary"]["next"].startswith("the reading is learned and not used")
+        assert s3r(8)["primary"]["next"].endswith("report and hold")
     monkeypatch.setattr(expert_round2, "ALPHA", 1.01)  # four maps cannot reach 0.05: direction only
     assert run()["primary"]["reading"] == "writing the check helps"
+    assert s3r(0)["primary"]["next"].startswith("the check becomes the policy's form")
     for r in rows:
         r["new_tokens"] = SETTINGS["max_new_tokens"]
     write_jsonl(tmp_path / "s3/greedy.jsonl", rows)

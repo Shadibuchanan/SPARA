@@ -212,7 +212,7 @@ def feature_pass(model, processor, data_root, split, rows, patch, output, layers
                 "last": {m: torch.stack(f["last"]) for m, f in features.items()},
                 "rows": [{"map_id": r["map_id"], "map_desc": r["map_desc"],
                           "text_output": r.get("text_output")} for r in rows]},
-               Path(output) / f"features-{split}.pt")
+               Path(output) / f"features-{split.replace('/', '-')}.pt")  # fresh/<name> -> fresh-<name>
     if split == "train":
         return {mode: {size: total / count for size, (total, count) in by_size.items()}
                 for mode, by_size in sums.items()}
@@ -249,7 +249,8 @@ def summarize_battery(results):
     return summary
 
 
-def run_battery(model, processor, config, data_root, output, run_manifest, limit=None, max_new_tokens=128):
+def run_battery(model, processor, config, data_root, output, run_manifest, limit=None, max_new_tokens=128,
+                split="test"):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     model.eval()
@@ -257,13 +258,13 @@ def run_battery(model, processor, config, data_root, output, run_manifest, limit
     settings = {"do_sample": False, "temperature": None, "top_p": None, "top_k": None,
                 "max_new_tokens": max_new_tokens}
     layers = probe_layers(model.config.num_hidden_layers)
-    train, test = records(data_root, "train"), records(data_root, "test")
+    train, test = records(data_root, "train"), records(data_root, split)
     if limit:
         # A pilot keeps every grid size, so each has a mean latent and swap donors.
         train, test = first_per_size(train, limit), first_per_size(test, limit)
     donors = swap_donors(test, config["seed"])
     json_write(output / "manifest.json", run_manifest | {
-        "evaluator": evaluator.provenance, "probe_layers": layers, "limit": limit,
+        "evaluator": evaluator.provenance, "probe_layers": layers, "limit": limit, "split": split,
         "cell_features": "overlap-weighted image-token states; merged tokens taken as row-major "
                          "over the merged grid and the map as filling the whole image",
         "effective_generation": model.generation_config.to_dict() | settings,
@@ -276,7 +277,7 @@ def run_battery(model, processor, config, data_root, output, run_manifest, limit
     # recorded states must not change its answer.
     identity = []
     for index in range(min(4, len(test))):
-        prompt = to_device(encode(processor, data_root, "test", test[index], training=False, latents=tokens), model.device)
+        prompt = to_device(encode(processor, data_root, split, test[index], training=False, latents=tokens), model.device)
         positions = latent_positions(prompt["input_ids"], ids)
         for mode, stage in MODES.items():
             model.config.livr_stage = stage
@@ -290,14 +291,18 @@ def run_battery(model, processor, config, data_root, output, run_manifest, limit
     if not all(i["same_route"] for i in identity):
         raise RuntimeError("Replacing latents with their own states changed an answer; see identity.json")
 
-    means = feature_pass(model, processor, data_root, "train", train, patch, output, layers)
-    states = feature_pass(model, processor, data_root, "test", test, patch, output, layers)
+    states = feature_pass(model, processor, data_root, split, test, patch, output, layers)
+    if split == "test":
+        means = feature_pass(model, processor, data_root, "train", train, patch, output, layers)
+    else:  # the training maps have no grid of a generated set's sizes, so the mean is over the set itself
+        means = {mode: {size: torch.stack([s for s, r in zip(by_row, test) if len(r["map_desc"]) == size]).mean(0)
+                        for size in {len(r["map_desc"]) for r in test}} for mode, by_row in states.items()}
     results = []
     with (output / "rows.jsonl").open("w", encoding="utf-8") as log:
         for index, row in enumerate(test):
             size = len(row["map_desc"])
-            prompt = to_device(encode(processor, data_root, "test", row, training=False, latents=tokens), model.device)
-            removed = to_device(encode(processor, data_root, "test", row, training=False, latents=[]), model.device)
+            prompt = to_device(encode(processor, data_root, split, row, training=False, latents=tokens), model.device)
+            removed = to_device(encode(processor, data_root, split, row, training=False, latents=[]), model.device)
             positions = latent_positions(prompt["input_ids"], ids)
             record = {"row_index": index, "map_id": row["map_id"], "grid_size": size, "modes": {}}
             reference = None

@@ -39,7 +39,9 @@ from .data import records
 from .detour_scaling import ALPHA, check_sets, greedy_eval, jsonl, paired
 from .expert_iteration import SAMPLE, BatchedLivr, batched_decide, searched, summarise
 from .fresh_maps import find, is_detour, shortest_path
-from .hole_check import line_reading, read, with_hole_check
+from .explore_probe import GREEDY
+from .hole_check import (forced_answer, line_reading, probe_lines, read, reading_rows, reading_score,
+                         with_hole_check)
 from .jepa import decide
 from .latent_battery import MODES, latent_positions
 from .latent_rl import moves
@@ -50,11 +52,14 @@ from .training import amp, to_device, train_stage
 
 ARMS = {"e2": 2, "eb2": MODES["bottleneck"], "o2": 2, "t2": 2,  # the stage each arm's first phase trains in
         "eb3": MODES["bottleneck"], "s3": MODES["bottleneck"], "o3": MODES["bottleneck"],
-        "s3t": MODES["bottleneck"]}
+        "s3t": MODES["bottleneck"], "s3r": MODES["bottleneck"], "g3": MODES["bottleneck"],
+        "g3r": MODES["bottleneck"]}
 # The perception ceiling: every prompt also states the map as text; T2 blanks the image, so
 # the text is its only map. The value: whether the image is blanked.
 TEXT_ARMS = {"o2": False, "t2": True, "o3": False, "s3t": False}
-HOLE_CHECK_ARMS = {"s3", "s3t"}  # every training answer leads with the hole check
+HOLE_CHECK_ARMS = {"s3", "s3t", "s3r", "g3", "g3r"}  # every training answer leads with the hole check
+GLIMPSE_ARMS = {"g3", "g3r"}  # four latents after every line's cell, each seeing one neighbouring cell
+READING_ARMS = {"s3r", "g3r"}  # a phase of reading rows first
 CELLS = {0: "F", -1: "H", 1: "S", 2: "G"}
 ROUND1 = ("heldout", "test_detour")  # round 1's held-out populations
 MOVES = {"U": (-1, 0), "D": (1, 0), "L": (0, -1), "R": (0, 1)}
@@ -175,6 +180,64 @@ def text_evaluate(model, processor, evaluator, data_root, output, settings, name
              if among is None or p in among]
     with (output / f"{name}.jsonl").open("w", encoding="utf-8") as log:
         return success_counts(greedy_eval(model, processor, evaluator, data_root, items, log, settings["max_new_tokens"]))
+
+
+def reading_eval(model, processor, evaluator, data_root, output, name, items, max_new_tokens):
+    """The probe of S3R (docs/HOLE_CHECK_SPEC.md): greedy answers to one reading row per held-out map."""
+    model.config.livr_stage = 2
+    with (output / f"{name}.jsonl").open("w", encoding="utf-8") as log:
+        answers = greedy_eval(model, processor, evaluator, data_root, items, log, max_new_tokens)
+    counts = sum((reading_score(item[3], a["answer"]) for item, a in zip(items, answers)), Counter())
+    return dict(counts) | {"capped": sum(a["new_tokens"] >= max_new_tokens for a in answers)}
+
+
+@torch.no_grad()
+def oracle_check(model, processor, evaluator, data_root, output, settings):
+    """The oracle check (docs/HOLE_CHECK_SPEC.md): S3's greedy answers on the held-out maps, written line by
+    line with nothing forced (which must reproduce its recorded answers), with the hole lists forced to the
+    truth, and with the cells forced as well. A run cut short resumes: each pass keeps the maps it has written."""
+    output, began = Path(output), time.time()
+    model.eval()
+    model.config.livr_stage = 2
+    tokenizer, cap = processor.tokenizer, settings["max_new_tokens"]
+    held = [item for item in populations(data_root, settings) if item[0] == "heldout78"]
+    summary = {}
+    for name, force in (("free", None), ("holes", "holes"), ("cell", "cell")):
+        path = output / f"oracle-{name}.jsonl"
+        done = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []
+        solved = sum(record["success"] for record in done)
+        with path.open("a", encoding="utf-8") as log:
+            for population, split, index, row in held[len(done):]:
+                prompt = to_device(encode(processor, data_root, split, row, training=False, **latent_kwargs(model)),
+                                   model.device)
+
+                def write(text, stop):
+                    ids = prompt["input_ids"]
+                    if text:  # the answer so far, tokenized apart from the prompt as in training
+                        more = tokenizer(text, add_special_tokens=False, return_tensors="pt")["input_ids"]
+                        ids = torch.cat([ids, more.to(ids.device)], dim=-1)
+                    room = cap - (ids.shape[-1] - prompt["input_ids"].shape[-1])
+                    if room <= 0:
+                        return ""
+                    with amp(model.device):
+                        out = model.generate(**(prompt | {"input_ids": ids, "attention_mask": torch.ones_like(ids)}),
+                                             **GREEDY, max_new_tokens=room, use_cache=True, stop_strings=[stop],
+                                             tokenizer=tokenizer)
+                    new = tokenizer.decode(out[0, ids.shape[-1]:], skip_special_tokens=True)
+                    return new[:new.index(stop) + len(stop)] if stop in new else new
+                answer = forced_answer(row["map_desc"], write, force)
+                scored = evaluator.score(row, answer)
+                record = {"population": population, "split": split, "row_index": index,
+                          "grid_size": len(row["map_desc"]), "route": moves(scored["extracted_answer"]),
+                          "success": bool(scored["success"]), "answer": answer,
+                          "new_tokens": len(tokenizer(answer, add_special_tokens=False)["input_ids"])}
+                solved += record["success"]
+                log.write(json.dumps(record) + "\n")
+                log.flush()
+        summary[name] = [solved, len(held)]
+        print(json.dumps({name: summary[name], "seconds": time.time() - began}), flush=True)
+    json_write(output / "oracle-summary.json", summary | {"seconds": time.time() - began})
+    return summary
 
 
 def state_items(data_root, settings):
@@ -442,6 +505,10 @@ def run_arm(model, processor, evaluator, config, data_root, output, settings, ar
     if arm in HOLE_CHECK_ARMS:
         data = [(split, with_hole_check(row)) for split, row in data]
         checks = checks | {"hole_check_rows": replayed(data)}
+    if arm in GLIMPSE_ARMS:  # a glimpse of each neighbouring cell after every line's cell
+        from .glimpse import install, with_glimpses
+        install(model, processor)
+        data = [(split, with_glimpses(row)) for split, row in data]
     one, two = phases(data, settings, config["gradient_accumulation"])
     json_write(output / "manifest.json", run_manifest | {"arm": arm, "settings": settings, "checks": checks,
                                                          "counts": counts, "round1_routes": str(round1_routes),
@@ -452,6 +519,37 @@ def run_arm(model, processor, evaluator, config, data_root, output, settings, ar
         seed_all(config["seed"])
     tuned = config | {"epochs_per_stage": settings["epochs"], "learning_rate": settings["learning_rate"],
                       "warmup_ratio": settings["warmup_ratio"]}
+    def finish(training, evaluation):
+        summary = {"arm": arm, "checks": checks, "counts": counts, "training": training, "evaluation": evaluation,
+                   "seconds": time.time() - began,
+                   "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
+        json_write(output / "summary.json", summary)
+        print(json.dumps(summary, indent=1), flush=True)
+        return summary
+    if arm in READING_ARMS:  # a reading phase on the pool maps first; then S3's phases, unchanged
+        rng = random.Random(settings["seed"])
+        zero = [(settings["pool_split"], r) for row in records(data_root, settings["pool_split"])
+                for r in reading_rows(row, rng)]
+        rng.shuffle(zero)
+        probe = [("reading78", settings["heldout_split"], i, reading_rows(row, rng)[0])
+                 for i, row in enumerate(records(data_root, settings["heldout_split"]))]
+        if arm in GLIMPSE_ARMS:
+            zero = [(split, with_glimpses(row)) for split, row in zero]
+        began_reading = time.time()
+        train_stage(model, processor, data_root, output / "phase0", tuned, 2, final_weights_only=True, data=zero,
+                    save_final=False)
+        reading_phase = loss_summary(output / "phase0/steps.jsonl") | {"seconds": time.time() - began_reading,
+                                                                         "stage": 2, "rows": len(zero)}
+        probes = {"after_phase0": reading_eval(model, processor, evaluator, data_root, output, "reading-phase0",
+                                               probe, settings["max_new_tokens"])}
+        if arm in GLIMPSE_ARMS:  # the ablation: the probe again with the written latents seeing no image token
+            model.config.livr_glimpse["blind"] = True
+            probes["after_phase0_blind"] = reading_eval(model, processor, evaluator, data_root, output,
+                                                        "reading-phase0-blind", probe, settings["max_new_tokens"])
+            del model.config.livr_glimpse["blind"]
+        if settings.get("reading_only"):  # the reading test alone: no route phases
+            return finish({"phase0": reading_phase}, {"reading": probes})
+        seed_all(config["seed"])
     started = time.time()
     train_stage(model, processor, data_root, output / "phase1", tuned, ARMS[arm], final_weights_only=True, data=one,
                 save_final=False)
@@ -472,12 +570,18 @@ def run_arm(model, processor, evaluator, config, data_root, output, settings, ar
         evaluation = evaluate(model, processor, evaluator, data_root, output, settings)
         run_benchmark(model, processor, config, data_root, output / "evaluation",
                       run_manifest | {"checkpoint": f"in-memory {output / 'phase2/final'}", "arm": arm})
-    summary = {"arm": arm, "checks": checks, "counts": counts, "training": training, "evaluation": evaluation,
-               "seconds": time.time() - began,
-               "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
-    json_write(output / "summary.json", summary)
-    print(json.dumps(summary, indent=1), flush=True)
-    return summary
+    if arm in GLIMPSE_ARMS:  # the ablation: the same answers with the written latents seeing no image token
+        model.config.livr_glimpse["blind"] = True
+        held = [item for item in populations(data_root, settings) if item[0] == "heldout78"]
+        with (output / "blind.jsonl").open("w", encoding="utf-8") as log:
+            blind = greedy_eval(model, processor, evaluator, data_root, held, log, settings["max_new_tokens"])
+        del model.config.livr_glimpse["blind"]
+        evaluation["blind"] = [sum(r["success"] for r in blind), len(blind)]
+    if arm in READING_ARMS:
+        training["phase0"] = reading_phase
+        evaluation["reading"] = probes | {"after_phase2": reading_eval(
+            model, processor, evaluator, data_root, output, "reading-phase2", probe, settings["max_new_tokens"])}
+    return finish(training, evaluation)
 
 
 # Readings ------------------------------------------------------------------------------------
@@ -1080,3 +1184,178 @@ def benchmark_outcomes(path):
         responses = path / "evaluation/responses.jsonl"
         path = responses if responses.exists() else path / "benchmark-outcomes.jsonl"
     return {r["row_index"]: (bool(r["success"]), letters(r.get("extracted_answer"))) for r in jsonl(path)}
+
+
+READING_NEXT = {
+    "helps": "the check becomes the policy's form: run the next round of expert iteration with it",
+    "answers read": "the check does not help even when read right: drop the form and keep EB3's",
+    "probe reads": "the reading is learned and not used in the answers: train the reading rows with the routes",
+    "neither": "labels for every cell do not teach the holes next to a cell: report and hold"}
+
+
+def reading_check(data_root, s3r_run, s3_run, eb3_run, search_run, livr_outcomes, settings):
+    """S3R's readings (docs/HOLE_CHECK_SPEC.md): the hole check's readout with S3R in S3's place, so its
+    "s3" keys are S3R; then the table's split on whether the probe and the answers read. `s3_run` is S3."""
+    result = hole_check(data_root, s3r_run, eb3_run, search_run, livr_outcomes, settings)
+    probes = json.loads((Path(s3r_run) / "summary.json").read_text())["evaluation"]["reading"]
+    maps = records(data_root, settings["heldout_split"])
+    answers = {name: {r["row_index"]: r for r in jsonl(Path(run) / "greedy.jsonl") if r["population"] == "heldout78"}
+               for name, run in (("s3r", s3r_run), ("s3", s3_run))}
+    lines = {name: line_reading((maps[i]["map_desc"], r["answer"], r["route"]) for i, r in sorted(found.items()))
+             for name, found in answers.items()}
+
+    def shares(start_right, count, total):
+        return {"start_right": start_right / total,
+                "hole_directions_listed": count.get("hole_directions_listed", 0) / max(1, count.get("hole_directions", 0))}
+    probe = {when: shares(c.get("start_right", 0), c, c["answers"]) for when, c in probes.items()}
+    by_line = {when: dict(sum((probe_lines(maps[r["row_index"]]["map_desc"], r["answer"])
+                               for r in jsonl(Path(s3r_run) / f"reading-{when}.jsonl")), Counter()))
+               for when in ("phase0", "phase2")}
+    mine = lines["s3r"]
+    in_answers = shares(mine["first_line_offset"].get("0,0", 0), mine["lines"], mine["answers"])
+    probe_reads = all(share >= READS for share in probe["after_phase0"].values())
+    answers_read = all(share >= READS for share in in_answers.values())
+    validity = result["validity"]
+    validity["same_maps_as_s3"] = sorted(answers["s3"]) == sorted(answers["s3r"])
+    validity["probe_cap_ok"] = all(c["capped"] <= 0.02 * c["answers"] for c in probes.values())
+    validity["valid"] = valid = validity["valid"] and validity["same_maps_as_s3"] and validity["probe_cap_ok"]
+    primary = result["primary"]
+    primary.pop("next", None)  # S3's rule for a null result is not S3R's
+    primary["reading"] = reading(primary, None, "the check helps once the reading is trained", "the check harms",
+                                 "no detectable difference", valid)
+    if valid:
+        helps = primary["reading"] == "the check helps once the reading is trained"
+        primary["next"] = READING_NEXT["helps" if helps else "answers read" if answers_read
+                                       else "probe reads" if probe_reads else "neither"]
+    success = {name: {i: bool(r["success"]) for i, r in found.items()} for name, found in answers.items()}
+    return result | {"reading": {"threshold": READS, "probe_reads": probe_reads, "answers_read": answers_read,
+                                 "probe": probe, "answers": in_answers, "probe_counts": probes, "probe_by_line": by_line,
+                                 "lines": lines,
+                                 "s3r_vs_s3": paired(success["s3r"], success["s3"], sorted(success["s3r"]))}}
+
+
+GLIMPSE_NEXT = {
+    "helps": "glimpse latents work: let RL adjust them, and run a round of expert iteration with this form",
+    "reads": "the reading is right and the routes are not: the limit is choosing the route over several moves",
+    "neither": "the glimpses did not teach the lines in this much training: compare with the blind pass and hold"}
+
+
+def by_map(run, name="greedy.jsonl"):
+    return {r["row_index"]: r for r in jsonl(Path(run) / name) if r["population"] == "heldout78"}
+
+
+def glimpse_check(data_root, g3_run, s3_run, eb3_run, search_run, livr_outcomes, settings):
+    """G3's readings (docs/HOLE_CHECK_SPEC.md): the hole check's readout with G3 in S3's place, so its "s3"
+    keys are G3; then the table's split on whether the lines naming the right cell list its holes."""
+    result = hole_check(data_root, g3_run, eb3_run, search_run, livr_outcomes, settings)
+    maps = records(data_root, settings["heldout_split"])
+    answers = {"g3": by_map(g3_run), "blind": by_map(g3_run, "blind.jsonl"), "s3": by_map(s3_run)}
+    lines = {name: line_reading((maps[i]["map_desc"], r["answer"], r["route"]) for i, r in sorted(found.items()))
+             for name, found in answers.items()}
+    listed = {name: {"all": read["lines"].get("hole_directions_listed", 0) / max(1, read["lines"].get("hole_directions", 0))}
+              | {when: part["listed"] / max(1, part["holes"]) for when, part in read["by_line"].items()}
+              for name, read in lines.items()}
+    whole = sum(r["latents"] == 4 * r["answer"].count(" hole ") > 0 for r in answers["g3"].values())
+    validity = result["validity"]
+    validity["same_maps_as_s3"] = sorted(answers["s3"]) == sorted(answers["g3"]) == sorted(answers["blind"])
+    validity["four_latents_a_line"] = [whole, len(answers["g3"])]
+    validity["valid"] = valid = (validity["valid"] and validity["same_maps_as_s3"]
+                                 and whole >= 0.98 * len(answers["g3"]))
+    primary = result["primary"]
+    primary.pop("next", None)  # S3's rule for a null result is not G3's
+    primary["reading"] = reading(primary, None, "glimpse latents help", "glimpse latents harm",
+                                 "no detectable difference", valid)
+    reads = listed["g3"]["all"] >= READS
+    if valid:
+        primary["next"] = GLIMPSE_NEXT["helps" if primary["reading"] == "glimpse latents help"
+                                       else "reads" if reads else "neither"]
+    success = {name: {i: bool(r["success"]) for i, r in found.items()} for name, found in answers.items()}
+    order = sorted(success["g3"])
+    return result | {"glimpse": {"threshold": READS, "lines_read": reads, "hole_directions_listed": listed,
+                                 "lines": lines, "g3_vs_s3": paired(success["g3"], success["s3"], order),
+                                 "g3_vs_blind": paired(success["g3"], success["blind"], order)}}
+
+
+GLIMPSE_READING_NEXT = {
+    "reads": "glimpse latents read under labels for every cell, so G3 lacked supervision: run the reading phase "
+             "and then S3's phases with glimpses, against EB3",
+    "reads in part": "glimpse latents read part of the map under labels for every cell: report by direction and "
+                     "against the blind probe, and hold",
+    "does not read": "glimpse latents do not read even under labels for every cell: the form is the limit; "
+                     "report and hold"}
+
+
+def glimpse_reading(data_root, g3r_run, s3r_run, settings):
+    """G3R's readings (docs/HOLE_CHECK_SPEC.md): after a reading phase with glimpses, the share of hole
+    directions the probe lists on lines for cells that only their coordinates name, with the blind probe
+    and S3R's probe beside it."""
+    maps = records(data_root, settings["heldout_split"])
+    answers = list(jsonl(Path(g3r_run) / "reading-phase0.jsonl"))
+
+    def lines(run, name):
+        return dict(sum((probe_lines(maps[r["row_index"]]["map_desc"], r["answer"])
+                         for r in jsonl(Path(run) / name)), Counter()))
+
+    def shares(count):
+        listed = lambda key: count.get(f"{key}listed", 0) / max(1, count.get(f"{key}hole_directions", 0))
+        return {"start": listed("start_"), "named": listed("named_"), "by_direction": {
+            d: count.get(f"named_listed_{d}", 0) / max(1, count.get(f"named_listed_{d}", 0)
+                                                        + count.get(f"named_missed_{d}", 0)) for d in MOVES}}
+    counts = {"g3r": lines(g3r_run, "reading-phase0.jsonl"), "blind": lines(g3r_run, "reading-phase0-blind.jsonl"),
+              "s3r": lines(s3r_run, "reading-phase0.jsonl")}
+    whole = sum(r["latents"] == 4 * r["answer"].count(" hole ") > 0 for r in answers)
+    capped = sum(r["new_tokens"] >= settings["max_new_tokens"] for r in answers)
+    valid = len(answers) == len(maps) and capped <= 0.02 * len(answers) and whole >= 0.98 * len(answers)
+    named = shares(counts["g3r"])["named"]
+    reading = "reads" if named >= READS else "reads in part" if named >= 0.5 else "does not read"
+    return {"validity": {"probe_answers": [len(answers), len(maps)], "capped": capped,
+                         "four_latents_a_line": [whole, len(answers)], "valid": valid},
+            "primary": {"threshold": READS, "named_cells_listed": named,
+                        "reading": reading if valid else "withheld: the measurement failed a validity check",
+                        **({"next": GLIMPSE_READING_NEXT[reading]} if valid else {})},
+            "descriptive": {"shares": {name: shares(count) for name, count in counts.items()}, "counts": counts,
+                            "summary": json.loads((Path(g3r_run) / "summary.json").read_text())}}
+
+
+ORACLE_NEXT = {
+    True: "a right reading makes safe routes: build per-move reading latents; the forced count bounds them",
+    False: "the policy does not turn right readings into routes: the limit is choosing the route over several moves"}
+
+
+def oracle_read(data_root, oracle_run, s3_run, eb3_run, settings):
+    """The oracle check's readings (docs/HOLE_CHECK_SPEC.md): S3 written line by line with nothing forced,
+    the hole lists forced, and the cells forced as well, against EB3 and S3's recorded answers."""
+    maps = records(data_root, settings["heldout_split"])
+    runs = {name: by_map(oracle_run, f"oracle-{name}.jsonl") for name in ("free", "holes", "cell")}
+    runs |= {"s3": by_map(s3_run), "eb3": by_map(eb3_run)}
+    order = sorted(runs["eb3"])
+    success = {name: {i: bool(r["success"]) for i, r in found.items()} for name, found in runs.items()}
+    sizes = sorted({len(maps[i]["map_desc"]) for i in order})
+    lines = {name: {i: read(maps[i]["map_desc"], runs[name][i]["answer"], runs[name][i]["route"]) for i in order}
+             for name in ("free", "holes", "cell")}
+    same = sum(runs["free"][i]["route"] == runs["s3"][i]["route"] for i in order)
+    capped = {name: sum(runs[name][i]["new_tokens"] >= settings["max_new_tokens"] for i in order) for name in lines}
+    right = sum(all(line["cell"] and line["holes"] for line in lines["cell"][i]["lines"]) for i in order)
+    validity = {"same_maps": all(sorted(found) == order for found in runs.values()),
+                "free_routes_as_s3": [same, len(order)], "capped": capped, "forced_lines_right": [right, len(order)]}
+    valid = (validity["same_maps"] and same >= 0.95 * len(order) and right == len(order)
+             and all(count <= 0.02 * len(order) for count in capped.values()))
+
+    def compared(a, b):
+        return paired(success[a], success[b], order) | {"by_size": {
+            str(n): paired(success[a], success[b], [i for i in order if len(maps[i]["map_desc"]) == n]) for n in sizes}}
+    primary = compared("cell", "eb3")
+    primary["reading"] = reading(primary, None, "a right reading makes safe routes", "a right reading harms",
+                                 "no detectable difference", valid)
+    if valid:
+        primary["next"] = ORACLE_NEXT[primary["reading"] == "a right reading makes safe routes"]
+    return {"validity": validity | {"valid": valid}, "primary": primary,
+            "descriptive": {
+                "solved": {name: sum(found.values()) for name, found in success.items()},
+                "holes_vs_eb3": compared("holes", "eb3"), "holes_vs_free": compared("holes", "free"),
+                "cell_vs_free": compared("cell", "free"), "cell_vs_holes": compared("cell", "holes"),
+                "failures": {name: dict(Counter(outcome(maps[i]["map_desc"], runs[name][i]["route"]) for i in order))
+                             for name in runs},
+                "fatal_moves": {name: dict(Counter(r["fatal"] for r in found.values() if r["fatal"]))
+                                for name, found in lines.items()},
+                "moves": {name: sorted(len(runs[name][i]["route"]) for i in order)[len(order) // 2] for name in runs}}}

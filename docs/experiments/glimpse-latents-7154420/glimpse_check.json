@@ -1,0 +1,469 @@
+{
+  "validity": {
+    "s3": true,
+    "eb3": true,
+    "rows_replay": true,
+    "same_rows": true,
+    "same_maps": true,
+    "capped": 0,
+    "cap_ok": true,
+    "valid": true,
+    "same_maps_as_s3": true,
+    "four_latents_a_line": [
+      400,
+      400
+    ]
+  },
+  "primary": {
+    "maps": 400,
+    "first": 81,
+    "second": 83,
+    "only_first": 22,
+    "only_second": 24,
+    "p": 0.8829959121223965,
+    "by_size": {
+      "7": {
+        "maps": 198,
+        "first": 51,
+        "second": 51,
+        "only_first": 11,
+        "only_second": 11,
+        "p": 1.0
+      },
+      "8": {
+        "maps": 202,
+        "first": 30,
+        "second": 32,
+        "only_first": 11,
+        "only_second": 13,
+        "p": 0.8388197422027588
+      }
+    },
+    "reading": "no detectable difference",
+    "next": "the glimpses did not teach the lines in this much training: compare with the blind pass and hold"
+  },
+  "descriptive": {
+    "held_out_success": {
+      "s3": 81,
+      "eb3": 83,
+      "b": 76
+    },
+    "fatal_moves": {
+      "lost": 109,
+      "missed": 194
+    },
+    "format": {
+      "follows": 381,
+      "answers": 400
+    },
+    "lines": {
+      "lines": 1522,
+      "cell_right": 982,
+      "holes_exact_given_cell": 542,
+      "missed": 436,
+      "invented": 113
+    },
+    "s3_vs_b": {
+      "maps": 400,
+      "first": 81,
+      "second": 76,
+      "only_first": 29,
+      "only_second": 24,
+      "p": 0.5831321542611763,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 51,
+          "second": 44,
+          "only_first": 17,
+          "only_second": 10,
+          "p": 0.24778856337070465
+        },
+        "8": {
+          "maps": 202,
+          "first": 30,
+          "second": 32,
+          "only_first": 12,
+          "only_second": 14,
+          "p": 0.8450189828872681
+        }
+      }
+    },
+    "masked_s3_vs_eb3": {
+      "maps": 400,
+      "first": 59,
+      "second": 93,
+      "only_first": 7,
+      "only_second": 41,
+      "p": 6.240408438884515e-07,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 36,
+          "second": 55,
+          "only_first": 5,
+          "only_second": 24,
+          "p": 0.0005461126565933228
+        },
+        "8": {
+          "maps": 202,
+          "first": 23,
+          "second": 38,
+          "only_first": 2,
+          "only_second": 17,
+          "p": 0.000728607177734375
+        }
+      }
+    },
+    "round1_heldout_s3_vs_eb3": {
+      "maps": 240,
+      "first": 86,
+      "second": 111,
+      "only_first": 19,
+      "only_second": 44,
+      "p": 0.0022275315109880345
+    },
+    "failures": {
+      "s3": {
+        "hole": 303,
+        "shortest": 81,
+        "stops short": 16
+      },
+      "eb3": {
+        "stops short": 24,
+        "hole": 292,
+        "shortest": 81,
+        "longer": 2,
+        "passes the goal": 1
+      },
+      "b": {
+        "stops short": 16,
+        "hole": 308,
+        "shortest": 74,
+        "longer": 2
+      }
+    },
+    "benchmark": {
+      "s3_vs_eb3": {
+        "all": {
+          "maps": 400,
+          "first": 314,
+          "second": 330,
+          "only_first": 15,
+          "only_second": 31,
+          "p": 0.02589608179323477
+        },
+        "detour": {
+          "maps": 40,
+          "first": 17,
+          "second": 19,
+          "only_first": 3,
+          "only_second": 5,
+          "p": 0.7265625
+        },
+        "no_detour": {
+          "maps": 360,
+          "first": 297,
+          "second": 311,
+          "only_first": 12,
+          "only_second": 26,
+          "p": 0.03355243967962451
+        }
+      },
+      "s3_vs_livr": {
+        "all": {
+          "maps": 400,
+          "first": 314,
+          "second": 323,
+          "only_first": 25,
+          "only_second": 34,
+          "p": 0.2975952082844287
+        },
+        "detour": {
+          "maps": 40,
+          "first": 17,
+          "second": 7,
+          "only_first": 11,
+          "only_second": 1,
+          "p": 0.00634765625
+        },
+        "no_detour": {
+          "maps": 360,
+          "first": 297,
+          "second": 316,
+          "only_first": 14,
+          "only_second": 33,
+          "p": 0.007942726509483578
+        }
+      }
+    },
+    "new_tokens": {
+      "median": 89,
+      "max": 172
+    },
+    "training": {
+      "s3": {
+        "phase1": {
+          "optimizer_steps": 187,
+          "first_loss": 10.177711129188538,
+          "mean_loss": 0.5599771201072689,
+          "last_quarter_loss": 0.14419569702738005,
+          "seconds": 438.0981993675232,
+          "stage": 1
+        },
+        "phase2": {
+          "optimizer_steps": 188,
+          "first_loss": 0.1210138089954853,
+          "mean_loss": 0.11393963664793658,
+          "last_quarter_loss": 0.07564767903866286,
+          "seconds": 416.5230791568756,
+          "stage": 2
+        }
+      },
+      "eb3": {
+        "phase1": {
+          "optimizer_steps": 187,
+          "first_loss": 0.06325065271812491,
+          "mean_loss": 0.09940255652181446,
+          "last_quarter_loss": 0.07574011686883578,
+          "seconds": 423.8057601451874,
+          "stage": 1
+        },
+        "phase2": {
+          "optimizer_steps": 188,
+          "first_loss": 0.04299157439618284,
+          "mean_loss": 0.08675738305560679,
+          "last_quarter_loss": 0.06532349636769924,
+          "seconds": 408.35549116134644,
+          "stage": 2
+        }
+      }
+    }
+  },
+  "seconds_in_job": 5155.023895978928,
+  "glimpse": {
+    "threshold": 0.9,
+    "lines_read": false,
+    "hole_directions_listed": {
+      "g3": {
+        "all": 0.44599745870393903,
+        "first": 0.6045627376425855,
+        "later": 0.366412213740458
+      },
+      "blind": {
+        "all": 0.3391188251001335,
+        "first": 0.4714828897338403,
+        "later": 0.2674897119341564
+      },
+      "s3": {
+        "all": 0.3475533249686324,
+        "first": 0.4520547945205479,
+        "later": 0.2871287128712871
+      }
+    },
+    "lines": {
+      "g3": {
+        "answers": 400,
+        "first_line_offset": {
+          "0,0": 262,
+          "0,-1": 40,
+          "-1,0": 36,
+          "0,1": 34,
+          "-1,-1": 8,
+          "1,0": 8,
+          "-1,1": 5,
+          "1,1": 4,
+          "1,-1": 2,
+          "-2,-1": 1
+        },
+        "lines": {
+          "wrong_cell": 540,
+          "wrong_cell_matches_true_cell": 241,
+          "wrong_cell_matches_named_cell": 174,
+          "right_cell": 982,
+          "right_cell_exact": 542,
+          "right_cell_dash_baseline": 385,
+          "hole_directions": 787,
+          "hole_directions_listed": 351,
+          "directions_invented": 113
+        },
+        "by_direction": {
+          "U": {
+            "holes": 185,
+            "listed": 68,
+            "safe": 797,
+            "invented": 31
+          },
+          "D": {
+            "holes": 219,
+            "listed": 114,
+            "safe": 763,
+            "invented": 22
+          },
+          "L": {
+            "holes": 173,
+            "listed": 76,
+            "safe": 809,
+            "invented": 30
+          },
+          "R": {
+            "holes": 210,
+            "listed": 93,
+            "safe": 772,
+            "invented": 30
+          }
+        },
+        "by_line": {
+          "first": {
+            "holes": 263,
+            "listed": 159
+          },
+          "later": {
+            "holes": 524,
+            "listed": 192
+          }
+        }
+      },
+      "blind": {
+        "answers": 400,
+        "first_line_offset": {
+          "0,0": 262,
+          "0,-1": 40,
+          "-1,0": 36,
+          "0,1": 34,
+          "-1,-1": 8,
+          "1,0": 8,
+          "-1,1": 5,
+          "1,1": 4,
+          "1,-1": 2,
+          "-2,-1": 1
+        },
+        "lines": {
+          "wrong_cell": 528,
+          "wrong_cell_matches_true_cell": 248,
+          "wrong_cell_matches_named_cell": 157,
+          "right_cell": 937,
+          "right_cell_exact": 462,
+          "right_cell_dash_baseline": 370,
+          "hole_directions": 749,
+          "hole_directions_listed": 254,
+          "directions_invented": 114
+        },
+        "by_direction": {
+          "U": {
+            "holes": 175,
+            "listed": 59,
+            "safe": 762,
+            "invented": 30
+          },
+          "D": {
+            "holes": 214,
+            "listed": 40,
+            "safe": 723,
+            "invented": 21
+          },
+          "L": {
+            "holes": 164,
+            "listed": 72,
+            "safe": 773,
+            "invented": 32
+          },
+          "R": {
+            "holes": 196,
+            "listed": 83,
+            "safe": 741,
+            "invented": 31
+          }
+        },
+        "by_line": {
+          "first": {
+            "holes": 263,
+            "listed": 124
+          },
+          "later": {
+            "holes": 486,
+            "listed": 130
+          }
+        }
+      },
+      "s3": {
+        "answers": 400,
+        "first_line_offset": {
+          "0,0": 269,
+          "0,1": 35,
+          "1,0": 35,
+          "0,-1": 26,
+          "-1,0": 20,
+          "1,1": 8,
+          "-1,1": 2,
+          "-1,-1": 2,
+          "1,-1": 2,
+          "0,-2": 1
+        },
+        "lines": {
+          "wrong_cell": 442,
+          "wrong_cell_matches_true_cell": 206,
+          "wrong_cell_matches_named_cell": 148,
+          "right_cell": 959,
+          "right_cell_exact": 451,
+          "right_cell_dash_baseline": 370,
+          "hole_directions": 797,
+          "hole_directions_listed": 277,
+          "directions_invented": 149
+        },
+        "by_direction": {
+          "U": {
+            "holes": 194,
+            "listed": 57,
+            "safe": 765,
+            "invented": 52
+          },
+          "D": {
+            "holes": 225,
+            "listed": 63,
+            "safe": 734,
+            "invented": 33
+          },
+          "L": {
+            "holes": 173,
+            "listed": 74,
+            "safe": 786,
+            "invented": 36
+          },
+          "R": {
+            "holes": 205,
+            "listed": 83,
+            "safe": 754,
+            "invented": 28
+          }
+        },
+        "by_line": {
+          "first": {
+            "holes": 292,
+            "listed": 132
+          },
+          "later": {
+            "holes": 505,
+            "listed": 145
+          }
+        }
+      }
+    },
+    "g3_vs_s3": {
+      "maps": 400,
+      "first": 81,
+      "second": 65,
+      "only_first": 29,
+      "only_second": 13,
+      "p": 0.019520472782460274
+    },
+    "g3_vs_blind": {
+      "maps": 400,
+      "first": 81,
+      "second": 68,
+      "only_first": 16,
+      "only_second": 3,
+      "p": 0.004425048828125
+    }
+  }
+}

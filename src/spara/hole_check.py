@@ -18,6 +18,11 @@ from .latent_rl import moves
 MOVES = {"U": (-1, 0), "D": (1, 0), "L": (0, -1), "R": (0, 1)}
 LINE = re.compile(r"(\d+),(\d+) hole ([UDLR]+|-) > ([UDLR])")
 START, HOLE = 1, -1
+READING = re.compile(r"(\d+),(\d+) hole ([UDLR]+|-)")
+CELLS_PER_ROW = 8
+ASK = ("\n\nRead the map before any plan. Cells are row,column, counted from 0 at the top left. Write the start "
+       "cell, then each cell below, one per line, with the directions from it (U, D, L, R) that lead into a hole, "
+       "or - for none, as in `3,2 hole UL`. Cells: ")
 
 
 def _start(desc):
@@ -50,6 +55,79 @@ def with_hole_check(row):
     route = moves(extract_boxed_content(row["text_output"]))
     return row | {"text_output": "".join(line + "\n" for line in check_lines(row["map_desc"], route))
                   + row["text_output"]}
+
+
+def reading_rows(row, rng):
+    """One map's reading rows (docs/HOLE_CHECK_SPEC.md, S3R): each asks for the start cell, which it does
+    not name, and up to CELLS_PER_ROW safe cells, so that together they ask about every cell the agent can
+    stand on. The answer is the check's line for each cell, without the move."""
+    desc = row["map_desc"]
+    cells = [(r, c) for r, line in enumerate(desc) for c, value in enumerate(line) if value == 0]
+    rng.shuffle(cells)
+    rows = []
+    for k in range(0, len(cells), CELLS_PER_ROW):
+        asked = cells[k:k + CELLS_PER_ROW]
+        rows.append(row | {
+            "asked": asked,
+            "text_input": row["text_input"].split("<image>")[0] + "<image>" + ASK + " ".join(f"{r},{c}" for r, c in asked),
+            "text_output": "\n".join(f"{r},{c} hole {holes_around(desc, (r, c)) or '-'}" for r, c in [_start(desc)] + asked)})
+    return rows
+
+
+def reading_score(row, answer):
+    """One reading answer against its map: whether the first line names the start, and, over the start and
+    the asked cells, the hole directions listed and invented."""
+    desc, start = row["map_desc"], _start(row["map_desc"])
+    lines = [READING.fullmatch(text.strip()) for text in answer.strip().splitlines()]
+    said = {(int(m[1]), int(m[2])): set(m[3]) - {"-"} for m in lines if m}
+    count = Counter(answers=1, start_right=bool(lines and lines[0] and (int(lines[0][1]), int(lines[0][2])) == start))
+    for cell in [start] + row["asked"]:
+        truth = set(holes_around(desc, cell))
+        count += Counter(cells=1, answered=cell in said, exact=said.get(cell) == truth, dash_baseline=not truth,
+                         hole_directions=len(truth), hole_directions_listed=len(truth & said.get(cell, set())),
+                         directions_invented=len(said.get(cell, set()) - truth))
+    return count
+
+
+def probe_lines(desc, answer):
+    """A reading answer's hole directions, split between the first line when it names the start, where the
+    agent is drawn, and the lines for cells that only their coordinates name."""
+    count = Counter()
+    for k, m in enumerate(READING.fullmatch(text.strip()) for text in answer.strip().splitlines()):
+        if m:
+            cell = (int(m[1]), int(m[2]))
+            kind = "start" if k == 0 and cell == _start(desc) else "named"
+            truth, said = set(holes_around(desc, cell)), set(m[3]) - {"-"}
+            count += Counter({f"{kind}_lines": 1, f"{kind}_wrote_dash": not said, f"{kind}_hole_directions": len(truth),
+                              f"{kind}_listed": len(truth & said), f"{kind}_invented": len(said - truth)})
+            count += Counter({f"{kind}_{'listed' if d in said else 'missed'}_{d}": 1 for d in truth})
+    return count
+
+
+def forced_answer(desc, write, force, lines=64):
+    """A hole-check answer written line by line (docs/HOLE_CHECK_SPEC.md, the oracle check).
+    `write(text, stop)` is the model's continuation of the answer so far, up to and including `stop` or to its
+    end. The model always writes each line's move. `force` says what the map supplies instead of the model:
+    None, nothing; "holes", the hole list of the cell the line names; "cell", also the cell, which is the one
+    the moves so far lead to."""
+    text, cell = "", _start(desc)
+    for _ in range(lines):
+        head = write(text, " hole")
+        named = re.search(r"(\d+),(\d+) hole$", head)
+        if not named:
+            return text + head
+        if force == "cell":
+            head = head[:named.start()] + f"{cell[0]},{cell[1]} hole"
+        at = cell if force == "cell" else (int(named[1]), int(named[2]))
+        text += head
+        text += f" {holes_around(desc, at) or '-'} >" if force else write(text, " >")
+        move = write(text, "\n")
+        text += move
+        if move.strip()[:1] in MOVES:
+            cell = _step(desc, cell, move.strip()[0])
+        if not move.endswith("\n"):
+            break
+    return text
 
 
 def parse(answer):

@@ -1,0 +1,220 @@
+{
+  "validity": {
+    "probe_answers": [
+      400,
+      400
+    ],
+    "capped": 0,
+    "four_latents_a_line": [
+      400,
+      400
+    ],
+    "valid": true
+  },
+  "primary": {
+    "threshold": 0.9,
+    "named_cells_listed": 0.003745318352059925,
+    "reading": "does not read",
+    "next": "glimpse latents do not read even under labels for every cell: the form is the limit; report and hold"
+  },
+  "descriptive": {
+    "shares": {
+      "g3r": {
+        "start": 0.6517150395778364,
+        "named": 0.003745318352059925,
+        "by_direction": {
+          "U": 0.0112,
+          "D": 0.0,
+          "L": 0.003372681281618887,
+          "R": 0.0
+        }
+      },
+      "blind": {
+        "start": 0.6596306068601583,
+        "named": 0.003745318352059925,
+        "by_direction": {
+          "U": 0.0112,
+          "D": 0.0,
+          "L": 0.003372681281618887,
+          "R": 0.0
+        }
+      },
+      "s3r": {
+        "start": 0.6507936507936508,
+        "named": 0.008333333333333333,
+        "by_direction": {
+          "U": 0.0272,
+          "D": 0.001697792869269949,
+          "L": 0.001694915254237288,
+          "R": 0.0016778523489932886
+        }
+      }
+    },
+    "counts": {
+      "g3r": {
+        "start_lines": 379,
+        "start_hole_directions": 379,
+        "start_listed": 247,
+        "start_missed_R": 26,
+        "start_listed_U": 52,
+        "named_lines": 3221,
+        "named_wrote_dash": 3202,
+        "named_hole_directions": 2403,
+        "named_missed_R": 595,
+        "named_missed_L": 591,
+        "named_missed_U": 618,
+        "named_missed_D": 590,
+        "start_listed_R": 90,
+        "start_listed_L": 62,
+        "start_invented": 87,
+        "start_missed_D": 58,
+        "start_wrote_dash": 168,
+        "start_listed_D": 43,
+        "start_missed_U": 30,
+        "named_invented": 18,
+        "start_missed_L": 18,
+        "named_listed": 9,
+        "named_listed_U": 7,
+        "named_listed_L": 2
+      },
+      "blind": {
+        "start_lines": 379,
+        "start_hole_directions": 379,
+        "start_listed": 250,
+        "start_missed_R": 27,
+        "start_listed_U": 56,
+        "named_lines": 3221,
+        "named_wrote_dash": 3199,
+        "named_hole_directions": 2403,
+        "named_missed_R": 595,
+        "named_missed_L": 591,
+        "named_missed_U": 618,
+        "named_missed_D": 590,
+        "start_listed_R": 89,
+        "start_listed_L": 62,
+        "start_invented": 92,
+        "start_missed_D": 58,
+        "start_wrote_dash": 162,
+        "start_listed_D": 43,
+        "start_missed_U": 26,
+        "named_invented": 21,
+        "start_missed_L": 18,
+        "named_listed": 9,
+        "named_listed_U": 7,
+        "named_listed_L": 2
+      },
+      "s3r": {
+        "named_lines": 3221,
+        "named_invented": 43,
+        "named_wrote_dash": 3170,
+        "named_hole_directions": 2400,
+        "named_missed_R": 595,
+        "named_missed_L": 589,
+        "named_missed_U": 608,
+        "named_missed_D": 588,
+        "start_lines": 379,
+        "start_hole_directions": 378,
+        "start_listed": 246,
+        "start_listed_R": 91,
+        "start_invented": 108,
+        "start_listed_L": 58,
+        "start_missed_D": 52,
+        "named_listed": 20,
+        "named_listed_U": 17,
+        "start_wrote_dash": 164,
+        "start_missed_R": 22,
+        "start_listed_D": 47,
+        "start_missed_U": 35,
+        "start_listed_U": 50,
+        "start_missed_L": 23,
+        "named_listed_D": 1,
+        "named_listed_L": 1,
+        "named_listed_R": 1
+      }
+    },
+    "summary": {
+      "arm": "g3r",
+      "checks": {
+        "labels_accepted": [
+          900,
+          900
+        ],
+        "shared_layouts": {
+          "fresh/detour-heldout-78|fresh/detour-pool-78b": 0,
+          "fresh/detour-heldout-78|fresh/probe": 0,
+          "fresh/detour-heldout-78|fresh/detour-pool": 0,
+          "fresh/detour-heldout-78|fresh/detour-heldout": 0,
+          "fresh/detour-heldout-78|fresh/jepa-train": 0,
+          "fresh/detour-heldout-78|fresh/detour-pool-78": 0,
+          "fresh/detour-heldout-78|train": 0,
+          "fresh/detour-heldout-78|test": 0,
+          "fresh/detour-pool-78b|fresh/probe": 0,
+          "fresh/detour-pool-78b|fresh/detour-pool": 0,
+          "fresh/detour-pool-78b|fresh/detour-heldout": 0,
+          "fresh/detour-pool-78b|fresh/jepa-train": 0,
+          "fresh/detour-pool-78b|fresh/detour-pool-78": 0,
+          "fresh/detour-pool-78b|train": 0,
+          "fresh/detour-pool-78b|test": 0
+        },
+        "valid": true,
+        "hole_check_rows": {
+          "rows": 3000,
+          "replay": 3000
+        }
+      },
+      "counts": {
+        "new_maps": 472,
+        "old_maps": 387,
+        "rows": 3000,
+        "solved": {
+          "expert-routes-7063156/routes.jsonl": 338,
+          "round2-search-7065168/frontier.jsonl": 49,
+          "round2-search-7065168/routes.jsonl": 199,
+          "round3-search-7088135/frontier.jsonl": 45,
+          "round3-search-7088135/routes.jsonl": 228
+        }
+      },
+      "training": {
+        "phase0": {
+          "optimizer_steps": 369,
+          "first_loss": 11.327555537223816,
+          "mean_loss": 0.4241776334617952,
+          "last_quarter_loss": 0.17622786034361362,
+          "seconds": 879.349720954895,
+          "stage": 2,
+          "rows": 2951
+        }
+      },
+      "evaluation": {
+        "reading": {
+          "after_phase0": {
+            "answers": 400,
+            "start_right": 379,
+            "cells": 3600,
+            "answered": 3579,
+            "hole_directions": 2796,
+            "hole_directions_listed": 251,
+            "exact": 1643,
+            "dash_baseline": 1555,
+            "directions_invented": 92,
+            "capped": 0
+          },
+          "after_phase0_blind": {
+            "answers": 400,
+            "start_right": 379,
+            "cells": 3600,
+            "answered": 3579,
+            "hole_directions": 2796,
+            "hole_directions_listed": 254,
+            "exact": 1645,
+            "dash_baseline": 1555,
+            "directions_invented": 98,
+            "capped": 0
+          }
+        }
+      },
+      "seconds": 2631.2882182598114,
+      "peak_gpu_gib": 55.554025650024414
+    }
+  }
+}

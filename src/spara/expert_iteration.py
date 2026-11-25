@@ -274,6 +274,46 @@ def run_search(model, processor, evaluator, data_root, output, settings, run_man
     return summary
 
 
+CHUNK = 250  # maps searched together; the policy's prompts and reads are dropped between chunks
+
+
+def search_pool(model, processor, evaluator, data_root, output, recipe, start, stop, run_manifest):
+    """Final-verdict-only search of pool maps [start, stop) with the loaded weights as the
+    policy, read one sequence per pass. A scaling arm trains on the routes it finds
+    (docs/DETOUR_SCALING_SPEC.md); several jobs can each take a part of the pool."""
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=False)
+    began = time.time()
+    model.eval()
+    settings = recipe["search"]
+    seed_all(settings["seed"])
+    json_write(output / "manifest.json", run_manifest | {"recipe": recipe, "maps": [start, stop]})
+    split = recipe["pool_split"]
+    pool = records(data_root, split)
+    if not 0 <= start < stop <= len(pool):
+        raise ValueError(f"The pool has {len(pool)} maps")
+    env, policy = FrozenLakeEnvironment(evaluator), BatchedLivr(model, processor, data_root, 1)
+    rows, cost = [], Counter()
+    with (output / "routes.jsonl").open("w", encoding="utf-8") as log:
+        for first in range(start, stop, CHUNK):
+            problems = [{"id": f"{split}/{i}", "split": split, "row_index": i, "row": pool[i]}
+                        for i in range(first, min(first + CHUNK, stop))]
+            found, spent = searched(env, policy, problems, settings)
+            policy.reset(1)
+            policy.prompts.clear()
+            rows += found
+            cost.update(spent)
+            log.writelines(json.dumps(r) + "\n" for r in found)
+            log.flush()
+            print(f"searched {len(rows)}/{stop - start}, solved {sum(r['solved'] for r in rows)}", flush=True)
+    summary = {"maps": [start, stop], "pool": summarise(rows, settings["budget"]) | {"cost": dict(cost)},
+               "seconds": time.time() - began,
+               "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2**30 if torch.cuda.is_available() else None}
+    json_write(output / "summary.json", summary)
+    print(json.dumps(summary, indent=1), flush=True)
+    return summary
+
+
 # Fine-tuning ---------------------------------------------------------------------------------
 
 def training_rows(data_root, recipe, routes, labels):

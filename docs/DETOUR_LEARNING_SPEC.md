@@ -42,6 +42,49 @@ Status, 2026-11-11:
     working out the neighbouring cells, from pixels or from exact text, not reading the
     image. The text map alone adds nothing detectable again (92 against 83)
     ([hole check on the exact map](HOLE_CHECK_TEXT_SPEC.md#result-jobs-7125957-and-7125958)).
+  - **Reading rows, 2026-11-17:** a phase of reading rows on every safe cell of the 500
+    pool maps, before the hole check's recipe, does not rescue the check (64 against EB3's
+    83 of 400, p = 0.018). After that phase the model lists 65% of the holes around the
+    start, where the agent is drawn, and 0.8% around cells named by coordinates. The
+    answers' first lines improve (78% of holes listed, against 45%) and later lines stay
+    at 29%, so falls move from the first move to later ones
+    ([reading rows](HOLE_CHECK_SPEC.md#result-job-7132192)).
+  - **Oracle check, 2026-11-18:** S3's weights with the true hole lists written for them
+    solve 132 of 400, and with the cells as well 166, against 65 unforced and EB3's 83.
+    Three validity checks fail, so the fixed reading is withheld and these are descriptive.
+    With every line right, 152 routes still stop short and 79 fall, 69 of them into a hole
+    the line lists ([oracle check](HOLE_CHECK_SPEC.md#result-jobs-7154267-and-7155886)).
+  - **Glimpse latents (G3), 2026-11-18:** the hole check with four latents after each
+    line's cell, each masked to the neighbouring cell in its direction. No detectable
+    difference from EB3 (81 against 83 of 400, p = 0.88). The lines list 45% of the holes
+    (S3 35%), almost all of the gain in one direction. G3 beats S3 (65, p = 0.020) and its
+    blind pass (68, p = 0.004) ([glimpse latents](HOLE_CHECK_SPEC.md#result-job-7154420)).
+  - **Reading rows with glimpses (G3R), 2026-11-18:** S3R's reading phase with G3's
+    latents, and no route phases. The probe lists 9 of 2,403 hole directions around named
+    cells (0.4%), the same as with the glimpses blind and as S3R's 0.8%. Held
+    ([G3R](HOLE_CHECK_SPEC.md#result-job-7159270)).
+  - **Scaling at 7 x 7 and 8 x 8, 2026-11-18:** from EB3, one epoch on 8,000 new labelled
+    detour maps, with the route alone (n8000) and with the plan written out before it
+    (p8000). n8000 solves 162 of the 400 held-out maps against EB3's 83 (p < 0.001): more
+    distinct maps help ([result](DETOUR_SCALING_SPEC.md#result-n8000-job-7167924)). It
+    solves none of the 48 maps that need three or more moves away from the goal. p8000
+    solves 395 of the 400 (p < 0.001 against n8000), all 48 of those maps among them, and
+    lists 4,768 of the maps' 4,770 holes
+    ([result](DETOUR_SCALING_SPEC.md#result-p8000-job-7167925)). On 400 fresh maps that
+    no experiment had read it solves 396
+    ([confirmation](DETOUR_SCALING_SPEC.md#result-confirmation-job-7170755)). With
+    24,000 more maps the route alone reaches 273 of the 400
+    ([n24000](DETOUR_SCALING_SPEC.md#result-n24000-job-7168959)). The plan's lines are
+    targets computed from the layout, so p8000 is a separate reference and n24000 is the
+    best arm in scope ([scope](DETOUR_SCALING_SPEC.md#scope-after-p8000)). h12000, the
+    route alone on 12,000 maps with deep detours, solves 275: 76 of the 112 that need two
+    or more moves away (n24000: 40) and 199 of the 288 that need one (n24000: 233)
+    ([h12000](DETOUR_SCALING_SPEC.md#result-h12000-job-7172913)). e8000, n8000's
+    maps with routes the model's own search finds in place of labels, solves 141 against
+    EB3's 83 (p < 0.001) ([e8000](DETOUR_SCALING_SPEC.md#result-e8000-job-7207178)). Its
+    second round, e2, solves 160 (p = 0.008 against e8000), level with n8000's 162
+    ([e2](DETOUR_SCALING_SPEC.md#result-e2-job-7213832)). Not yet read: e3, the third
+    round.
 - **Step 2:** run as a JEPA judge in LIVR's latent space (job 6951675,
   [JEPA judge spec](JEPA_JUDGE_SPEC.md#result-job-6951675)).
   - **The judge:** it hurts search, and it misses three in four holes. LIVR's frozen

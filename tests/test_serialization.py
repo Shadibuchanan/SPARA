@@ -37,3 +37,18 @@ def test_real_tokenizer_input_boundary_and_no_metadata(tiny_model, tmp_path):
     restored = AutoProcessor.from_pretrained(tmp_path)
     assert restored.tokenizer.convert_tokens_to_ids(LATENT_TOKENS) == ids
     assert torch.equal(encode(restored, root, "train", row)["input_ids"], training["input_ids"])
+
+
+@pytest.mark.integration
+def test_the_released_models_prompt_ends_with_the_chat_header_and_no_latents():
+    root = Path(os.environ.get("SPARA_TEST_DATA", "data/vsp"))
+    processor_path = Path(os.environ.get("SPARA_TEST_PROCESSOR", ".cache/processor"))
+    if not processor_path.is_dir() or not (root / "manifest.json").is_file():
+        pytest.skip("Prepare reference data and processor")
+    processor = AutoProcessor.from_pretrained(processor_path)
+    row = records(root, "train")[0]
+    prompt = encode(processor, root, "train", row, training=False, latents=[], generation_prompt=True)
+    decoded = processor.tokenizer.decode(prompt["input_ids"][0])
+    assert decoded.endswith("<|im_start|>assistant\n") and "<|livr_" not in decoded
+    with pytest.raises(ValueError, match="no latent tokens"):
+        encode(processor, root, "train", row, training=False, generation_prompt=True)

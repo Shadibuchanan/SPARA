@@ -1,0 +1,30 @@
+{
+  "heldout_split": "fresh/detour-heldout-78",
+  "pool_split": "fresh/detour-pool-78j",
+  "other_fresh": [
+    "fresh/probe",
+    "fresh/detour-pool",
+    "fresh/detour-heldout",
+    "fresh/jepa-train",
+    "fresh/detour-pool-78",
+    "fresh/detour-pool-78b",
+    "fresh/detour-heldout-78b",
+    "fresh/detour-probe-78"
+  ],
+  "extra_examples": 49514,
+  "seen_maps": 98,
+  "epochs": 1,
+  "learning_rate": 1e-05,
+  "warmup_ratio": 0.05,
+  "max_new_tokens": 128,
+  "base_steps": 2148,
+  "arms": {
+    "e4": 49514,
+    "e4l": 49514
+  },
+  "search": {
+    "budget": 64,
+    "max_depth": 64,
+    "seed": 42
+  }
+}

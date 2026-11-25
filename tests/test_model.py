@@ -1,4 +1,5 @@
 import copy
+import pytest
 import torch
 from spara.model import LivrQwen, bottleneck_mask
 
@@ -105,3 +106,39 @@ def test_cache_validation_contract(tiny_model, tiny_batch):
         assert result["fp32"]["max_abs_logit_error"] < 0.0002
         assert result["bf16"]["argmax_agrees"]
         if stage == 2: assert result["bf16"]["stock_qwen_exact_match"]
+
+
+def test_fed_back_latents_start_as_the_plain_model_and_learn_through_the_gate(tiny_model, tiny_batch, tmp_path):
+    from spara.model import enable_loops
+    model = tiny_model.eval()
+    model.config.livr_stage = 2
+    with torch.no_grad():
+        plain = model(**tiny_batch).logits
+    enable_loops(model, 2)
+    with torch.no_grad():
+        torch.testing.assert_close(model(**tiny_batch).logits, plain, atol=0, rtol=0)  # gates at 0
+    model.train()
+    model(**tiny_batch, use_cache=False).loss.backward()
+    # At 0 the earlier gate acts only through the later one, so only the last gate learns first.
+    assert model.latent_gate.grad[-1].abs() > 0 and model.latent_gate.grad[0] == 0
+    with torch.no_grad():
+        model.latent_gate.fill_(0.5)
+    model.latent_gate.grad = None
+    model(**tiny_batch, use_cache=False).loss.backward()
+    assert model.latent_gate.grad.abs().gt(0).all()  # open gates: every pass reaches the answer's loss
+    model.eval()
+    with torch.no_grad():
+        fed = model(**tiny_batch).logits
+    assert not torch.allclose(fed, plain)
+    prefix = {k: v[:, :11] if k in ("input_ids", "attention_mask") else v for k, v in tiny_batch.items() if k != "labels"}
+    with torch.no_grad():  # the cached decode continues the answering pass
+        a = model.generate(**prefix, max_new_tokens=3, do_sample=False, use_cache=True, suppress_tokens=[2, 3, 4, 5])
+        b = model.generate(**prefix, max_new_tokens=3, do_sample=False, use_cache=False, suppress_tokens=[2, 3, 4, 5])
+    assert torch.equal(a, b)
+    model.save_pretrained(tmp_path)
+    reloaded = LivrQwen.from_pretrained(tmp_path, attn_implementation="eager").eval()
+    with torch.no_grad():
+        torch.testing.assert_close(reloaded(**tiny_batch).logits, fed, atol=0, rtol=0)
+    model.config.livr_stage = 1
+    with pytest.raises(ValueError, match="Stage 2"):
+        model(**tiny_batch)

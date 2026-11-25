@@ -51,11 +51,12 @@ def find(desc, value):
     return next((r, c) for r, row in enumerate(desc) for c, v in enumerate(row) if v == value)
 
 
-def is_detour(desc):
-    """Solvable, and the shortest safe route is longer than the grid distance."""
+def is_detour(desc, away=1):
+    """Solvable, and the shortest safe route is longer than the grid distance: it needs at
+    least `away` moves away from the goal, each of which costs two moves."""
     (sr, sc), (gr, gc) = find(desc, START), find(desc, GOAL)
     steps = shortest_path(desc)
-    return steps is not None and steps > abs(sr - gr) + abs(sc - gc)
+    return steps is not None and steps - abs(sr - gr) - abs(sc - gc) >= 2 * away
 
 
 # Ties between shortest routes are broken by this move order; it reproduces 976 of the
@@ -148,9 +149,10 @@ def render(desc):
 
 
 def generate(root, name, sizes, per_size, seed, hole_probability=0.2, exclude_sets=(), detour_count=None,
-             weights=None):
+             weights=None, away=1):
     """`per_size` maps of each size; or, with `detour_count`, that many labelled detour maps
-    with each attempt's size drawn by `weights`."""
+    with each attempt's size drawn by `weights`, each needing at least `away` moves away
+    from the goal."""
     root = Path(root)
     target = root / (FRESH + name)
     if target.exists():
@@ -166,8 +168,9 @@ def generate(root, name, sizes, per_size, seed, hole_probability=0.2, exclude_se
     rows, extra = [], {}
     if detour_count:
         weights = list(weights or [1] * len(sizes))
-        layouts, attempts = draw_detour_layouts(detour_count, rng, exclude, list(sizes), weights, hole_probability)
-        extra = {"detour_count": detour_count, "weights": weights, "attempts": attempts,
+        layouts, attempts = draw_detour_layouts(detour_count, rng, exclude, list(sizes), weights, hole_probability,
+                                                keep=lambda desc: is_detour(desc, away))
+        extra = {"detour_count": detour_count, "weights": weights, "attempts": attempts, "min_away": away,
                  "label_rule": "shortest route, first in U, L, R, D order"}
     else:
         layouts = [desc for size in sizes for desc in draw_layouts(size, per_size, rng, exclude, hole_probability)]
@@ -196,6 +199,8 @@ def main():
     parser.add_argument("--per-size", type=int, help="Maps per size (not with --detour-count)")
     parser.add_argument("--detour-count", type=int, help="Labelled detour maps, sizes drawn by --weights")
     parser.add_argument("--weights", default="", help="Comma-separated size weights for --detour-count")
+    parser.add_argument("--min-away", type=int, default=1,
+                        help="With --detour-count: least moves away from the goal a kept map needs")
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--hole-probability", type=float, default=0.2)
     parser.add_argument("--exclude", default="", help="Comma-separated fresh set names whose layouts to avoid")
@@ -204,7 +209,8 @@ def main():
         parser.error("Give exactly one of --per-size and --detour-count")
     manifest = generate(args.data_root, args.name, [int(s) for s in args.sizes.split(",")], args.per_size,
                         args.seed, args.hole_probability, [s for s in args.exclude.split(",") if s],
-                        args.detour_count, [float(w) for w in args.weights.split(",")] if args.weights else None)
+                        args.detour_count, [float(w) for w in args.weights.split(",")] if args.weights else None,
+                        args.min_away)
     print(json.dumps(manifest, indent=2))
 
 

@@ -3658,3 +3658,205 @@ None
 ### Folders created
 
 - None
+
+## 2026-11-17 — Reading rows experiment (S3R, job 7132192)
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Continue with the next experiment proposed after the review of Raymond's push.
+**AI contribution:** Specified the reading-rows experiment with its readings fixed before the run, built arm `s3r` (a phase of reading rows on every safe cell of the 500 pool maps, then the hole check's recipe) and its readout, and ran it on PACE as job 7132192. Read the result against the fixed table: S3R solves 64 of 400 against EB3's 83 (p = 0.018), and the probe does not read the map, so the fixed next step is to report and hold. Added a split of the probe's lines after the run, which shows the model lists 65% of the holes around the start cell and 0.8% around cells named by coordinates. Wrote the result into the specs and exported the evidence folder.
+**Contribution type:** Generation, editing.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | "continue", after the three proposed next steps | Started the neighbour-reading experiment on a new local branch, `reading-rows` |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/HOLE_CHECK_SPEC.md | modified | New section for the reading rows: design, fixed readings, result; status line; one restored backslash |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullet for the reading rows |
+| src/spara/hole_check.py | modified | `reading_rows`, `reading_score`, `probe_lines` |
+| src/spara/expert_round2.py | modified | Arm `s3r` with phase 0 and the reading probe; readout `reading_check` |
+| src/spara/cli.py, scripts/pace/expert_round2.sbatch | modified | `s3r` as an arm choice |
+| tests/test_hole_check.py, tests/test_expert_round2.py | modified | Tests for the reading rows, the arm and the readout |
+| docs/experiments/hole-check-reading-7132192/README.md | created | What the evidence folder holds |
+| docs/experiments/hole-check-reading-7132192/reading_check.json | created | The readout's output |
+
+### Folders created
+
+- docs/experiments/hole-check-reading-7132192/ for the run's evidence
+
+## 2026-11-17 — Review of the team's new branches and project status
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Pull the latest pushes, say whether the project's goal (Scaffolding RL without helper images) is met, and explain the project, the work so far and the next steps in simple terms.
+**AI contribution:** Fetched the remote and read the two new branches: `feat/rebalanced-policy-and-rl-gate` (PR #9, by AaryaSingh) and `feat/fair-rl-and-rebalanced-ei` (by Pranav Somu). Compared them with the local results and the open PR #10, and gave a plain-language status with a recommended order of next steps. No branch was merged.
+**Contribution type:** Review, advice.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked for the latest pushes, whether the goal is met, and a simple account of the idea, the work, what failed and what to do next | Fetched and read the two new branches; wrote the status and recommendation |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-17 — Advice on what to run instead of the fair RL test
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Asked why the fair RL test should run next and whether something better would improve the project's idea.
+**AI contribution:** Explained that the fair RL test would make a null result trustworthy and is unlikely to raise the score, because it detects gains of about 7 points and the paper's were 2.4 to 4.6. Proposed a change to the idea based on the results so far: a latent token before each move, under LIVR's mask, with RL adjusting those tokens. Recommended running only the 30-minute pilot of the fair RL test as a check of the premise. Nothing was built or run.
+**Contribution type:** Advice.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Questioned the recommendation to run the fair RL test and asked for something that improves the idea | Reconsidered the recommendation and proposed per-move latent tokens |
+
+### Files
+
+None
+
+### Folders created
+
+- None
+
+## 2026-11-17 — Oracle check and glimpse latents (per-move latents, G3)
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Build the per-move latents as the next direction, clearing old SPARA weights and the Hugging Face cache on PACE scratch if needed.
+**AI contribution:** Specified two runs with their readings fixed before submission. The oracle check decodes S3's saved weights line by line with the hole lists, and then the cells, forced to the truth, to test whether a right reading makes a safe route. G3 is S3 with LIVR's four latents after each line's cell, each restricted by the attention mask to the neighbouring cell in its direction, plus a blind ablation pass. Built and tested both, checked the mask on real maps of every size with the real processor, and submitted them as PACE jobs 7154267 and 7154420. Nothing on scratch was cleared, because neither run saves weights. The oracle check reached its time limit 4 maps short, so `oracle_check` was made to resume and job 7155886 finished it; it was then read and written up: three validity checks fail, so the fixed reading is withheld, and descriptively the forced passes solve 132 and 166 of 400 against 65 unforced and EB3's 83. G3 (job 7154420) then ran and was read: valid, no detectable difference from EB3 (81 against 83 of 400), and its lines list 45% of the holes, though it beats S3 and its own blind pass. The mask was checked on real images after the run, as the fixed table required.
+**Contribution type:** Generation, editing.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Said the VPN is back; asked for the per-move latents as the best next direction; allowed clearing old SPARA weights and the HF cache on scratch if needed | Built and submitted the oracle check and G3; no clearing was needed |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/HOLE_CHECK_SPEC.md | modified | Sections for the oracle check and the glimpse latents, with fixed readings; both results; status lines |
+| src/spara/glimpse.py | created | The glimpse mask, the row format and the grid geometry |
+| src/spara/model.py | modified | Applies the glimpse mask when the model's config turns it on |
+| src/spara/hole_check.py | modified | `forced_answer`: an answer written line by line with parts forced from the map |
+| src/spara/expert_round2.py | modified | `oracle_check` and `oracle_read`; arm `g3` with the blind pass; `glimpse_check` |
+| src/spara/detour_scaling.py | modified | Greedy records count the latent tokens the model wrote |
+| src/spara/cli.py, scripts/pace/expert_round2.sbatch | modified | Stage `oracle-check`, which resumes into `SPARA_ORACLE_OUTPUT`; `g3` as an arm choice |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullets for the oracle check and G3 |
+| docs/experiments/glimpse-latents-7154420/README.md, docs/experiments/glimpse-latents-7154420/glimpse_check.json | created | Evidence for G3: what the folder holds and the readout |
+| docs/experiments/oracle-check-7154267/README.md, docs/experiments/oracle-check-7154267/oracle_read.json | created | Evidence for the oracle check: what the folder holds and the readout |
+| configs/glimpse.json | created | The hole check's settings with a cap of 384 new tokens and no saved weights |
+| tests/test_glimpse.py | created | Tests for the mask, the row format and the model with glimpses |
+| tests/test_hole_check.py, tests/test_expert_round2.py | modified | Tests for the forced answers, the arm and the two readouts |
+
+### Folders created
+
+- docs/experiments/oracle-check-7154267/ for the oracle check's evidence
+- docs/experiments/glimpse-latents-7154420/ for G3's evidence
+
+## 2026-11-18 — Reading rows with glimpse latents (G3R)
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Run the suggested next test: S3R's dense reading rows with the glimpse latents.
+**AI contribution:** Specified G3R with its readings fixed before submission: S3R's reading phase with G3's four latents after each line's cell, a probe on the 400 held-out maps, the same probe with the glimpses blind, and no route phases. Added the arm, a setting that stops the run after the probes, and the readout, with tests. Checked with the real tokenizer that each reading line's cell sits right before its latents, and submitted PACE job 7159270. Read the valid result against the fixed table: the probe lists 9 of 2,403 hole directions around named cells (0.4%), the same as with the glimpses blind and as S3R's 0.8%, so the work is held, with the short reading phase named as a limit.
+**Contribution type:** Generation, editing.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Agreed to the suggested test ("sure do that") | Built and submitted G3R |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/HOLE_CHECK_SPEC.md | modified | Section for G3R with fixed readings; its result; status line |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullet for G3R |
+| docs/experiments/glimpse-reading-7159270/README.md, glimpse_reading.json | created | Evidence for job 7159270: the readout and a guide to the run's records |
+| src/spara/expert_round2.py | modified | Arm `g3r`; the blind probe; `reading_only`, which stops after the probes; `glimpse_reading` |
+| src/spara/hole_check.py | modified | `probe_lines` also counts listed and missed holes by direction |
+| src/spara/cli.py, scripts/pace/expert_round2.sbatch | modified | `g3r` as an arm choice |
+| configs/glimpse_reading.json | created | G3's settings with `reading_only` |
+| tests/test_expert_round2.py | modified | Tests for the arm and its readout |
+
+### Folders created
+
+- docs/experiments/glimpse-reading-7159270/ for the run's evidence
+
+## 2026-11-18 — Policy hillclimb on the held-out detour maps
+
+**Agent/tool:** Claude Code, Claude Fable 5.2 (claude-fable-5-2).
+**User request:** Keep improving the model until it solves 400 of the 400 held-out detour maps or as close as possible, without stopping, in poteto mode.
+**AI contribution:** Advised that the policy is the larger gap after the oracle check, and analysed EB3's recorded routes: it solves almost no map needing more than one move away from the goal. Specified two arms with readings fixed before submission, both one epoch from EB3 on 8,000 new labelled 7 x 7 and 8 x 8 detour maps: n8000 writes the route alone, and p8000 first writes a plan (holes as coordinates, cells by distance from the goal, the path). Generated and uploaded the maps, let the scaling check start from a later fine-tune and take a recipe, added the plan answers with tests, and submitted PACE jobs 7167924 and 7167925. Read n8000 against its table (162 of 400 against EB3's 83), wrote up the result, and specified and submitted the 24,000-map continuation n24000 as job 7168959. Read p8000 against its table (395 of 400 against n8000's 162), checked the score with independent code and for leaks, and wrote up the result. Specified and submitted p24000 (job 7170756) and a confirmation of p8000 on an unread held-out set (job 7170755). Deleted the weight files of S3, E, B and n8000 on PACE scratch to make room, keeping their records. Read the confirmation (p8000 solves 396 of 400 on the unread set) and n24000 (273 of 400), and wrote both up. Advised that the plan arm is supervised beyond the route and not novel as a method, cancelled p24000 at the user's request, wrote the scope into the spec, and specified and submitted h12000 (job 7172678), the route-only arm on 12,000 generated maps with deep detours. Advised that route labels are still supervision, and specified e8000, which trains on routes the model's own search finds with no labels; added the search stage and submitted the search as jobs 7172965 to 7172972. Resubmitted h12000 as job 7172913 for any 80 GB GPU and read it: 275 of 400 against n24000's 273, with a gain on deep detours and a loss on one-away maps. Trained e8000 on the 4,039 routes the search found and read it: 141 of 400 against EB3's 83 with no labels on the new maps. Specified round 2 (e2) with fixed readings and built its search pool from existing sets, ran its search and training, and read it: 160 of 400 against e8000's 141, level with n8000's 162. Specified round 3 (e3) with fixed readings on a pool of 31,693 maps from existing sets and submitted its search; it is not yet read. Pulled the teammates' latest changes into the branch as a merge commit, resolving conflicts by keeping both sides, and compared every arm with LIVR on the reference benchmark. Advised that the e-chain's gains do not show latent reasoning, since LIVR's latents are fixed prompt tokens with no feedback, and proposed latents that compute in steps. Submitted e3's training on round 3's 16,179 found routes, and a latent battery on e2 over the held-out maps, with an option added to the battery for generated map sets. Built a probe of whether the released model's own written reasoning reaches passing routes, the first step of label-free reasoning training, and submitted four runs of it on 100 newly generated maps. The released model solved none of the new maps with its own reasoning, so that route was not viable. Specified and submitted a test of whether a four times larger search budget solves maps the label-free search had left unsolved. Read the latent check: e2's routes depend on its latents (0 of 400 without them, the donor's route in 240 of 400 with swapped ones), which corrected the earlier advice that the latents only summarise the map. Read e3: 197 of 400 against e2's 160, with no labels on the new maps. Built fed-back latents, extra passes whose gated latent states feed the next pass and which start identical to the trained model, for a matched arm beside round 4. Generated 30,000 new maps, built round 4's pool, fixed the readings for round 4 and the fed-back arm, and submitted round 4's search. Read the budget test: up to 256 calls solves 148 of 500 maps the 64-call search had missed, so round 4's unsolved maps are searched with the larger budget. Brought PR #10 up to date with main and opened a draft PR, stacked on it, with the work since.
+**Contribution type:** Generation, editing, advice.
+
+### Human input and contributions
+
+| Order | Source | Input or contribution | Effect on the work |
+| --- | --- | --- | --- |
+| 1 | User message | Asked why reading the holes matters if the policy is bad | Recommended working on the policy next |
+| 2 | User message | Asked to keep going until 400 of 400 or as close as possible, without stopping, in poteto mode | Started a hillclimb on the held-out score and submitted the first two arms |
+| 3 | User message | Asked for status | Read the finished n8000 job and submitted the next arm |
+| 4 | User message | Asked whether the result is good, novel and good for the project goals | Advised on each, with the supervised plan named as the gap |
+| 5 | User message | Objected that the plan arm is supervised and agreed to stop spending GPU on supervised arms | Cancelled p24000 and returned to the route-only arm |
+| 6 | User message | Asked whether the queued run meets the goal of no supervision and no helper images | Advised that it does not, since it trains on route labels, and proposed training on routes found by search |
+| 7 | User message | Agreed, and allowed other GPUs to cut the queue wait | Built and submitted the label-free search on any GPU of 40 GB or more; resubmitted h12000 for any 80 GB GPU |
+| 8 | User message | Reported that the VPN was back and said to continue | Checked the finished searches, trained and read e8000, and prepared round 2 |
+| 9 | User message | Asked what the next tests are | Reported e2's result and round 3's plan |
+| 10 | User message | Asked whether the results are good and to pull the latest changes | Merged origin/main into the branch and compared the arms with LIVR on the benchmark |
+| 11 | User message | Asked whether this is the latent reasoning without helper images the project wanted | Explained that it is RL on the output and the latents are untested; proposed a check and a redesign |
+| 12 | User message | Suggested the latent tokens may be built wrong, or need more or another way | Explained the one-pass prompt design; specified and submitted the latent check on e2 |
+| 13 | User message | Ran the deep-research workflow | Launched research on latent reasoning for planning without helper images or step labels; summarised its verified findings and revised the proposed redesign |
+| 14 | User message | Said to keep running tests | Built and submitted the written-reasoning probe |
+| 15 | User message | Asked to pull the latest changes, bring the branch up to date and open a PR that stays unmerged until testing is done | Fast-forwarded PR #10's branch to include the merge with main, committed the work on a new branch and opened a draft PR stacked on #10 |
+
+### Files
+
+| Path | Action | Contribution |
+| --- | --- | --- |
+| docs/DETOUR_SCALING_SPEC.md | modified | Section for scaling at 7 x 7 and 8 x 8 with the arms' fixed readings, the results of n8000, p8000, n24000 and the confirmation, the cancelled p24000 run, the scope after p8000, the h12000 arm and its result, the e8000 arm and its result, round 2 (e2) and its result, and round 3 (e3); status line |
+| docs/DETOUR_LEARNING_SPEC.md | modified | Status bullet for the scaling arms with their results |
+| src/spara/plan_trace.py | created | Writes a map's plan as an answer and scores a written plan section by section |
+| src/spara/detour_scaling.py | modified | A recipe with `answer` "plan" writes every training answer as the plan; a recipe's `gate_learning_rate` reaches the optimizer |
+| src/spara/cli.py | modified | The scaling check can start from a later fine-tune's weights when the recipe names `base_steps`, search part of a pool, and train on routes a search found; the battery takes a map set and recipe; the `reasoning-probe` command |
+| scripts/pace/detour_scaling.sbatch | modified | Takes the recipe from `SPARA_RECIPE` and checks that recipe's map sets; `SPARA_SEARCH` and `SPARA_ROUTES` select the search and found-routes training |
+| configs/detour_scaling_78.json, configs/detour_scaling_78_plan.json, configs/detour_scaling_78d.json, configs/detour_scaling_78d_plan.json, configs/detour_scaling_78b_plan.json, configs/detour_scaling_78e.json, configs/detour_scaling_78f.json, configs/detour_scaling_78g.json, configs/detour_scaling_78h.json, configs/detour_scaling_78j.json, configs/detour_scaling_78j_loops.json, configs/detour_scaling_78j_frontier.json | created | Recipes for n8000 and e8000, p8000, n24000, p24000, the confirmation, h12000, e2, e3, the budget test, e4 and e4l |
+| tests/test_detour_scaling.py | modified | Tests for the plan answers and their scoring |
+| src/spara/fresh_maps.py | modified | The detour generator can keep only maps that need a given number of moves away from the goal |
+| tests/test_fresh_maps.py | modified | Test for that option; after the merge the option passes through upstream's `keep` predicate |
+| src/spara/expert_iteration.py | modified | Searches part of a pool with the loaded weights as the policy and writes the routes found |
+| src/spara/expert_round2.py, tests/test_expert_round2.py, docs/EXPERT_ITERATION_ROUND2_SPEC.md | modified | Merge with origin/main (commit 9767dbe): both sides' functions, tests and status lines kept |
+| tests/test_expert_iteration.py | modified | Test for that search |
+| src/spara/latent_battery.py, scripts/pace/latent-battery.sbatch | modified | The battery can answer a generated map set and check a later fine-tune's checkpoint |
+| src/spara/model.py | modified | Fed-back latents (`livr_loops`, `enable_loops`): extra passes whose gates start at 0 |
+| src/spara/training.py, tests/test_model.py | modified | The gates of fed-back latents get their own learning rate; a test of fed-back latents |
+| src/spara/reasoning_probe.py, scripts/pace/reasoning_probe.sbatch, tests/test_reasoning_probe.py | created | Samples answers per map, with or without an instruction to reason, and scores each with the reference evaluator |
+| src/spara/serialization.py, tests/test_serialization.py | modified | The prompt can end with the chat template's own assistant header, for the released model |
+| data/vsp/fresh/detour-pool-78c/, data/vsp/fresh/detour-pool-78d/, data/vsp/fresh/detour-heldout-78b/, data/vsp/fresh/detour-pool-78e/ | created | 8,000, 24,000 and 12,000 generated detour maps with labels for training and 400 for a final check (generated data, not hand-written) |
+
+### Folders created
+
+- data/vsp/fresh/detour-pool-78c/, data/vsp/fresh/detour-pool-78d/ and data/vsp/fresh/detour-pool-78e/ for the new training maps
+- data/vsp/fresh/detour-pool-78f/ for round 2's search pool, copied from existing sets
+- data/vsp/fresh/detour-pool-78g/ for round 3's search pool, copied from existing sets
+- data/vsp/fresh/detour-probe-78/ for 100 new detour maps read by the reasoning probe
+- data/vsp/fresh/detour-frontier-78h/ for 500 maps round 3's search left unsolved, copied for the budget test
+- data/vsp/fresh/detour-pool-78i/ for 30,000 new detour maps
+- data/vsp/fresh/detour-pool-78j/ for round 4's search pool, copied from existing sets
+- data/vsp/fresh/detour-heldout-78b/ for an unread held-out set
+- results/scale-78/ for the copied run records
+

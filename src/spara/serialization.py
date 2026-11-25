@@ -26,9 +26,13 @@ def pictures(root, split, row):
     return out
 
 
-def encode(processor, root, split, row, training=True, latents=LATENT_TOKENS):
+def encode(processor, root, split, row, training=True, latents=LATENT_TOKENS, generation_prompt=False):
     """`latents`: a list of latent tokens; {grid size (as a string): tokens} for region latents; or
-    {"globals": tokens, "per_image": [tokens per image]} for patch latents, which carry one set per image."""
+    {"globals": tokens, "per_image": [tokens per image]} for patch latents, which carry one set per image.
+    `generation_prompt`: the chat template's own assistant header, as the released model was trained;
+    for a model without latent tokens (spara.reasoning_probe)."""
+    if generation_prompt and latents:
+        raise ValueError("The chat template's assistant header carries no latent tokens")
     text = row["text_input"]
     images = pictures(root, split, row)
     if text.count("<image>") != len(images) or "<|livr_" in text:
@@ -48,8 +52,11 @@ def encode(processor, root, split, row, training=True, latents=LATENT_TOKENS):
     for picture, piece in zip(images, pieces[1:]):
         content += [{"type": "image", "image": picture}, {"type": "text", "text": piece}]
     messages = [{"role": "user", "content": content}]
-    prompt = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-    prompt += "".join(latents) + ASSISTANT
+    if generation_prompt:
+        prompt = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    else:
+        prompt = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+        prompt += "".join(latents) + ASSISTANT
     images, _ = process_vision_info(messages)
     batch = processor(text=[prompt], images=images, padding=False, return_tensors="pt")
     # Tokenize the continuation separately to make the prefix boundary identical
