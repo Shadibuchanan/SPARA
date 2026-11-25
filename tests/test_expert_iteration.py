@@ -179,6 +179,27 @@ def test_training_rows_use_found_routes_or_labels_on_solved_maps(data):
         training_rows("unused", SETTINGS, routes, "other")
 
 
+def test_search_pool_writes_the_routes_found_for_part_of_the_pool(data, tiny_model, tiny_batch, tmp_path, monkeypatch):
+    from spara.expert_iteration import search_pool
+    monkeypatch.setattr(expert_iteration, "encode", lambda *args, training=True: prompt_of(tiny_batch))
+    monkeypatch.setattr(expert_iteration, "CHUNK", 2)
+    recipe = SETTINGS | {"search": {"budget": 8, "max_depth": 8, "seed": 0}}
+    summary = search_pool(tiny(tiny_model), Processor(), Evaluator(), "unused", tmp_path / "s", recipe, 1, 4, {})
+    rows = [json.loads(line) for line in (tmp_path / "s/routes.jsonl").read_text().splitlines()]
+    assert [r["row_index"] for r in rows] == [1, 2, 3] and summary["pool"]["maps"] == 3 and summary["maps"] == [1, 4]
+    assert summary["pool"]["cost"]["sequences"] == sum(r["policy_calls"] for r in rows)
+    for r in rows:
+        assert r["policy_calls"] <= 8
+        if r["solved"]:
+            assert Evaluator().score(data["fresh/p"][r["row_index"]], r["answer"])["success"]
+    data_rows, distinct = training_rows("unused", recipe | {"extra_examples": sum(r["solved"] for r in rows)}, rows,
+                                        "search") if any(r["solved"] for r in rows) else ([], 0)
+    assert distinct == sum(r["solved"] for r in rows)
+    assert sum(split == "fresh/p" for split, _ in data_rows) == distinct  # one example a solved map
+    with pytest.raises(ValueError, match="pool has"):
+        search_pool(tiny(tiny_model), Processor(), Evaluator(), "unused", tmp_path / "t", recipe, 0, 9, {})
+
+
 @pytest.mark.parametrize("labels", ["search", "shortest"])
 def test_run_train_end_to_end(labels, data, tiny_model, tiny_batch, tmp_path, monkeypatch):
     prompt = lambda *args, **kwargs: {k: v.clone() for k, v in tiny_batch.items()}

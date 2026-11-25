@@ -27,12 +27,17 @@ HELD_OUT = ("heldout", "test_detour")
 
 def training_data(data_root, recipe, distinct):
     """The released training maps plus `extra_examples` drawn in turn from the first
-    `distinct` pool maps, so each appears equally often (to within one)."""
+    `distinct` pool maps, so each appears equally often (to within one). A recipe with
+    `answer` "plan" writes every answer as the map's plan (spara.plan_trace)."""
     pool = records(data_root, recipe["pool_split"])
     if not 0 < distinct <= len(pool):
         raise ValueError(f"The pool has {len(pool)} maps, not {distinct}")
     extra = [(recipe["pool_split"], pool[i % distinct]) for i in range(recipe["extra_examples"])]
-    return [("train", row) for row in records(data_root, "train")] + extra
+    data = [("train", row) for row in records(data_root, "train")] + extra
+    if recipe.get("answer") == "plan":
+        from .plan_trace import with_plan
+        data = [(split, with_plan(row)) for split, row in data]
+    return data
 
 
 def check_sets(evaluator, data_root, recipe):
@@ -74,6 +79,7 @@ def greedy_eval(model, processor, evaluator, data_root, items, log, max_new_toke
         new = generated[0, prompt["input_ids"].shape[-1]:]
         record = {"population": population, "split": split, "row_index": index, "grid_size": len(row["map_desc"]),
                   "route": route, "success": success, "new_tokens": int(new.shape[-1]),
+                  "latents": int(torch.isin(new, torch.tensor(model.config.livr_latent_ids, device=new.device)).sum()),
                   "answer": processor.tokenizer.decode(new, skip_special_tokens=True)}
         results.append(record)
         log.write(json.dumps(record) + "\n"); log.flush()
@@ -100,6 +106,8 @@ def run_arm(model, processor, evaluator, config, data_root, output, arm, recipe,
     if distinct:
         tuned = config | {"epochs_per_stage": recipe["epochs"], "learning_rate": recipe["learning_rate"],
                           "warmup_ratio": recipe["warmup_ratio"]}
+        if "gate_learning_rate" in recipe:  # fed-back latents (spara.model.enable_loops)
+            tuned["lr_rates"] = {"latent_gate": recipe["gate_learning_rate"]}
         started = time.time()
         train_stage(model, processor, data_root, output / "stage2", tuned, 2, final_weights_only=True, data=data,
                     save_final=save_final)

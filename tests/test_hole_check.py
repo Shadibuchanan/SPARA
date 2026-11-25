@@ -2,7 +2,8 @@ import pytest
 from mathruler.grader import extract_boxed_content
 
 from spara.expert_round2 import replayed
-from spara.hole_check import check_lines, holes_around, line_reading, parse, read, with_hole_check
+from spara.hole_check import (check_lines, forced_answer, holes_around, line_reading, parse, read, reading_rows,
+                              reading_score, with_hole_check)
 
 # S . H
 # . H .
@@ -80,3 +81,37 @@ def test_line_reading_counts_the_start_and_the_holes_listed():
     assert result["by_direction"]["R"] == {"holes": 2, "listed": 1, "safe": 5, "invented": 0}
     assert result["by_direction"]["U"] == {"holes": 1, "listed": 1, "safe": 6, "invented": 1}
     assert result["by_line"] == {"first": {"holes": 0, "listed": 0}, "later": {"holes": 3, "listed": 2}}
+
+
+def test_reading_rows_ask_about_every_safe_cell_and_score_their_answers():
+    import random
+    row = {"map_desc": DESC, "text_input": "Map: <image>\n\nPlease plan."}
+    (one,) = reading_rows(row, random.Random(0))  # five safe cells fit one row
+    assert sorted(one["asked"]) == [(0, 1), (1, 0), (1, 2), (2, 0), (2, 1)]
+    assert one["text_input"].startswith("Map: <image>\n\nRead the map") and "Please plan" not in one["text_input"]
+    assert one["text_input"].endswith(" ".join(f"{r},{c}" for r, c in one["asked"]))
+    answer = one["text_output"].splitlines()
+    assert answer[0] == "0,0 hole -" and len(answer) == 6 and "0,1 hole DR" in answer
+    right = reading_score(one, one["text_output"])
+    assert right["start_right"] == 1 and right["exact"] == right["cells"] == 6
+    assert right["hole_directions_listed"] == right["hole_directions"] == 6 and right["directions_invented"] == 0
+    wrong = reading_score(one, "0,1 hole -\n0,1 hole D\n1,0 hole UR\nnot a line")
+    assert wrong["start_right"] == 0 and wrong["answered"] == 2  # the start is not named; two asked cells are
+    assert wrong["hole_directions_listed"] == 2 and wrong["directions_invented"] == 1 and wrong["exact"] == 0
+
+
+def test_forced_answers_take_the_holes_or_the_cell_from_the_map_and_the_moves_from_the_model():
+    said = [("0,0", "-", "D"), ("2,2", "-", "D"), ("2,0", "U", "R"), ("2,1", "-", "R")]  # line 2 names a wrong cell
+
+    def write(text, stop):  # a model that writes `said` whatever the answer so far holds
+        k = text.count("\n")
+        if text.endswith(" >"):
+            return f" {said[k][2]}\n"
+        if text.endswith(" hole"):
+            return f" {said[k][1]} >"
+        return f"{said[k][0]} hole" if k < len(said) else "\\boxed{DOWN, DOWN, RIGHT, RIGHT}"
+    box = "\\boxed{DOWN, DOWN, RIGHT, RIGHT}"
+    assert forced_answer(DESC, write, None) == "0,0 hole - > D\n2,2 hole - > D\n2,0 hole U > R\n2,1 hole - > R\n" + box
+    assert forced_answer(DESC, write, "holes") == "0,0 hole - > D\n2,2 hole - > D\n2,0 hole - > R\n2,1 hole U > R\n" + box
+    assert forced_answer(DESC, write, "cell") == "\n".join(check_lines(DESC, "DDRR")) + "\n" + box
+    assert forced_answer(DESC, lambda text, stop: "no lines", "cell") == "no lines"

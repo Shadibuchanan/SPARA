@@ -1,0 +1,23 @@
+{
+  "heldout_split": "fresh/detour-heldout-78",
+  "pool_split": "fresh/detour-pool-78c",
+  "other_fresh": [
+    "fresh/probe",
+    "fresh/detour-pool",
+    "fresh/detour-heldout",
+    "fresh/jepa-train",
+    "fresh/detour-pool-78",
+    "fresh/detour-pool-78b"
+  ],
+  "extra_examples": 8000,
+  "seen_maps": 98,
+  "epochs": 1,
+  "learning_rate": 1e-05,
+  "warmup_ratio": 0.05,
+  "max_new_tokens": 640,
+  "base_steps": 188,
+  "arms": {
+    "p8000": 8000
+  },
+  "answer": "plan"
+}

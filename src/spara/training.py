@@ -112,7 +112,8 @@ def train_stage(model, processor, data_root, output, config, stage, resume=None,
     model.config.use_cache = False
     if config["gradient_checkpointing"]:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-    optimizer = offloaded_optimizer(model, config) if offload_optimizer else make_optimizer(model, config)
+    rates = config.get("lr_rates")  # {parameter-name prefix: learning rate}, e.g. fed-back latents' gates
+    optimizer = offloaded_optimizer(model, config, rates) if offload_optimizer else make_optimizer(model, config, rates)
     trainable = [p for p in model.parameters() if p.requires_grad]
     head_params = []  # clipped on their own when the auxiliary objective asks, so they cannot shrink LM updates
     head = getattr(grounding, "head", None)

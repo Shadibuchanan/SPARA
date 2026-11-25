@@ -49,7 +49,7 @@ def main():
     for command in ("pilot", "train", "train-rl", "evaluate", "battery", "latent-probe", "explore-probe",
                     "planning-probe", "detour-probe", "guided-search", "detour-scaling", "jepa-judge",
                     "expert-iteration", "expert-round2", "perception-jepa", "region-latents", "fair-rl",
-                    "latent-diagnostics", "latent-distillation"):
+                    "latent-diagnostics", "latent-distillation", "reasoning-probe"):
         cmd = sub.add_parser(command)
         cmd.add_argument("--config", default="configs/livr.json")
         cmd.add_argument("--data-root", default="data/vsp")
@@ -93,8 +93,12 @@ def main():
             cmd.add_argument("--fresh-routes", default="", help="Greedy fresh routes: an explore-probe sweep.jsonl")
             cmd.add_argument("--fresh-split", default="", help="Fresh map set of those routes, fresh/<name>")
         if command == "detour-scaling":
-            cmd.add_argument("--arm", required=True, help="An arm named in the recipe: livr, n98, n500 or n2000")
+            cmd.add_argument("--arm", required=True, help="An arm named in the recipe")
             cmd.add_argument("--recipe", default="configs/detour_scaling.json")
+            cmd.add_argument("--search", help="START:STOP: search these pool maps with the checkpoint as the "
+                             "policy and write the routes found, instead of training")
+            cmd.add_argument("--routes", nargs="+", help="routes.jsonl files of --search runs: train on the "
+                             "routes found, one example a solved map, instead of the labels")
         if command == "expert-iteration":
             cmd.add_argument("--stage", choices=["search", "train"], required=True)
             cmd.add_argument("--settings", default="configs/expert_iteration.json")
@@ -105,8 +109,10 @@ def main():
                              help="train: the found routes, or the same maps' shortest-route labels")
             cmd.add_argument("--routes", help="train: routes.jsonl of the search run")
         if command == "expert-round2":
-            cmd.add_argument("--stage", choices=["batching-check", "livr-greedy", "search", "train"], required=True,
-                             help="livr-greedy: L's answers on the new held-out maps, from LIVR's --checkpoint")
+            cmd.add_argument("--stage", choices=["batching-check", "livr-greedy", "oracle-check", "search", "train"],
+                             required=True,
+                             help="livr-greedy: L's answers on the new held-out maps, from LIVR's --checkpoint; "
+                                  "oracle-check: S3's answers with the hole lists forced, from S3's --checkpoint")
             cmd.add_argument("--settings", default="configs/expert_round2.json")
             cmd.add_argument("--batch", type=int, help="search: policy reads per pass, overriding the settings")
             cmd.add_argument("--read-precision", choices=["bf16", "tf32"],
@@ -120,11 +126,12 @@ def main():
                              help="search: the policy's recorded greedy.jsonl (loading check on round 1's maps)")
             cmd.add_argument("--livr-checkpoint", help="search: LIVR's final Stage 2 checkpoint, for L's answers")
             cmd.add_argument("--livr-greedy", help="search: a livr-greedy stage's output, in place of --livr-checkpoint")
-            cmd.add_argument("--arm", choices=["e2", "eb2", "o2", "t2", "eb3", "s3", "o3", "s3t"],
+            cmd.add_argument("--arm", choices=["e2", "eb2", "o2", "t2", "eb3", "s3", "o3", "s3t", "s3r", "g3", "g3r"],
                              help="train: E2, EB2 under the bottleneck, O2 with the map also as text, "
                                   "T2 with the text map and a blank image, EB3 (round 3, EB2's recipe), "
-                                  "S3 (EB3 with the hole check in every answer), or O3 and S3T (EB3 and S3 "
-                                  "with the map also as text)")
+                                  "S3 (EB3 with the hole check in every answer), O3 and S3T (EB3 and S3 "
+                                  "with the map also as text), S3R (S3 after a phase of reading rows), or G3 "
+                                  "(S3 with glimpse latents)")
             cmd.add_argument("--search-run", nargs="+",
                              help="train: each later round's search output, in order (round 2's, then round 3's)")
             cmd.add_argument("--save-weights", action="store_true", help="train: save the arm's final weights")
@@ -209,10 +216,20 @@ def main():
             cmd.add_argument("--stage", type=int, choices=[1, 2], required=True)
             cmd.add_argument("--grounding", help="Step-grounding settings (docs/STEP_GROUNDING_SPEC.md); Stage 2 only")
             cmd.add_argument("--train-records", help="Optional path to custom train records jsonl (e.g. rebalanced mix)")
+        if command == "reasoning-probe":
+            cmd.add_argument("--split", required=True, help="test, train or a fresh/<name> set")
+            cmd.add_argument("--maps", help="START:STOP of the split")
+            cmd.add_argument("--per-size", type=int, help="Instead of --maps: the first N maps of each grid size")
+            cmd.add_argument("--samples", type=int, default=8, help="Sampled answers per map")
+            cmd.add_argument("--direct", action="store_true", help="The released prompt alone, no instruction to reason")
+            cmd.add_argument("--recipe", help="A later fine-tune's recipe (with base_steps) to check --checkpoint against")
         if command == "battery":
             cmd.add_argument("--limit", type=int, help="Pilot: first LIMIT train and test rows of each grid size")
             cmd.add_argument("--max-new-tokens", type=int, default=128,
                              help="Greedy answer cap; LIVR's longest test answer is about 20 tokens")
+            cmd.add_argument("--split", default="test", help="Maps to answer: test, or a fresh/<name> set")
+            cmd.add_argument("--recipe", help="A later fine-tune's recipe (with base_steps): check the checkpoint "
+                             "against it instead of LIVR's final Stage 2")
         if command in ("train", "train-rl"):
             cmd.add_argument("--resume", help="Trusted same-stage checkpoint including optimizer state")
             if command == "train-rl":
@@ -583,15 +600,16 @@ def main():
             settings["batch"] = args.batch
         if args.read_precision:
             settings["read_precision"] = args.read_precision
-        if args.stage == "livr-greedy":
-            require_final_checkpoint(args.checkpoint, 2, config)
+        if args.stage in ("livr-greedy", "oracle-check"):
+            if args.stage == "livr-greedy":  # S3's weights are an arm's, saved without a training progress file
+                require_final_checkpoint(args.checkpoint, 2, config)
             model, processor = load_model(config, args.checkpoint, device="cuda")
             model.requires_grad_(False)
-            Path(args.output).mkdir(parents=True, exist_ok=False)
+            Path(args.output).mkdir(parents=True, exist_ok=args.stage == "oracle-check")  # which resumes
             json_write(Path(args.output) / "manifest.json", manifest(config, model, processor, args.data_root)
                        | {"checkpoint": str(args.checkpoint), "settings": settings})
-            round2.livr_greedy(model, processor, ReferenceEvaluator(args.data_root), args.data_root, args.output,
-                               settings)
+            run = round2.livr_greedy if args.stage == "livr-greedy" else round2.oracle_check
+            run(model, processor, ReferenceEvaluator(args.data_root), args.data_root, args.output, settings)
             return
         round2.require_base_checkpoint(args.checkpoint, config, settings)
         if args.stage == "batching-check":
@@ -883,24 +901,75 @@ def main():
             parser.error(f"--arm must be one of {sorted(recipe['arms'])}")
         if not args.checkpoint:
             parser.error("The scaling check starts from the final Stage 2 LIVR checkpoint")
-        require_final_checkpoint(args.checkpoint, 2, config)
+        if "base_steps" in recipe:  # a later fine-tune's weights, as the expert-iteration rounds start from
+            from .expert_round2 import require_base_checkpoint
+            require_base_checkpoint(args.checkpoint, config, recipe)
+        else:
+            require_final_checkpoint(args.checkpoint, 2, config)
         model, processor = load_model(config, args.checkpoint, device="cuda")
         if model.config.livr_stage != 2:
             parser.error("The scaling check requires Stage 2")
+        if recipe.get("latent_loops") and not getattr(model.config, "livr_loops", 0):
+            from .model import enable_loops
+            enable_loops(model, recipe["latent_loops"])  # gates at 0: the starting weights answer as before
         fresh = {split: json.loads((Path(args.data_root) / split / "manifest.json").read_text(encoding="utf-8"))
                  for split in (recipe["heldout_split"], recipe["pool_split"], *recipe["other_fresh"])}
-        run_arm(model, processor, ReferenceEvaluator(args.data_root), config, args.data_root, args.output, args.arm,
-                recipe, manifest(config, model, processor, args.data_root)
-                | {"checkpoint": str(args.checkpoint), "fresh_manifests": fresh})
+        base = manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                    "fresh_manifests": fresh}
+        evaluator = ReferenceEvaluator(args.data_root)
+        if args.search:
+            from .expert_iteration import search_pool
+            start, stop = map(int, args.search.split(":"))
+            model.requires_grad_(False)
+            search_pool(model, processor, evaluator, args.data_root, args.output, recipe, start, stop, base)
+        elif args.routes:
+            from .detour_scaling import jsonl
+            from .expert_iteration import training_rows
+            routes = [row for path in args.routes for row in jsonl(path)]
+            if len({r["row_index"] for r in routes}) != len(routes):
+                raise ValueError("The routes files search a pool map more than once")
+            data, distinct = training_rows(args.data_root, recipe | {"extra_examples": sum(r["solved"] for r in routes)},
+                                           routes, "search")
+            run_arm(model, processor, evaluator, config, args.data_root, args.output, args.arm, recipe,
+                    base | {"routes": [str(path) for path in args.routes], "searched": len(routes)},
+                    data=data, distinct=distinct)
+        else:
+            run_arm(model, processor, evaluator, config, args.data_root, args.output, args.arm, recipe, base)
+    elif args.command == "reasoning-probe":
+        from .data import records
+        from .reasoning_probe import run_probe
+        if args.checkpoint and args.recipe:
+            from .expert_round2 import require_base_checkpoint
+            require_base_checkpoint(args.checkpoint, config, json.loads(Path(args.recipe).read_text(encoding="utf-8")))
+        elif args.checkpoint:
+            require_final_checkpoint(args.checkpoint, 2, config)
+        else:
+            config["latent_tokens"] = 0  # the released model: no latent tokens
+        rows = records(args.data_root, args.split)
+        if args.per_size:
+            sizes = sorted({len(r["map_desc"]) for r in rows})
+            indices = [i for n in sizes for i in [j for j, r in enumerate(rows) if len(r["map_desc"]) == n][:args.per_size]]
+        else:
+            start, stop = map(int, args.maps.split(":"))
+            indices = list(range(start, stop))
+        model, processor = load_model(config, args.checkpoint, device="cuda")
+        run_probe(model, processor, args.data_root, args.output, args.split, indices, args.samples,
+                  config["generation"], not args.direct,
+                  manifest(config, model, processor, args.data_root) | {"checkpoint": args.checkpoint, "seed": config["seed"]})
     elif args.command == "battery":
         from .latent_battery import run_battery
         if not args.checkpoint:
             parser.error("The latent battery requires a final Stage 2 LIVR checkpoint")
-        require_final_checkpoint(args.checkpoint, 2, config)
+        if args.recipe:
+            from .expert_round2 import require_base_checkpoint
+            require_base_checkpoint(args.checkpoint, config, json.loads(Path(args.recipe).read_text(encoding="utf-8")))
+        else:
+            require_final_checkpoint(args.checkpoint, 2, config)
         model, processor = load_model(config, args.checkpoint, device="cuda")
         run_battery(model, processor, config, args.data_root, args.output,
-                    manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint)},
-                    limit=args.limit, max_new_tokens=args.max_new_tokens)
+                    manifest(config, model, processor, args.data_root) | {"checkpoint": str(args.checkpoint),
+                                                                        "recipe": args.recipe},
+                    limit=args.limit, max_new_tokens=args.max_new_tokens, split=args.split)
     else:
         from .benchmark import run_benchmark
         if not args.checkpoint:

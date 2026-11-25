@@ -16,6 +16,8 @@
 #   SPARA_SETTINGS=configs/hole_check.json.
 # The hole check on the exact map (docs/HOLE_CHECK_TEXT_SPEC.md): SPARA_ARM=s3t or o3, with
 #   SPARA_SETTINGS=configs/hole_check_text.json. No weights are saved.
+#   SPARA_STAGE=oracle-check: S3's answers with the hole lists forced to the truth; needs
+#     SPARA_S3_CHECKPOINT and SPARA_SETTINGS=configs/hole_check.json. SPARA_ORACLE_OUTPUT resumes a run cut short.
 #   SPARA_BATCH and SPARA_READ_PRECISION (bf16 or tf32) override the search's policy reads;
 #     SPARA_BATCH=1 SPARA_READ_PRECISION=bf16 gives round 1's reads.
 # Submit only within the agreed GPU budget; this script does not submit itself.
@@ -28,7 +30,7 @@ export TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-4}"
 export PYTHONUNBUFFERED=1
 PYTHON="$ROOT/.venv/bin/python"
-STAGE="${SPARA_STAGE:?set SPARA_STAGE to livr-greedy, batching-check, search or train}"
+STAGE="${SPARA_STAGE:?set SPARA_STAGE to livr-greedy, oracle-check, batching-check, search or train}"
 E="${SPARA_E_CHECKPOINT:-$ROOT/results/expert-train-search-6961875/stage2/final}"
 ROUND1_ROUTES="${SPARA_ROUND1_ROUTES:-$ROOT/results/expert-routes-6961874/routes.jsonl}"
 ROUND1_GREEDY="${SPARA_ROUND1_GREEDY:-$ROOT/results/expert-train-search-6961875/greedy.jsonl}"
@@ -36,7 +38,7 @@ DATA="$ROOT/data/vsp"
 SETTINGS="${SPARA_SETTINGS:-configs/expert_round2.json}"
 FRONTIER_ROUTES="${SPARA_FRONTIER_ROUTES:-$ROUND1_ROUTES}"
 NAME="round${SPARA_ROUND:-2}"
-[ "$STAGE" = livr-greedy ] || [ -f "$E/complete.json" ] || { echo "Missing E's checkpoint: $E" >&2; exit 1; }
+[ "$STAGE" = livr-greedy ] || [ "$STAGE" = oracle-check ] || [ -f "$E/complete.json" ] || { echo "Missing E's checkpoint: $E" >&2; exit 1; }
 mkdir -p "$ROOT/results"
 case "$STAGE" in
   livr-greedy)
@@ -44,6 +46,13 @@ case "$STAGE" in
     nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
     "$PYTHON" -m spara.cli expert-round2 --stage livr-greedy --settings "$SETTINGS" --config configs/livr.json \
       --data-root "$DATA" --checkpoint "$LIVR" --output "$ROOT/results/round2-livr-$SLURM_JOB_ID"
+    ;;
+  oracle-check)
+    S3="${SPARA_S3_CHECKPOINT:?set SPARA_S3_CHECKPOINT to the final weights of S3}"
+    nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+    "$PYTHON" -m spara.cli expert-round2 --stage oracle-check --settings "$SETTINGS" --config configs/livr.json \
+      --data-root "$DATA" --checkpoint "$S3" \
+      --output "${SPARA_ORACLE_OUTPUT:-$ROOT/results/oracle-check-$SLURM_JOB_ID}"
     ;;
   batching-check)
     [ -f "$DATA/fresh/jepa-train/maps.jsonl" ] || { echo "Missing fresh set: jepa-train" >&2; exit 1; }
@@ -72,7 +81,7 @@ case "$STAGE" in
         --data-root "$DATA" --checkpoint "$E" "${L[@]}" --frontier-routes "$FRONTIER_ROUTES" \
         --reference-greedy "$ROUND1_GREEDY" ${BATCH[@]+"${BATCH[@]}"} --output "$ROOT/results/$NAME-search-$SLURM_JOB_ID"
     else
-      ARM="${SPARA_ARM:?set SPARA_ARM to e2, eb2, o2, t2, eb3, s3, o3 or s3t}"
+      ARM="${SPARA_ARM:?set SPARA_ARM to e2, eb2, o2, t2, eb3, s3, o3, s3t, s3r, g3 or g3r}"
       read -ra SEARCH_RUNS <<< "${SPARA_SEARCH_RUN:?set SPARA_SEARCH_RUN to the output directories of the search jobs}"
       for run in "${SEARCH_RUNS[@]}"; do
         [ -f "$run/routes.jsonl" ] || { echo "Missing routes: $run/routes.jsonl" >&2; exit 1; }
@@ -85,7 +94,7 @@ case "$STAGE" in
     fi
     ;;
   *)
-    echo "SPARA_STAGE must be livr-greedy, batching-check, search or train" >&2
+    echo "SPARA_STAGE must be livr-greedy, oracle-check, batching-check, search or train" >&2
     exit 1
     ;;
 esac

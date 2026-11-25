@@ -4,6 +4,8 @@
 # map under unmasked/bottleneck attention with own, swapped, mean and removed
 # latents. This script does not submit itself; pass resources and the log path
 # to sbatch. SPARA_LIMIT runs a pilot on the first rows of each grid size.
+# SPARA_SPLIT answers a fresh/<name> set instead of test; SPARA_RECIPE checks a
+# later fine-tune's checkpoint against that recipe's base_steps.
 #   -> ${SPARA_OUTPUT:-$ROOT/results/latent-battery-$SLURM_JOB_ID}
 set -euo pipefail
 module load python/3.11.9
@@ -19,4 +21,5 @@ CHECKPOINT="${SPARA_CHECKPOINT:?set SPARA_CHECKPOINT to a final LIVR Stage 2 che
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 "$PYTHON" -m spara.cli battery --config configs/livr.json --data-root "$ROOT/data/vsp" \
   --checkpoint "$CHECKPOINT" --output "${SPARA_OUTPUT:-$ROOT/results/latent-battery-$SLURM_JOB_ID}" \
-  ${SPARA_LIMIT:+--limit "$SPARA_LIMIT"}
+  ${SPARA_LIMIT:+--limit "$SPARA_LIMIT"} ${SPARA_SPLIT:+--split "$SPARA_SPLIT"} \
+  ${SPARA_RECIPE:+--recipe "$SPARA_RECIPE"}
