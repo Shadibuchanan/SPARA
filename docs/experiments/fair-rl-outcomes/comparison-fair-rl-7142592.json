@@ -1,0 +1,337 @@
+{
+ "validity": {
+  "pilot": {
+   "sets": {
+    "maps": 2000,
+    "detour_maps": 2000,
+    "labels_accepted": [
+     2000,
+     2000
+    ],
+    "shared_layouts": {
+     "train": 0,
+     "test": 0,
+     "fresh/detour-heldout": 0,
+     "fresh/detour-heldout-78": 0
+    },
+    "valid": true
+   },
+   "sampler_max_tv": 0.0,
+   "sampler_tolerance": 0.0001,
+   "valid": true
+  },
+  "completed": true,
+  "pairing": {
+   "42": true,
+   "43": true
+  },
+  "identity": true,
+  "rescored": {
+   "b42": {
+    "rollouts": 24000,
+    "disagreements": 0,
+    "valid": true
+   },
+   "b43": {
+    "rollouts": 24000,
+    "disagreements": 0,
+    "valid": true
+   },
+   "c42": {
+    "rollouts": 24000,
+    "disagreements": 0,
+    "valid": true
+   },
+   "c43": {
+    "rollouts": 24000,
+    "disagreements": 0,
+    "valid": true
+   }
+  },
+  "valid": true
+ },
+ "policy_moved": {
+  "differs_from_l": {
+   "b42": 73,
+   "b43": 70,
+   "c42": 66,
+   "c43": 63
+  },
+  "threshold": 16,
+  "moved": true,
+  "extend_to": null
+ },
+ "primary": {
+  "maps": 240,
+  "first": [
+   77,
+   86
+  ],
+  "second": [
+   92,
+   96
+  ],
+  "maps_first_ahead": 12,
+  "maps_second_ahead": 34,
+  "p": 0.0016414913408482334,
+  "reading": "C\u2032 worse: latent exploration hurt in this recipe"
+ },
+ "secondary": {
+  "transfer": {
+   "maps": 400,
+   "first": [
+    61,
+    54
+   ],
+   "second": [
+    73,
+    67
+   ],
+   "maps_first_ahead": 18,
+   "maps_second_ahead": 38,
+   "p": 0.010454818321892184,
+   "reading": "C\u2032 worse: latent exploration hurt in this recipe"
+  },
+  "mean_vs_zero": {
+   "42": {
+    "maps": 240,
+    "first": 77,
+    "second": 78,
+    "only_first": 0,
+    "only_second": 1,
+    "p": 1.0
+   },
+   "43": {
+    "maps": 240,
+    "first": 86,
+    "second": 85,
+    "only_first": 1,
+    "only_second": 0,
+    "p": 1.0
+   }
+  },
+  "sampled_delta": {
+   "42": 77,
+   "43": 82
+  },
+  "benchmark_vs_l": {
+   "b42": {
+    "all": {
+     "maps": 400,
+     "first": 305,
+     "second": 328,
+     "only_first": 20,
+     "only_second": 43,
+     "p": 0.005152397042092063
+    },
+    "detour": {
+     "maps": 40,
+     "first": 18,
+     "second": 9,
+     "only_first": 9,
+     "only_second": 0,
+     "p": 0.00390625
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 287,
+     "second": 319,
+     "only_first": 11,
+     "only_second": 43,
+     "p": 1.4013057456185862e-05
+    }
+   },
+   "b43": {
+    "all": {
+     "maps": 400,
+     "first": 298,
+     "second": 328,
+     "only_first": 18,
+     "only_second": 48,
+     "p": 0.00028711844966164033
+    },
+    "detour": {
+     "maps": 40,
+     "first": 17,
+     "second": 9,
+     "only_first": 9,
+     "only_second": 1,
+     "p": 0.021484375
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 281,
+     "second": 319,
+     "only_first": 9,
+     "only_second": 47,
+     "p": 2.571572048082338e-07
+    }
+   },
+   "c42": {
+    "all": {
+     "maps": 400,
+     "first": 315,
+     "second": 328,
+     "only_first": 17,
+     "only_second": 30,
+     "p": 0.07894069368148848
+    },
+    "detour": {
+     "maps": 40,
+     "first": 15,
+     "second": 9,
+     "only_first": 6,
+     "only_second": 0,
+     "p": 0.03125
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 300,
+     "second": 319,
+     "only_first": 11,
+     "only_second": 30,
+     "p": 0.00432400493446039
+    }
+   },
+   "c43": {
+    "all": {
+     "maps": 400,
+     "first": 309,
+     "second": 328,
+     "only_first": 15,
+     "only_second": 34,
+     "p": 0.009399241523873059
+    },
+    "detour": {
+     "maps": 40,
+     "first": 13,
+     "second": 9,
+     "only_first": 6,
+     "only_second": 2,
+     "p": 0.2890625
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 296,
+     "second": 319,
+     "only_first": 9,
+     "only_second": 32,
+     "p": 0.000430857042374555
+    }
+   }
+  },
+  "each_vs_l": {
+   "b42": {
+    "maps": 240,
+    "first": 92,
+    "second": 42,
+    "only_first": 58,
+    "only_second": 8,
+    "p": 1.7951476752580547e-10
+   },
+   "b43": {
+    "maps": 240,
+    "first": 96,
+    "second": 42,
+    "only_first": 61,
+    "only_second": 7,
+    "p": 7.387402755493211e-12
+   },
+   "c42": {
+    "maps": 240,
+    "first": 77,
+    "second": 42,
+    "only_first": 44,
+    "only_second": 9,
+    "p": 1.220851017613711e-06
+   },
+   "c43": {
+    "maps": 240,
+    "first": 86,
+    "second": 42,
+    "only_first": 51,
+    "only_second": 7,
+    "p": 2.402164578363397e-09
+   }
+  }
+ },
+ "diagnostics": {
+  "training": {
+   "b42": {
+    "steps": 125,
+    "updated_steps": 124,
+    "mixed_share": 0.2896666666666667,
+    "verifier_calls": 24000,
+    "mean_kl": 0.32420376681974233
+   },
+   "b43": {
+    "steps": 125,
+    "updated_steps": 124,
+    "mixed_share": 0.25766666666666665,
+    "verifier_calls": 24000,
+    "mean_kl": 0.29167984861792984
+   },
+   "c42": {
+    "steps": 125,
+    "updated_steps": 125,
+    "mixed_share": 0.326,
+    "verifier_calls": 24000,
+    "mean_kl": 0.25707936287535527,
+    "sigma_first_last": [
+     4.0,
+     3.860857844352722
+    ],
+    "mean_abs_mu_first_last": [
+     0.0,
+     0.10668083932250738
+    ]
+   },
+   "c43": {
+    "steps": 125,
+    "updated_steps": 125,
+    "mixed_share": 0.332,
+    "verifier_calls": 24000,
+    "mean_kl": 0.24230927649501738,
+    "sigma_first_last": [
+     4.0,
+     4.132961452007294
+    ],
+    "mean_abs_mu_first_last": [
+     0.0,
+     0.15395068563520908
+    ]
+   }
+  },
+  "rescues_and_breaks": {
+   "42": {
+    "paired_groups": 3000,
+    "c_only_mixed_where_b_all_failed": 201,
+    "c_only_mixed_where_b_all_succeeded": 221,
+    "b_only_mixed": 313,
+    "both_mixed": 556
+   },
+   "43": {
+    "paired_groups": 3000,
+    "c_only_mixed_where_b_all_failed": 223,
+    "c_only_mixed_where_b_all_succeeded": 240,
+    "b_only_mixed": 240,
+    "both_mixed": 533
+   }
+  },
+  "l_success": {
+   "primary": 42,
+   "transfer": 19
+  }
+ },
+ "context": {},
+ "pilot_rules": {
+  "mixed_share": 0.175,
+  "all_fail_share": 0.725,
+  "all_success_share": 0.1,
+  "rollout_success": 0.1625,
+  "truncated_share": 0.0,
+  "prompts_per_step": 24,
+  "scale": 4.0,
+  "stop": []
+ }
+}
