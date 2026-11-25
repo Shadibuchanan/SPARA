@@ -64,7 +64,8 @@ def test_run_probe_scores_each_sample_and_asks_for_reasoning(tmp_path, monkeypat
             pass
 
         def score(self, row, text):
-            return {"success": text == answer_text("R" if row["map_id"] == 0 else "D")}
+            return {"success": text == answer_text("R" if row["map_id"] == 0 else "D"),
+                    "extracted_answer": text[text.index("{") + 1:text.rindex("}")]}
 
     monkeypatch.setattr(reasoning_probe, "records", lambda root, split: rows)
     monkeypatch.setattr(reasoning_probe, "encode", encode)
@@ -73,6 +74,7 @@ def test_run_probe_scores_each_sample_and_asks_for_reasoning(tmp_path, monkeypat
     summary = run_probe(Model(), Processor(), "unused", tmp_path / "p", "fresh/x", [0, 1], 2, {}, True, {})
     maps = [json.loads(line) for line in (tmp_path / "p/maps.jsonl").read_text().splitlines()]
     assert [m["successes"] for m in maps] == [[True, False], [False, True]]
+    assert [m["routes"] for m in maps] == [["R", "D"], ["R", "D"]]
     assert [m["capped"] for m in maps] == [[False, True], [False, True]] and maps[0]["tokens"] == [2, 2]
     assert summary["by"]["all"]["solved_by_any"] == 2
     assert all(text.endswith(reasoning_probe.REASON) and latents == [] and header for text, latents, header in asked)

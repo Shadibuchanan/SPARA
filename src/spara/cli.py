@@ -222,6 +222,9 @@ def main():
             cmd.add_argument("--per-size", type=int, help="Instead of --maps: the first N maps of each grid size")
             cmd.add_argument("--samples", type=int, default=8, help="Sampled answers per map")
             cmd.add_argument("--direct", action="store_true", help="The released prompt alone, no instruction to reason")
+            cmd.add_argument("--temperature", type=float, help="Sampling temperature (default: the config's)")
+            cmd.add_argument("--top-p", type=float, help="Nucleus mass (default: the config's)")
+            cmd.add_argument("--max-new-tokens", type=int, help="Answer cap (default: the config's)")
             cmd.add_argument("--recipe", help="A later fine-tune's recipe (with base_steps) to check --checkpoint against")
         if command == "battery":
             cmd.add_argument("--limit", type=int, help="Pilot: first LIMIT train and test rows of each grid size")
@@ -953,8 +956,10 @@ def main():
             start, stop = map(int, args.maps.split(":"))
             indices = list(range(start, stop))
         model, processor = load_model(config, args.checkpoint, device="cuda")
+        generation = config["generation"] | {k: v for k, v in (("temperature", args.temperature), ("top_p", args.top_p),
+                                                               ("max_new_tokens", args.max_new_tokens)) if v is not None}
         run_probe(model, processor, args.data_root, args.output, args.split, indices, args.samples,
-                  config["generation"], not args.direct,
+                  generation, not args.direct,
                   manifest(config, model, processor, args.data_root) | {"checkpoint": args.checkpoint, "seed": config["seed"]})
     elif args.command == "battery":
         from .latent_battery import run_battery

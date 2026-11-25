@@ -69,14 +69,16 @@ def run_probe(model, processor, data_root, output, split, indices, samples, gene
             with amp(model.device):
                 generated = model.generate(**repeat_prompt(prompt, samples), **generation, use_cache=True)
             completions = generated[:, prompt["input_ids"].shape[-1]:]
-            texts, tokens, capped = [], [], []
+            texts, tokens, capped, routes = [], [], [], []
             for c in completions:
                 ends = [i for i, t in enumerate(c.tolist()) if t in eos]
                 tokens.append(ends[0] + 1 if ends else len(c))
                 capped.append(not ends)
                 texts.append(processor.tokenizer.decode(c[:tokens[-1]], skip_special_tokens=True))
+            scores = [evaluator.score(row, t) for t in texts]
+            routes = ["".join(ch for ch in (s["extracted_answer"] or "").upper() if ch in "UDLR") for s in scores]
             record = {"row_index": index, "grid_size": len(row["map_desc"]), "away": away(row["map_desc"]),
-                      "successes": [bool(evaluator.score(row, t)["success"]) for t in texts],
+                      "successes": [bool(s["success"]) for s in scores], "routes": routes,
                       "tokens": tokens, "capped": capped}
             if count < KEPT_TEXTS:
                 record["texts"] = texts

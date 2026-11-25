@@ -1417,3 +1417,47 @@ and the next round searches its frontier with up to 256 calls.
 - **Cost:** 4.4 GPU-hours for the 500 maps.
 
 **Limits:** 500 maps, one policy (e2). Round 4's frontier is searched by e3.
+
+### Search against independent sampling at equal budget (rebuttal, research finding 3)
+
+The project review asked whether the final-verdict search adds anything over rejection
+sampling (sample routes from the policy, keep those the verifier accepts) at equal policy and
+verifier budgets. Expert iteration on found routes is a form of rejection-sampling fine-tuning
+(RFT; Yuan et al., 2023) and of STaR (Zelikman et al., 2022) without rationales.
+
+**Question: on the same maps and with the same policy, does the best-first search solve more
+maps than independent samples at an equal budget?**
+
+- **Maps:** the first 1,000 maps of `fresh/detour-pool-78j` (new maps of
+  `detour-pool-78i`), whose search by e3 at up to 64 policy calls is recorded (round 4's
+  first search part).
+- **Sampling:** e3 with the released prompt, 64 independent answers a map at temperature 1
+  and top-p 1 (the policy's own distribution, as the search reads it), at most 96 new tokens
+  each, each scored by the reference evaluator (`reasoning-probe --direct`).
+- **Budget accounting:** a search policy call reads the policy's distribution over the next
+  move once. A sampled route of n moves makes n + 1 such decisions (its moves and its end).
+  Samples are counted in the order drawn.
+
+**Readings (fixed before the run).**
+
+**Primary: maps solved within 64 policy decisions,** search against sampling, paired by map,
+exact McNemar, two-sided, at 0.05.
+
+| Outcome | Reading |
+| --- | --- |
+| Search solves more, p < 0.05 | Structured search adds value over rejection sampling at equal policy budget |
+| No detectable difference | At this budget, search is not detectably better than rejection sampling |
+| Sampling solves more, p < 0.05 | Rejection sampling is better at equal policy budget |
+
+**Second: equal verifier budget.** Per map, sampling gets as many verifier calls as the search
+used there, on its first distinct routes; the same test.
+
+**Descriptive (no verdicts):** solved by moves away needed; maps solved by any of the 64
+samples (pass@64, a larger budget than the search's); distinct routes among the samples;
+generated tokens.
+
+**Validity:** all 1,000 maps answered 64 times; the search records match the routes file of
+job 7285148.
+
+**Limits:** one policy, one seed, one budget. Sampling decodes word tokens ("LEFT,"), while the
+search reads move probabilities directly; the accounting counts moves, not tokens.

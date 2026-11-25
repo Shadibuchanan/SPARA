@@ -5,6 +5,7 @@
 #   SPARA_CHECKPOINT: trained weights (with SPARA_RECIPE for a later fine-tune); without it, the
 #   released model downloaded by fetch-model to $ROOT/models/qwen2.5-vl-3b-instruct, with no latent tokens.
 #   SPARA_DIRECT=1 leaves out the instruction to reason.
+#   SPARA_SAMPLE_ARGS passes more probe options, e.g. "--samples 64 --temperature 1.0".
 #   -> ${SPARA_OUTPUT:-$ROOT/results/reasoning-probe-$SLURM_JOB_ID}
 set -euo pipefail
 module load python/3.11.9
@@ -22,4 +23,4 @@ nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
   --output "${SPARA_OUTPUT:-$ROOT/results/reasoning-probe-$SLURM_JOB_ID}" \
   ${SPARA_MAPS:+--maps "$SPARA_MAPS"} ${SPARA_PER_SIZE:+--per-size "$SPARA_PER_SIZE"} \
   ${SPARA_CHECKPOINT:+--checkpoint "$SPARA_CHECKPOINT"} ${SPARA_RECIPE:+--recipe "$SPARA_RECIPE"} \
-  ${SPARA_DIRECT:+--direct}
+  ${SPARA_DIRECT:+--direct} ${SPARA_SAMPLE_ARGS:-}
