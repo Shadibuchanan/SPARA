@@ -1,0 +1,249 @@
+{
+ "validity": {
+  "search": {
+   "batch": 1,
+   "probe_points": null,
+   "probe_max_difference": null,
+   "single_max_difference": 0.0,
+   "batched_failed": {
+    "probe_max_difference": null,
+    "single_max_difference": 0.08651870489120483
+   },
+   "policy_agrees": true,
+   "valid": true
+  },
+  "set_checks": {
+   "search": true,
+   "shortest": true
+  },
+  "valid": true
+ },
+ "primary": {
+  "maps": 240,
+  "first": 92,
+  "second": 39,
+  "only_first": 57,
+  "only_second": 4,
+  "p": 4.85494457136415e-13,
+  "by_population": {
+   "heldout": {
+    "maps": 200,
+    "first": 78,
+    "second": 33,
+    "only_first": 49,
+    "only_second": 4,
+    "p": 7.053979622639872e-11
+   },
+   "test_detour": {
+    "maps": 40,
+    "first": 14,
+    "second": 6,
+    "only_first": 8,
+    "only_second": 0,
+    "p": 0.0078125
+   }
+  },
+  "by_size": {
+   "3": {
+    "maps": 11,
+    "first": 8,
+    "second": 5,
+    "only_first": 3,
+    "only_second": 0,
+    "p": 0.25
+   },
+   "4": {
+    "maps": 36,
+    "first": 22,
+    "second": 10,
+    "only_first": 13,
+    "only_second": 1,
+    "p": 0.0018310546875
+   },
+   "5": {
+    "maps": 73,
+    "first": 34,
+    "second": 14,
+    "only_first": 21,
+    "only_second": 1,
+    "p": 1.0967254638671875e-05
+   },
+   "6": {
+    "maps": 120,
+    "first": 28,
+    "second": 10,
+    "only_first": 20,
+    "only_second": 2,
+    "p": 0.00012111663818359375
+   }
+  },
+  "reading": "expert iteration helps"
+ },
+ "secondary": {
+  "maps": 240,
+  "first": 92,
+  "second": 93,
+  "only_first": 19,
+  "only_second": 20,
+  "p": 1.0,
+  "by_population": {
+   "heldout": {
+    "maps": 200,
+    "first": 78,
+    "second": 80,
+    "only_first": 16,
+    "only_second": 18,
+    "p": 0.8641662404406816
+   },
+   "test_detour": {
+    "maps": 40,
+    "first": 14,
+    "second": 13,
+    "only_first": 3,
+    "only_second": 2,
+    "p": 1.0
+   }
+  },
+  "by_size": {
+   "3": {
+    "maps": 11,
+    "first": 8,
+    "second": 9,
+    "only_first": 0,
+    "only_second": 1,
+    "p": 1.0
+   },
+   "4": {
+    "maps": 36,
+    "first": 22,
+    "second": 23,
+    "only_first": 2,
+    "only_second": 3,
+    "p": 1.0
+   },
+   "5": {
+    "maps": 73,
+    "first": 34,
+    "second": 36,
+    "only_first": 4,
+    "only_second": 6,
+    "p": 0.75390625
+   },
+   "6": {
+    "maps": 120,
+    "first": 28,
+    "second": 25,
+    "only_first": 13,
+    "only_second": 10,
+    "p": 0.6776394844055176
+   }
+  },
+  "reading": "no detectable difference between found routes and labels"
+ },
+ "descriptive": {
+  "held_out_success": {
+   "search": 92,
+   "shortest": 93,
+   "livr": 39
+  },
+  "seen": {
+   "search": {
+    "trained": 57,
+    "untrained": 0
+   },
+   "shortest": {
+    "trained": 56,
+    "untrained": 1
+   },
+   "livr": {
+    "trained": 21,
+    "untrained": 0
+   },
+   "maps": {
+    "trained": 63,
+    "untrained": 35
+   }
+  },
+  "benchmark_vs_livr": {
+   "all": {
+    "maps": 400,
+    "first": 325,
+    "second": 323,
+    "only_first": 23,
+    "only_second": 21,
+    "p": 0.880395821280672
+   },
+   "detour": {
+    "maps": 40,
+    "first": 16,
+    "second": 7,
+    "only_first": 9,
+    "only_second": 0,
+    "p": 0.00390625
+   },
+   "no_detour": {
+    "maps": 360,
+    "first": 309,
+    "second": 316,
+    "only_first": 14,
+    "only_second": 21,
+    "p": 0.31050465907901525
+   }
+  },
+  "routes": {
+   "maps": 500,
+   "solved": 338,
+   "by_size": {
+    "3": [
+     11,
+     11
+    ],
+    "4": [
+     62,
+     70
+    ],
+    "5": [
+     108,
+     161
+    ],
+    "6": [
+     157,
+     258
+    ]
+   },
+   "stops": {
+    "solved": 338,
+    "budget": 162
+   },
+   "policy_calls_median": 25.0,
+   "policy_calls_median_solved": 14.0,
+   "equal_to_label": 222,
+   "longer_than_label": 37,
+   "rejected": 4463,
+   "cost": {
+    "sequences": 16938,
+    "forward_passes": 16938,
+    "seconds": 1258.8713264465332
+   }
+  },
+  "training": {
+   "search": {
+    "seconds": 787.5527386665344,
+    "optimizer_steps": 375,
+    "mean_loss": 0.09232824659021033,
+    "last_quarter_loss": 0.038705498131404725
+   },
+   "shortest": {
+    "seconds": 788.8837468624115,
+    "optimizer_steps": 375,
+    "mean_loss": 0.09274536768347098,
+    "last_quarter_loss": 0.04111539220710095
+   }
+  }
+ },
+ "seconds_in_jobs": {
+  "routes": 1905.9355890750885,
+  "search": 1049.3553297519684,
+  "shortest": 939.3409132957458
+ }
+}

@@ -1,0 +1,203 @@
+{
+  "validity": {
+    "rows": {
+      "e2": {
+        "new_maps": 199,
+        "old_maps": 387,
+        "frontier_maps": 49,
+        "rows": 3000
+      },
+      "o2": {
+        "new_maps": 199,
+        "old_maps": 387,
+        "frontier_maps": 49,
+        "rows": 3000
+      },
+      "t2": {
+        "new_maps": 199,
+        "old_maps": 387,
+        "frontier_maps": 49,
+        "rows": 3000
+      }
+    },
+    "valid": true
+  },
+  "primary": {
+    "maps": 400,
+    "first": 77,
+    "second": 72,
+    "only_first": 20,
+    "only_second": 15,
+    "p": 0.49955983320251107,
+    "gain": 5,
+    "by_size": {
+      "7": {
+        "maps": 198,
+        "first": 44,
+        "second": 43,
+        "only_first": 10,
+        "only_second": 9,
+        "p": 1.0
+      },
+      "8": {
+        "maps": 202,
+        "first": 33,
+        "second": 29,
+        "only_first": 10,
+        "only_second": 6,
+        "p": 0.454498291015625
+      }
+    },
+    "margin": 40,
+    "reading": "no detectable difference: choosing moves limits"
+  },
+  "descriptive": {
+    "held_out_success": {
+      "e": 56,
+      "e2": 72,
+      "o2": 77,
+      "t2": 69,
+      "o2_zero_shot": 45,
+      "t2_zero_shot": 3
+    },
+    "o2_zero_shot_vs_e": {
+      "maps": 400,
+      "first": 45,
+      "second": 56,
+      "only_first": 4,
+      "only_second": 15,
+      "p": 0.0192108154296875,
+      "gain": -11,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 27,
+          "second": 35,
+          "only_first": 2,
+          "only_second": 10,
+          "p": 0.03857421875
+        },
+        "8": {
+          "maps": 202,
+          "first": 18,
+          "second": 21,
+          "only_first": 2,
+          "only_second": 5,
+          "p": 0.453125
+        }
+      }
+    },
+    "round1_heldout_vs_e2": {
+      "o2": {
+        "maps": 240,
+        "first": 92,
+        "second": 98,
+        "only_first": 9,
+        "only_second": 15,
+        "p": 0.30745625495910645
+      },
+      "t2": {
+        "maps": 240,
+        "first": 92,
+        "second": 98,
+        "only_first": 18,
+        "only_second": 24,
+        "p": 0.44079906734259566
+      }
+    },
+    "failures": {
+      "e": {
+        "stops short": 33,
+        "hole": 310,
+        "shortest": 56,
+        "passes the goal": 1
+      },
+      "e2": {
+        "stops short": 19,
+        "hole": 308,
+        "shortest": 69,
+        "longer": 3,
+        "passes the goal": 1
+      },
+      "o2": {
+        "stops short": 16,
+        "hole": 307,
+        "shortest": 74,
+        "longer": 3
+      },
+      "t2": {
+        "stops short": 13,
+        "hole": 316,
+        "shortest": 65,
+        "longer": 4,
+        "passes the goal": 2
+      },
+      "o2_zero_shot": {
+        "stops short": 39,
+        "hole": 315,
+        "shortest": 45,
+        "passes the goal": 1
+      },
+      "t2_zero_shot": {
+        "hole": 233,
+        "stops short": 164,
+        "shortest": 3
+      }
+    },
+    "t2_vs_o2": {
+      "maps": 400,
+      "first": 69,
+      "second": 77,
+      "only_first": 20,
+      "only_second": 28,
+      "p": 0.31232680747326924,
+      "gain": -8,
+      "by_size": {
+        "7": {
+          "maps": 198,
+          "first": 43,
+          "second": 44,
+          "only_first": 14,
+          "only_second": 15,
+          "p": 1.0
+        },
+        "8": {
+          "maps": 202,
+          "first": 26,
+          "second": 33,
+          "only_first": 6,
+          "only_second": 13,
+          "p": 0.1670684814453125
+        }
+      }
+    }
+  },
+  "text_only": {
+    "maps": 400,
+    "first": 69,
+    "second": 72,
+    "only_first": 23,
+    "only_second": 26,
+    "p": 0.7754496546815659,
+    "gain": -3,
+    "by_size": {
+      "7": {
+        "maps": 198,
+        "first": 43,
+        "second": 43,
+        "only_first": 13,
+        "only_second": 13,
+        "p": 1.0
+      },
+      "8": {
+        "maps": 202,
+        "first": 26,
+        "second": 29,
+        "only_first": 10,
+        "only_second": 13,
+        "p": 0.6776394844055176
+      }
+    },
+    "reading": "the policy plans from the text map as well as from the image"
+  }
+}

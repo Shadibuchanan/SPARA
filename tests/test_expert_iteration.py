@@ -146,6 +146,14 @@ def test_run_search_falls_back_to_single_passes_when_batches_disagree(data, tiny
     assert summary["checks"]["batch"] == 1 and "batched_failed" in summary["checks"] and not summary["checks"]["valid"]
 
 
+def test_run_search_without_recorded_points_checks_single_passes(data, tiny_model, tiny_batch, tmp_path, monkeypatch):
+    monkeypatch.setattr(expert_iteration, "encode", lambda *args, training=True: prompt_of(tiny_batch))
+    summary = run_search(tiny(tiny_model), Processor(), Evaluator(), "unused", tmp_path / "run", SETTINGS, {}, None)
+    checks = summary["checks"]
+    assert checks["valid"] and checks["batch"] == 4 and checks["probe_points"] is None
+    assert checks["single_max_difference"] < 1e-5
+
+
 def routes_for(rows, solved):
     return [{"row_index": i, "map_id": r["map_id"], "solved": i in solved,
              "answer": answer_text("DDRR") if i in solved else None} for i, r in enumerate(rows)]
@@ -192,6 +200,7 @@ def test_run_train_end_to_end(labels, data, tiny_model, tiny_batch, tmp_path, mo
     assert benchmarks == (["search"] if labels == "search" else [])
     manifest = json.loads((tmp_path / labels / "manifest.json").read_text())
     assert manifest["labels"] == labels and manifest["distinct"] == 2
+    assert (tmp_path / labels / "stage2/final").is_dir() == (labels == "search")  # E's weights start round 2
 
 
 def write_arm(path, held, seen, benchmark=None, training=None):

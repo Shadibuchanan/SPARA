@@ -587,7 +587,7 @@ def run_region_arm(model, processor, evaluator, config, data_root, output, setti
     if gate_settings["target_layer"] != settings["target_layer"]:
         raise ValueError("The gate's targets come from another layer")
     checks = check_sets(evaluator, data_root, round2)
-    data, counts = training_rows(data_root, round2, round1_routes, search_run)
+    data, counts = training_rows(data_root, round2, round1_routes, [search_run])
     one, two = phases(data, round2, config["gradient_accumulation"])
     routes = jsonl(Path(search_run) / "routes.jsonl")
     watch = {"validation": validation_maps(data_root, round2, routes, settings["monitor_maps"]),
@@ -807,7 +807,7 @@ def run_global_dropout(model, processor, evaluator, config, data_root, output, s
     output.mkdir(parents=True, exist_ok=False)
     began = time.time()
     checks = check_sets(evaluator, data_root, round2)
-    data, counts = training_rows(data_root, round2, round1_routes, search_run)
+    data, counts = training_rows(data_root, round2, round1_routes, [search_run])
     one, two = phases(data, round2, config["gradient_accumulation"])
     json_write(output / "manifest.json", run_manifest | {"arm": "egd", "settings": settings, "round2_settings": round2,
                                                          "checks": checks, "counts": counts,

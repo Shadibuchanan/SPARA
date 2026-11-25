@@ -33,6 +33,8 @@ def encode(processor, root, split, row, training=True, latents=LATENT_TOKENS):
     images = pictures(root, split, row)
     if text.count("<image>") != len(images) or "<|livr_" in text:
         raise ValueError("Expected one image placeholder per image and no latent tokens")
+    if row.get("blank_image"):  # the text-only ceiling (docs/PERCEPTION_CEILING_SPEC.md): same size, no map
+        images = [Image.new("RGB", picture.size, "white") for picture in images]
     grid_size = None
     if isinstance(latents, dict) and "per_image" in latents:  # patch latents: the mask needs only the images
         if len(images) > len(latents["per_image"]):

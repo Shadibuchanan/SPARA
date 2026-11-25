@@ -7,6 +7,10 @@ primary has no reading on perception (EB2 78 against E2 84 of 400, p = 0.46, des
 Secondary: **round 2 helps on larger maps** (E2 84 against E 54, p = 1.5 × 10⁻⁵). See
 [Result](#result-jobs-69927986992800).
 
+Rerun, 2026-11-14, from the round 1 rerun's E (jobs 7065168–7065176): run and read. Round 2
+helps again (E2 72 against E's 56 of 400, p = 0.033), and EB2 shows no detectable difference
+from E2 (76 against 72). See [Rerun](#result-jobs-70651687065176).
+
 Added 2026-11-17: [No-detour losses](#no-detour-losses-2026-11-17), an analysis of expert
 iteration's losses on no-detour benchmark maps.
 
@@ -333,6 +337,99 @@ solves, 9 only E, p = 1.5 × 10⁻⁵.
 - **Holes still cause most failures:** E2 walks into a hole on 295 of the 400 new
   held-out maps.
 - **Seen maps:** both arms solve none of the 53 pool maps the search failed.
+## Result (jobs 7065168–7065176)
+
+Evidence: [docs/experiments/expert-iteration-round2-7065168/](experiments/expert-iteration-round2-7065168/),
+with `comparison.json` holding every reading below. The latent states (`states.pt`, 43 MB
+per arm) and the arms' weights are not committed.
+
+**What changed from the plan.**
+- **E is the rerun's E (7063729),** not job 6961875. Its weights were not available.
+  See the [round 1 rerun](EXPERT_ITERATION_SPEC.md#rerun-jobs-70631567063729). So the
+  frontier is the 162 maps the rerun's search failed, not 174.
+- **L's greedy answers came from a separate job (7063726),** run before the search. The
+  search job copied them in.
+- **The arms' final weights were not saved.** Nothing reads them after evaluation, and
+  scratch had room for one 15 GB save, which E needed.
+
+**Jobs.** 7,236 GPU-seconds (2 h 1 min) by Slurm's elapsed time, against an estimate of
+about 125 minutes. L's greedy answers took 241, the search 3,529, E2 1,718 and EB2 1,748.
+The CPU batching check took 1,595 seconds on `ice-cpu`.
+
+**Precondition: the batching check gave the first reading.**
+- **Full precision:** batched and single reads agree within 2.2 × 10⁻⁶.
+- **bfloat16 autocast:** they differ by up to 0.014.
+- **Meaning:** the code is correct, and the gap is rounding.
+- **Not acted on:** the search was submitted at one request per pass before the check
+  finished. It took 59 minutes, inside the one-request budget.
+
+**Validity: all checks passed.**
+- **Policy reads:** one request per pass, so the step-0 and cached-read differences are 0.
+- **Sets:** 900 of 900 labels accepted, and no shared layouts.
+- **Loading:** E's greedy outcomes on round 1's 240 held-out maps match the rerun on 240
+  of 240.
+- **Both arms' set checks pass.**
+
+**Search: 199 of the 500 new pool maps,** above the variety floor of 100.
+- **By size:** 108 of 231 at 7 x 7 (47%) and 91 of 269 at 8 x 8 (34%). LIVR's search
+  solved 29% in the JEPA judge run.
+- **Policy calls:** median 16 on solved maps.
+- **Routes:** 112 are the label, 17 are longer, and 2 bump a wall.
+- **Frontier:** 49 of the 162 maps LIVR's search failed. By size: 3 of 8 at 4 x 4, 17 of
+  53 at 5 x 5 and 29 of 101 at 6 x 6.
+
+**Manipulation check: took, by the fixed rule. But EB2 did not gain over E.**
+- **The reading:** at layer 12, EB2 scores 0.664 and E2 0.609, a difference of 0.055. The
+  95% interval is 0.047 to 0.063. The margin is 0.05.
+- **The starting point scores higher than both:** E scores 0.669. Unmasked training
+  lowered the latents' hole reading, and training under the mask kept it at E's level.
+  The mask preserved what was there; it did not add to it.
+- **The same pattern holds for the start cell:** E 0.76 and 0.57 (7 x 7, 8 x 8), E2 0.57
+  and 0.42, EB2 0.78 and 0.59.
+- **At layers 20 and 28** the three arms are within 0.02 of each other.
+- **The interval is narrow because it resamples maps only.** It does not include
+  training-run variance, and there is one run per arm.
+
+**Primary: no detectable difference.** On the 400 new held-out maps, EB2 solves 76 and E2
+72: 19 maps only EB2 solves, 15 only E2, p = 0.61. By size: 45 against 43 at 7 x 7 and 31
+against 29 at 8 x 8.
+
+**Secondary: round 2 helps on larger maps.** E2 solves 72 and E 56: 33 maps only E2
+solves, 17 only E, p = 0.033. Neither size alone is significant: 43 against 35 and 29
+against 21.
+
+**The outcome-table row that applies:** "Took; no detectable difference". Its next step is
+to drop perception work on FrozenLake. Because the check took only by protecting E's
+level, the reading is weaker than the row assumes. The run shows that holding the latents
+at E's level does not change success. It does not show what latents that hold more would
+do.
+
+**Descriptive.**
+- **Held-out success (400 new maps):** L 16, E 56, E2 72, EB2 76. E against L: 40 maps
+  only E solves, 0 only L, p = 1.8 × 10⁻¹².
+- **Masked greedy:** E 51, E2 69, EB2 73. Each arm loses 3–5 maps without direct image
+  access. The answers already use the image almost only through the latents.
+- **Training loss:** EB2's masked phase starts at 0.113 against E2's 0.102 and ends at
+  0.072 against 0.068. The mask had little to force.
+- **Failures:** walking into a hole ends 307–310 of the 400 attempts for E, E2 and EB2,
+  and 361 for L.
+- **Hole walks (layer-12 probe).** For each failure, does the probe read the hole that
+  ended the attempt as a hole?
+  - E 124 of 310 (40%), E2 82 of 308 (27%), EB2 114 of 307 (37%).
+  - **Holes the route passed beside without entering** are read as holes about as often:
+    E 40%, E2 31%, EB2 42%.
+  - The probe's reading does not separate the holes the model walks into from the ones it
+    avoids. Either the decoder does not use what the probe reads, or the probe misses
+    what the decoder uses (the latent battery found the probe understates it).
+- **Round 1's 240 held-out maps:** E2 98 and EB2 103, against E's 92 (p = 0.43 and
+  0.099). Neither arm harms the smaller maps.
+- **Benchmark:**
+  - EB2 ties E exactly, 325 and 325. Against LIVR: 325 to 323 overall, 16 to 7 on detour
+    maps (p = 0.012) and 309 to 316 on no-detour maps (p = 0.30).
+  - E2 scores 318: against LIVR, 13 to 7 on detour maps (p = 0.070) and 305 to 316 on
+    no-detour maps (p = 0.071).
+- **Seen maps (first 98 of the new pool):** the search solved 37. E2 solves 32 of those
+  and EB2 28; of the other 61, they solve 1 and 2.
 
 ## Limits
 

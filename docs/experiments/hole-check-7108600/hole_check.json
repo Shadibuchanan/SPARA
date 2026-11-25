@@ -1,0 +1,238 @@
+{
+ "validity": {
+  "s3": true,
+  "eb3": true,
+  "rows_replay": true,
+  "same_rows": true,
+  "same_maps": true,
+  "capped": 0,
+  "cap_ok": true,
+  "valid": true
+ },
+ "primary": {
+  "maps": 400,
+  "first": 65,
+  "second": 83,
+  "only_first": 11,
+  "only_second": 29,
+  "p": 0.006426576095691416,
+  "by_size": {
+   "7": {
+    "maps": 198,
+    "first": 39,
+    "second": 51,
+    "only_first": 6,
+    "only_second": 18,
+    "p": 0.022655844688415527
+   },
+   "8": {
+    "maps": 202,
+    "first": 26,
+    "second": 32,
+    "only_first": 5,
+    "only_second": 11,
+    "p": 0.210113525390625
+   }
+  },
+  "reading": "writing the check harms"
+ },
+ "descriptive": {
+  "held_out_success": {
+   "s3": 65,
+   "eb3": 83,
+   "b": 76
+  },
+  "fatal_moves": {
+   "lost": 112,
+   "missed": 210
+  },
+  "format": {
+   "follows": 392,
+   "answers": 400
+  },
+  "lines": {
+   "lines": 1401,
+   "cell_right": 959,
+   "holes_exact_given_cell": 451,
+   "missed": 520,
+   "invented": 149
+  },
+  "s3_vs_b": {
+   "maps": 400,
+   "first": 65,
+   "second": 76,
+   "only_first": 20,
+   "only_second": 31,
+   "p": 0.16077960181198847,
+   "by_size": {
+    "7": {
+     "maps": 198,
+     "first": 39,
+     "second": 44,
+     "only_first": 12,
+     "only_second": 17,
+     "p": 0.45825831964612007
+    },
+    "8": {
+     "maps": 202,
+     "first": 26,
+     "second": 32,
+     "only_first": 8,
+     "only_second": 14,
+     "p": 0.28627872467041016
+    }
+   }
+  },
+  "masked_s3_vs_eb3": {
+   "maps": 400,
+   "first": 62,
+   "second": 93,
+   "only_first": 9,
+   "only_second": 40,
+   "p": 9.263546409954415e-06,
+   "by_size": {
+    "7": {
+     "maps": 198,
+     "first": 35,
+     "second": 55,
+     "only_first": 3,
+     "only_second": 23,
+     "p": 8.797645568847656e-05
+    },
+    "8": {
+     "maps": 202,
+     "first": 27,
+     "second": 38,
+     "only_first": 6,
+     "only_second": 17,
+     "p": 0.03468966484069824
+    }
+   }
+  },
+  "round1_heldout_s3_vs_eb3": {
+   "maps": 240,
+   "first": 77,
+   "second": 111,
+   "only_first": 10,
+   "only_second": 44,
+   "p": 3.385685953372075e-06
+  },
+  "failures": {
+   "s3": {
+    "hole": 322,
+    "shortest": 65,
+    "stops short": 13
+   },
+   "eb3": {
+    "stops short": 24,
+    "hole": 292,
+    "shortest": 81,
+    "longer": 2,
+    "passes the goal": 1
+   },
+   "b": {
+    "stops short": 16,
+    "hole": 308,
+    "shortest": 74,
+    "longer": 2
+   }
+  },
+  "benchmark": {
+   "s3_vs_eb3": {
+    "all": {
+     "maps": 400,
+     "first": 313,
+     "second": 330,
+     "only_first": 15,
+     "only_second": 32,
+     "p": 0.01862383661500644
+    },
+    "detour": {
+     "maps": 40,
+     "first": 13,
+     "second": 19,
+     "only_first": 1,
+     "only_second": 7,
+     "p": 0.0703125
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 300,
+     "second": 311,
+     "only_first": 14,
+     "only_second": 25,
+     "p": 0.10812902140605729
+    }
+   },
+   "s3_vs_livr": {
+    "all": {
+     "maps": 400,
+     "first": 313,
+     "second": 323,
+     "only_first": 17,
+     "only_second": 27,
+     "p": 0.17417114727072658
+    },
+    "detour": {
+     "maps": 40,
+     "first": 13,
+     "second": 7,
+     "only_first": 7,
+     "only_second": 1,
+     "p": 0.0703125
+    },
+    "no_detour": {
+     "maps": 360,
+     "first": 300,
+     "second": 316,
+     "only_first": 10,
+     "only_second": 26,
+     "p": 0.011330984183587134
+    }
+   }
+  },
+  "new_tokens": {
+   "median": 64,
+   "max": 144
+  },
+  "training": {
+   "s3": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 7.642801523208618,
+     "mean_loss": 0.5263720249986266,
+     "last_quarter_loss": 0.18346371698071776,
+     "seconds": 454.9499123096466,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.14878878323361278,
+     "mean_loss": 0.14914843396090485,
+     "last_quarter_loss": 0.10921025230484877,
+     "seconds": 446.9738664627075,
+     "stage": 2
+    }
+   },
+   "eb3": {
+    "phase1": {
+     "optimizer_steps": 187,
+     "first_loss": 0.06325065271812491,
+     "mean_loss": 0.09940255652181446,
+     "last_quarter_loss": 0.07574011686883578,
+     "seconds": 423.8057601451874,
+     "stage": 1
+    },
+    "phase2": {
+     "optimizer_steps": 188,
+     "first_loss": 0.04299157439618284,
+     "mean_loss": 0.08675738305560679,
+     "last_quarter_loss": 0.06532349636769924,
+     "seconds": 408.35549116134644,
+     "stage": 2
+    }
+   }
+  }
+ },
+ "seconds_in_job": 3405.6752982139587
+}

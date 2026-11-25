@@ -219,6 +219,7 @@ def runs_for(tmp_path, data):
     search.mkdir()
     write_jsonl(search / "routes.jsonl", route_rows(data["fresh/p78"], {1, 3}))
     write_jsonl(search / "frontier.jsonl", [])
+    (search / "manifest.json").write_text(json.dumps({"settings": ROUND2}))  # as a search job writes it
     return round1, search
 
 

@@ -71,8 +71,10 @@ def greedy_eval(model, processor, evaluator, data_root, items, log, max_new_toke
         with amp(model.device):
             generated = model.generate(**prompt, **GREEDY, max_new_tokens=max_new_tokens, use_cache=True)
         (route, success), = score(evaluator, processor, row, generated)
+        new = generated[0, prompt["input_ids"].shape[-1]:]
         record = {"population": population, "split": split, "row_index": index, "grid_size": len(row["map_desc"]),
-                  "route": route, "success": success}
+                  "route": route, "success": success, "new_tokens": int(new.shape[-1]),
+                  "answer": processor.tokenizer.decode(new, skip_special_tokens=True)}
         results.append(record)
         log.write(json.dumps(record) + "\n"); log.flush()
         if count % 50 == 0:
@@ -81,10 +83,10 @@ def greedy_eval(model, processor, evaluator, data_root, items, log, max_new_toke
 
 
 def run_arm(model, processor, evaluator, config, data_root, output, arm, recipe, run_manifest, data=None,
-            distinct=None, benchmark=True):
+            distinct=None, benchmark=True, save_final=True):
     """One arm. `data` (with its count of `distinct` pool maps) replaces the recipe's arm,
     for expert iteration (docs/EXPERT_ITERATION_SPEC.md); `benchmark` False skips the
-    reference benchmark."""
+    reference benchmark; `save_final` False evaluates the weights without writing them."""
     if data is None:
         distinct = recipe["arms"][arm]
         data = training_data(data_root, recipe, distinct) if distinct else None
@@ -99,8 +101,9 @@ def run_arm(model, processor, evaluator, config, data_root, output, arm, recipe,
         tuned = config | {"epochs_per_stage": recipe["epochs"], "learning_rate": recipe["learning_rate"],
                           "warmup_ratio": recipe["warmup_ratio"]}
         started = time.time()
-        train_stage(model, processor, data_root, output / "stage2", tuned, 2, final_weights_only=True, data=data)
-        steps = [json.loads(line) for line in (output / "stage2/steps.jsonl").read_text().splitlines()]
+        train_stage(model, processor, data_root, output / "stage2", tuned, 2, final_weights_only=True, data=data,
+                    save_final=save_final)
+        steps =[json.loads(line) for line in (output / "stage2/steps.jsonl").read_text().splitlines()]
         training = {"seconds": time.time() - started, "optimizer_steps": len(steps),
                     "mean_loss": statistics.mean(s["loss"] for s in steps),
                     "last_quarter_loss": statistics.mean(s["loss"] for s in steps[-max(1, len(steps) // 4):])}
